@@ -1,0 +1,105 @@
+<div class="h-full overflow-auto bg-white">
+  <!-- Header with day names -->
+  <div class="sticky top-0 bg-white border-b border-gray-200 z-10">
+    <div class="grid grid-cols-8 gap-px bg-gray-200">
+      <!-- Time column header -->
+      <div class="bg-white p-2 min-w-[80px]"></div>
+      
+      <!-- Day headers -->
+      <div
+        *ngFor="let day of getWeekDays(); trackBy: trackByDay"
+        [class]="'bg-white p-3 text-center ' + (isToday(day) ? 'bg-yellow-50' : '')"
+      >
+        <div class="text-sm font-medium text-gray-900">
+          {{ day.format('ddd') }}
+        </div>
+        <div [class]="'text-lg font-semibold ' + (isToday(day) ? 'text-yellow-600' : 'text-gray-700')">
+          {{ day.format('MMM-DD') }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Time grid -->
+  <div class="grid grid-cols-8 gap-px bg-gray-200">
+    <!-- Time labels -->
+    <div class="bg-white">
+      <div
+        *ngFor="let hour of hours; trackBy: trackByHour"
+        [class]="'h-16 border-b border-gray-100 flex items-start justify-end pr-2 pt-1 ' + (isCurrentHour(hour) ? 'current-hour-highlight' : '')"
+      >
+        <span class="text-xs text-gray-500 font-medium">
+          {{ hour.toString().padStart(2, '0') }}:00
+        </span>
+      </div>
+    </div>
+
+    <!-- Day columns -->
+    <div
+      *ngFor="let day of getWeekDays(); trackBy: trackByDay"
+      class="bg-white week-day-column"
+      style="position: relative !important; height: 1536px; overflow: visible; z-index: 1;"
+    >
+      <!-- Time slots -->
+      <div
+        *ngFor="let hour of hours; trackBy: trackByHour"
+        [class]="'h-16 border-b border-gray-100 relative ' + (isToday(day) && isCurrentHour(hour) ? 'bg-yellow-50' : '')"
+      ></div>
+      
+      <!-- Events positioned absolutely over the time grid -->
+      <ng-container *ngFor="let event of getEventsForDay(day); trackBy: trackByEventId">
+        <div
+          *ngIf="getEventPosition(event, day, events) as position"
+          class="absolute p-2 text-sm text-white rounded overflow-hidden shadow-sm week-event-item"
+          [ngStyle]="getEventStyle(event)"
+          [style.top.px]="position.top"
+          [style.height.px]="position.height"
+          [style.width.%]="position.width"
+          [style.left]="position.left"
+          [style.z-index]="10"
+          [style.min-height.px]="20"
+          [style.position]="'absolute'"
+          [title]="getEventTitle(event)"
+        >
+          <div class="event-header">
+            <div class="font-medium mb-1">{{ event.title }}</div>
+            <button
+              class="delete-event-btn-week"
+              (click)="onDeleteEvent(event); $event.stopPropagation()"
+              title="Delete event"
+            >
+              ×
+            </button>
+          </div>
+          <div class="text-xs opacity-90">
+            {{ formatTime(event) }}
+          </div>
+        </div>
+      </ng-container>
+    </div>
+  </div>
+
+  <!-- All-day events row -->
+  <div class="border-b border-gray-200 bg-gray-50">
+    <div class="grid grid-cols-8 gap-px bg-gray-200">
+      <div class="bg-gray-50 p-2 min-w-[80px]">
+        <span class="text-sm font-medium text-gray-700">all-day</span>
+      </div>
+      
+      <div
+        *ngFor="let day of getWeekDays(); trackBy: trackByDay"
+        [class]="'bg-gray-50 p-1 min-h-[40px] ' + (isToday(day) ? 'bg-yellow-50' : '')"
+      >
+        <div
+          *ngFor="let event of getAllDayEventsForDay(day); trackBy: trackByEventId"
+          class="mb-1 p-1 text-xs text-white rounded overflow-hidden"
+          [ngStyle]="getEventStyle(event)"
+        >
+          <div class="truncate">
+            {{ event.title }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

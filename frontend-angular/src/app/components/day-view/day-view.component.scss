@@ -1,0 +1,46 @@
+.day-view {
+  .event-header {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .delete-event-btn-day {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: 3px;
+    color: white;
+    cursor: pointer;
+    font-size: 10px;
+    padding: 1px 4px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 20;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  }
+
+  .absolute:hover .delete-event-btn-day {
+    opacity: 1;
+  }
+
+  .current-hour-highlight {
+    background-color: rgba(59, 130, 246, 0.1);
+    border-top: 1px solid #3b82f6;
+  }
+
+  .event-container {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+    &:hover {
+      transform: scale(1.02);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+    }
+  }
+}
