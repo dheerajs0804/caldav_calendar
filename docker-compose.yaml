@@ -1,0 +1,16 @@
+services:
+  roundcube:
+    image: roundcube/roundcubemail:1.6.7-apache
+    container_name: roundcube
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    environment:
+      - ROUNDCUBEMAIL_DEFAULT_HOST=ssl://intmail.mithi.com
+      - ROUNDCUBEMAIL_SMTP_SERVER=tls://intmail.mithi.com
+      - ROUNDCUBEMAIL_DEFAULT_PORT=993
+      - ROUNDCUBEMAIL_SMTP_PORT=587
+      - ROUNDCUBEMAIL_PLUGINS=archive,zipdownload,calendar_link
+    volumes:
+      - ./roundcube/plugins/calendar_link:/var/www/html/plugins/calendar_link
+

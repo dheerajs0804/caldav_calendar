@@ -1,0 +1,32 @@
+[
+    {
+        "uid": "7D006F66F80E283032EBD4BF323E897A-9F332BE70AC5257A",
+        "title": "test 3",
+        "deleted_at": "2025-08-25T07:20:00+02:00",
+        "deleted_by": "user"
+    },
+    {
+        "uid": "B361F7C5576353E48D02109A5451BF15-9F332BE70AC5257A",
+        "title": "test4",
+        "deleted_at": "2025-08-25T07:20:00+02:00",
+        "deleted_by": "user"
+    },
+    {
+        "uid": "uid_68abf33c92c9f",
+        "title": "Event marked for deletion",
+        "deleted_at": "2025-08-25T07:24:21+02:00",
+        "deleted_by": "user"
+    },
+    {
+        "uid": "uid_68abf4faca4bc",
+        "title": "Event marked for deletion",
+        "deleted_at": "2025-08-25T07:37:49+02:00",
+        "deleted_by": "user"
+    },
+    {
+        "uid": "uid_68abf6beaffcc",
+        "title": "Event marked for deletion",
+        "deleted_at": "2025-08-25T07:44:37+02:00",
+        "deleted_by": "user"
+    }
+]

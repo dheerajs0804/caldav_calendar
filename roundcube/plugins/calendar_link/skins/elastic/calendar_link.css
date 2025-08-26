@@ -1,0 +1,91 @@
+/* Calendar Link Plugin Styles */
+
+.button-calendar {
+    background: transparent !important;
+    color: #999 !important;
+    border: none !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.button-calendar:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: #fff !important;
+}
+
+.button-calendar.button-selected {
+    background: transparent !important;
+    color: #999 !important;
+}
+
+/* Ensure the button is always visible and looks like other buttons */
+#taskbar .button-calendar {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    background: transparent !important;
+    color: #999 !important;
+}
+
+#taskbar .button-calendar:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: #fff !important;
+}
+
+#taskbar .button-calendar.button-selected {
+    background: transparent !important;
+    color: #999 !important;
+}
+
+.calendar-link {
+    margin: 5px 0;
+}
+
+.calendar-button {
+    display: block;
+    padding: 8px 12px;
+    background: transparent;
+    color: #999;
+    text-decoration: none;
+    border-radius: 4px;
+    margin: 2px 0;
+}
+
+.calendar-button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    text-decoration: none;
+}
+
+/* Remove any unwanted icons or elements below the calendar button */
+.calendar-link::after,
+.calendar-link::before,
+.calendar-button::after,
+.calendar-button::before {
+    content: none !important;
+    display: none !important;
+}
+
+/* Target any Roundcube-specific icons that might be added */
+.calendar-link .icon,
+.calendar-link .rcmicon,
+.calendar-button .icon,
+.calendar-button .rcmicon {
+    display: none !important;
+}
+
+/* Remove any background images or icons */
+.calendar-link,
+.calendar-button {
+    background-image: none !important;
+    background-repeat: no-repeat !important;
+}
+
+/* Ensure clean text display */
+.calendar-link,
+.calendar-button {
+    font-family: inherit !important;
+    font-size: inherit !important;
+    line-height: inherit !important;
+}
