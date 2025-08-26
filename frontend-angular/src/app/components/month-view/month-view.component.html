@@ -1,0 +1,55 @@
+<div class="h-full overflow-auto bg-white">
+  <!-- Month header -->
+  <div class="sticky top-0 bg-white border-b border-gray-200 z-10 p-4">
+    <h1 class="text-2xl font-bold text-gray-900">
+      {{ getMonthStart() | date:'MMMM y' }}
+    </h1>
+  </div>
+
+  <!-- Calendar grid -->
+  <div class="p-4">
+    <!-- Week day headers -->
+    <div class="grid grid-cols-7 gap-px bg-gray-200 mb-1">
+      <div
+        *ngFor="let day of weekDays"
+        class="bg-white p-3 text-center"
+      >
+        <span class="text-sm font-medium text-gray-700">{{ day }}</span>
+      </div>
+    </div>
+
+    <!-- Calendar days -->
+    <div class="grid grid-cols-7 gap-px bg-gray-200">
+      <div
+        *ngFor="let day of getDays(); trackBy: trackByDay; let i = index"
+        [class]="'bg-white min-h-[120px] p-2 ' + (!isCurrentMonth(day) ? 'bg-gray-50' : '')"
+      >
+        <!-- Date number -->
+        <div [class]="'text-right mb-2 ' + (isToday(day) ? 'bg-yellow-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold' : (isCurrentMonth(day) ? 'text-gray-900' : 'text-gray-400'))">
+          {{ isToday(day) ? '' : day.format('D') }}
+        </div>
+        
+        <!-- Events -->
+        <div class="space-y-1">
+          <div
+            *ngFor="let event of getEventsForDate(day).slice(0, 3); trackBy: trackByEventId"
+            class="p-1 text-xs text-white rounded overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+            [ngStyle]="getEventStyle(event)"
+            [title]="event.title"
+          >
+            <div class="truncate">
+              {{ event.title }}
+            </div>
+          </div>
+          
+          <div
+            *ngIf="getEventsForDate(day).length > 3"
+            class="text-xs text-gray-500 text-center"
+          >
+            +{{ getEventsForDate(day).length - 3 }} more
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

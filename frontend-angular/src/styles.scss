@@ -1,0 +1,200 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global styles */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Event styling classes */
+.week-event-item {
+  background: linear-gradient(180deg, #1a4a8a 0%, #2c5aa0 25%, #4285f4 50%, #5ba0ff 75%, #7bb3ff 100%) !important;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+  position: absolute !important; /* Week events need absolute positioning */
+  transform: none !important; /* Prevent any transforms from affecting positioning */
+  margin: 0 !important; /* Remove any margins that might affect positioning */
+  z-index: 10 !important; /* Ensure events appear above time grid */
+}
+
+.month-event,
+.absolute.left-20.right-2,
+.absolute[style*="width"] {
+  background: linear-gradient(180deg, #1a4a8a 0%, #2c5aa0 25%, #4285f4 50%, #5ba0ff 75%, #7bb3ff 100%) !important;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+  position: relative !important;
+}
+
+/* Day view events - allow absolute positioning with subtle blue gradient */
+.day-view .absolute.event-container {
+  background: linear-gradient(180deg, #1a4a8a 0%, #2c5aa0 25%, #4285f4 50%, #5ba0ff 75%, #7bb3ff 100%) !important;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+  position: absolute !important; /* Ensure absolute positioning works */
+  transform: none !important; /* Prevent any transforms from affecting positioning */
+  margin: 0 !important; /* Remove any margins that might affect positioning */
+}
+
+/* Delete button styles */
+.delete-event-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 6px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 20;
+}
+
+.delete-event-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.event-container:hover .delete-event-btn {
+  opacity: 1;
+}
+
+/* Week view delete button */
+.delete-event-btn-week {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 3px;
+  color: white;
+  cursor: pointer;
+  font-size: 10px;
+  padding: 1px 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 20;
+}
+
+.delete-event-btn-week:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.week-event-item:hover .delete-event-btn-week {
+  opacity: 1;
+}
+
+/* Day view delete button */
+.delete-event-btn-day {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 3px;
+  color: white;
+  cursor: pointer;
+  font-size: 10px;
+  padding: 1px 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 20;
+}
+
+.delete-event-btn-day:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.day-view .absolute.event-container:hover .delete-event-btn-day {
+  opacity: 1;
+}
+
+/* Time grid styles */
+.time-grid {
+  position: relative;
+}
+
+.time-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: #e5e7eb;
+}
+
+.time-label {
+  position: absolute;
+  left: 0;
+  width: 60px;
+  text-align: right;
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* Current hour highlight */
+.current-hour-highlight {
+  background-color: rgba(59, 130, 246, 0.1);
+  border-top: 1px solid #3b82f6;
+}
+
+/* Event hover effects */
+.event-container {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.event-container:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Week view event hover */
+.week-event-item:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Ensure week view day columns have proper positioning context */
+.week-day-column {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* Fix CSS Grid positioning context */
+.grid.grid-cols-8 {
+  position: relative !important;
+}
+
+.grid.grid-cols-8 > div {
+  position: relative !important;
+}
+
+/* Ensure week events are positioned correctly */
+.week-event-item {
+  position: absolute !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  margin: 0 !important;
+}
+
+/* Day view event hover */
+.day-view .absolute.event-container:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+}

@@ -1,0 +1,67 @@
+<div class="day-view h-full overflow-auto bg-white">
+  <!-- Header -->
+  <div class="sticky top-0 bg-white border-b border-gray-200 z-10 p-4">
+    <h2 class="text-xl font-semibold text-gray-900">
+      {{ date | date:'EEEE, MMMM d, y' }}
+    </h2>
+  </div>
+
+  <!-- Time grid -->
+  <div class="relative" style="height: 1536px;"> <!-- 24 hours * 64px per hour -->
+    <!-- Time labels and grid lines -->
+    <div
+      *ngFor="let hour of hours; trackBy: trackByHour"
+      [class]="'absolute left-2 w-16 border-b border-gray-100 flex items-start justify-end pr-2 pt-1 ' + (isToday(date) && isCurrentHour(hour) ? 'current-hour-highlight' : '')"
+      [style.top.px]="hour * 64"
+      [style.height.px]="64"
+    >
+      <span class="text-xs text-gray-500 font-medium">
+        {{ hour.toString().padStart(2, '0') }}:00
+      </span>
+    </div>
+    
+    <!-- Events - positioned absolutely with proper horizontal sharing -->
+    <ng-container *ngIf="getOverlappingGroups() as groups">
+      <div
+        *ngFor="let event of groups.events; trackBy: trackByEventId"
+        class="absolute p-2 text-sm text-white rounded overflow-hidden shadow-sm event-container day-event-item"
+        [ngStyle]="getEventStyle(event)"
+        [style.top.px]="getEventPosition(event, groups.globalGroup, groups.sortedGroup).top"
+        [style.height.px]="getEventPosition(event, groups.globalGroup, groups.sortedGroup).height"
+        [style.width.%]="getEventPosition(event, groups.globalGroup, groups.sortedGroup).width"
+        [style.left]="getEventPosition(event, groups.globalGroup, groups.sortedGroup).left"
+        [style.z-index]="getEventPosition(event, groups.globalGroup, groups.sortedGroup).zIndex"
+        [style.min-height.px]="getEventPosition(event, groups.globalGroup, groups.sortedGroup).minHeight"
+        [title]="getEventTitle(event)"
+      >
+        <div class="event-header">
+          <div class="font-medium mb-1">{{ event.title }}</div>
+          <button
+            class="delete-event-btn-day"
+            (click)="onDeleteEvent(event); $event.stopPropagation()"
+            title="Delete event"
+          >
+            ×
+          </button>
+        </div>
+        <div class="text-xs opacity-90">
+          {{ formatTime(event) }}
+        </div>
+      </div>
+    </ng-container>
+  </div>
+
+  <!-- All-day events -->
+  <div class="border-b border-gray-200 bg-gray-50 p-4">
+    <h3 class="text-sm font-medium text-gray-700 mb-2">All Day</h3>
+    <div class="space-y-1">
+      <div
+        *ngFor="let event of getAllDayEvents(); trackBy: trackByEventId"
+        class="p-2 text-sm text-white rounded overflow-hidden"
+        [ngStyle]="getEventStyle(event)"
+      >
+        {{ event.title }}
+      </div>
+    </div>
+  </div>
+</div>
