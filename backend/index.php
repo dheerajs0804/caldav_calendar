@@ -2424,6 +2424,8 @@ function getCalDAVClient() {
         }
         
         // Get CalDAV configuration
+        // NOTE: For GitHub users: Copy caldav_demo.php to caldav.php and update with your credentials
+        // The actual caldav.php file is gitignored to protect your credentials
         $caldavConfig = require_once 'config/caldav.php';
         
         // Create CalDAV client instance
