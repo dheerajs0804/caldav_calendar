@@ -264,5 +264,35 @@
         ],
         "reminder": null,
         "valarm": null
+    },
+    {
+        "id": "event_68b159b09fc6c",
+        "title": "email test 18",
+        "description": "",
+        "location": "",
+        "start_time": "2025-08-29T12:31:00",
+        "end_time": "2025-08-29T13:31:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "uid": "uid_68b159b09fc7b",
+        "etag": "etag_68b159b09fc7c",
+        "created_at": "2025-08-29T09:41:36+02:00",
+        "updated_at": "2025-08-29T09:41:36+02:00",
+        "attendees": [
+            {
+                "email": "dheeraj2004.sharma@gmail.com",
+                "name": "1",
+                "response": "pending",
+                "role": "required"
+            },
+            {
+                "email": "dheeraj.sharma@mithi.com",
+                "name": "2",
+                "response": "pending",
+                "role": "required"
+            }
+        ],
+        "reminder": null,
+        "valarm": null
     }
 ]
