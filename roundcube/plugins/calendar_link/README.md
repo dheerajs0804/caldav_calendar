@@ -11,7 +11,7 @@ This plugin adds a "Calendar" link to Roundcube's navigation that opens your cal
 ## Configuration
 
 Edit `config.inc.php` to set:
-- `calendar_app_url`: URL to your calendar app (default: http://localhost:3000)
+- `calendar_app_url`: URL to your calendar app (default: http://localhost:4200)
 - `calendar_link_text`: Text for the calendar link
 - `calendar_open_new_tab`: Whether to open in new tab
 

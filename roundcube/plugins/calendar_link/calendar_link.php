@@ -25,16 +25,20 @@ class calendar_link extends rcube_plugin
     {
         $rcmail = rcmail::get_instance();
         
+        // Get configuration values
+        $calendar_url = $rcmail->config->get('calendar_app_url', 'http://localhost:4200');
+        $calendar_text = $rcmail->config->get('calendar_link_text', '📅 Calendar App');
+        
         // Always add the calendar button, regardless of framing
         $this->add_button([
             'command'    => 'calendar',
             'class'      => 'button-calendar',
             'classsel'   => 'button-calendar',
             'innerclass' => 'button-inner',
-            'label'      => 'Calendar',
+            'label'      => $calendar_text,
             'type'       => 'link',
             'target'     => '_blank',
-            'href'       => 'http://localhost:3000'
+            'href'       => $calendar_url
         ], 'taskbar');
         
         // Add stylesheet for the button
@@ -46,6 +50,10 @@ class calendar_link extends rcube_plugin
         $rcmail = rcmail::get_instance();
         
         if (!$rcmail->output->framed) {
+            // Add meta tag with calendar URL for JavaScript
+            $calendar_url = $rcmail->config->get('calendar_app_url', 'http://localhost:4200');
+            $rcmail->output->add_header('<meta name="calendar-app-url" content="' . htmlspecialchars($calendar_url) . '">');
+            
             // Add JavaScript to handle the calendar button click
             $this->include_script('calendar_link.js');
         }
@@ -54,8 +62,12 @@ class calendar_link extends rcube_plugin
     function add_calendar_link($args)
     {
         if (isset($args['content'])) {
+            $rcmail = rcmail::get_instance();
+            $calendar_url = $rcmail->config->get('calendar_app_url', 'http://localhost:4200');
+            $calendar_text = $rcmail->config->get('calendar_link_text', '📅 Calendar App');
+            
             // Create a completely clean calendar button without any icons
-            $args['content'] .= '<li class="calendar-link"><a href="http://localhost:3000" target="_blank" class="calendar-button" onclick="window.open(\'http://localhost:3000\', \'_blank\'); return false;" style="background: none; background-image: none;">Calendar</a></li>';
+            $args['content'] .= '<li class="calendar-link"><a href="' . $calendar_url . '" target="_blank" class="calendar-button" onclick="window.open(\'' . $calendar_url . '\', \'_blank\'); return false;" style="background: none; background-image: none;">' . $calendar_text . '</a></li>';
         }
         return $args;
     }

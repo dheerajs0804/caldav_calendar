@@ -2,6 +2,8 @@
 
 $config = array();
 
+
+
 // Database configuration
 $config['db_dsnw'] = 'sqlite:///var/www/html/roundcube.db';
 
@@ -17,10 +19,6 @@ $config['smtp_auth_type'] = 'LOGIN';
 
 // Enable the calendar link plugin
 $config['plugins'] = array('calendar_link');
-
-// Calendar app configuration
-$config['calendar_app_url'] = 'http://localhost:3000';
-$config['calendar_link_text'] = '📅 Calendar';
 
 // Security settings
 $config['use_https'] = false;

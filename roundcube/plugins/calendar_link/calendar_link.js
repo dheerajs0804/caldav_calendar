@@ -14,13 +14,22 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Get calendar URL from configuration or use default
+    var calendarUrl = 'http://localhost:4200'; // Default fallback
+    
+    // Try to get URL from data attribute or configuration
+    var configElement = document.querySelector('meta[name="calendar-app-url"]');
+    if (configElement) {
+        calendarUrl = configElement.getAttribute('content');
+    }
+    
     // Handle calendar button clicks
     var calendarButtons = document.querySelectorAll('.button-calendar, .calendar-button');
     
     calendarButtons.forEach(function(button) {
         button.addEventListener('click', function(e) {
             e.preventDefault();
-            window.open('http://localhost:3000', '_blank');
+            window.open(calendarUrl, '_blank');
         });
     });
     
@@ -44,7 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         button.setAttribute('data-calendar-handler', 'true');
                         button.addEventListener('click', function(e) {
                             e.preventDefault();
-                            window.open('http://localhost:3000', '_blank');
+                            window.open(calendarUrl, '_blank');
                         });
                     }
                 });
