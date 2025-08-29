@@ -58,3 +58,7 @@ composer.lock
 
 # CalDAV Configuration (contains real credentials)
 backend/config/caldav.php
+
+# Test data and runtime files
+backend/data/events.json
+backend/data/*.json
