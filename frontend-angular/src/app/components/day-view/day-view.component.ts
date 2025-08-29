@@ -50,6 +50,7 @@ export class DayViewComponent {
   @Input() events: Event[] = [];
   @Input() calendars: Calendar[] = [];
   @Output() deleteEvent = new EventEmitter<Event>();
+  @Output() eventClick = new EventEmitter<Event>();
 
   hours = Array.from({ length: 24 }, (_, i) => i);
 
@@ -175,6 +176,10 @@ export class DayViewComponent {
 
   onDeleteEvent(event: Event): void {
     this.deleteEvent.emit(event);
+  }
+
+  onEventClick(event: Event): void {
+    this.eventClick.emit(event);
   }
 
   formatTime(event: Event): string {
