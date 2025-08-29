@@ -27,7 +27,7 @@ return [
     
     // SendGrid Configuration (Disabled)
     'sendgrid' => [
-        'api_key' => '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',
+        'api_key' => '',
         'from_email' => 'dheeraj2004.sharma@gmail.com',
         'from_name' => 'Mithi Calendar',
         'enabled' => false                                 // Disabled - using company SMTP instead
