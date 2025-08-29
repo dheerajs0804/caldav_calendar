@@ -24,7 +24,7 @@
     <ng-container *ngIf="getOverlappingGroups() as groups">
       <div
         *ngFor="let event of groups.events; trackBy: trackByEventId"
-        class="absolute p-2 text-sm text-white rounded overflow-hidden shadow-sm event-container day-event-item"
+        class="absolute p-2 text-sm text-white rounded overflow-hidden shadow-sm event-container day-event-item cursor-pointer"
         [ngStyle]="getEventStyle(event)"
         [style.top.px]="getEventPosition(event, groups.globalGroup, groups.sortedGroup).top"
         [style.height.px]="getEventPosition(event, groups.globalGroup, groups.sortedGroup).height"
@@ -33,6 +33,7 @@
         [style.z-index]="getEventPosition(event, groups.globalGroup, groups.sortedGroup).zIndex"
         [style.min-height.px]="getEventPosition(event, groups.globalGroup, groups.sortedGroup).minHeight"
         [title]="getEventTitle(event)"
+        (click)="onEventClick(event)"
       >
         <div class="event-header">
           <div class="font-medium mb-1">{{ event.title }}</div>

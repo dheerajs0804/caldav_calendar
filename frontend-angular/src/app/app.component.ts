@@ -7,7 +7,9 @@ import * as dayjs from 'dayjs';
 import { DayViewComponent } from './components/day-view/day-view.component';
 import { WeekViewComponent } from './components/week-view/week-view.component';
 import { MonthViewComponent } from './components/month-view/month-view.component';
+import { EventDetailModalComponent } from './components/event-detail-modal/event-detail-modal.component';
 import { SortByStartTimePipe } from './pipes/sort-by-start-time.pipe';
+import { EmailService } from './services/email.service';
 
 interface Calendar {
   id: number;
@@ -43,6 +45,12 @@ interface Event {
     action: string;
     description: string;
   };
+  attendees?: {
+    email: string;
+    name: string;
+    response: string;
+    role: string;
+  }[];
 }
 
 interface View {
@@ -67,12 +75,17 @@ interface NewEvent {
     unit: string;
     relativeTo: string;
   };
+  attendees: {
+    email: string;
+    name: string;
+    response: string;
+    role: string;
+  }[];
 }
-
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule, DayViewComponent, WeekViewComponent, MonthViewComponent, SortByStartTimePipe],
+  imports: [CommonModule, FormsModule, DayViewComponent, WeekViewComponent, MonthViewComponent, EventDetailModalComponent, SortByStartTimePipe],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss']
 })
@@ -91,6 +104,8 @@ export class AppComponent implements OnInit, OnDestroy {
   loading: boolean = true;
   error: string | null = null;
   showAddEventModal: boolean = false;
+  showEventDetailModal: boolean = false;
+  selectedEvent: Event | null = null;
   newEvent: NewEvent = {
     summary: '',
     location: '',
@@ -106,13 +121,14 @@ export class AppComponent implements OnInit, OnDestroy {
       time: 15,
       unit: 'minutes',
       relativeTo: 'start'
-    }
+    },
+    attendees: []
   };
 
   public notifiedEvents: Set<string> = new Set();
   private reminderInterval?: Subscription;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private emailService: EmailService) {}
 
   ngOnInit(): void {
     console.log('App component is loading...');
@@ -365,69 +381,82 @@ export class AppComponent implements OnInit, OnDestroy {
           trigger: this.generateVALARMTrigger(this.newEvent.reminder),
           action: 'DISPLAY',
           description: `Reminder: ${this.newEvent.summary}`
-        } : null
+        } : null,
+        attendees: this.newEvent.attendees.map(attendee => ({
+          email: attendee.email,
+          name: attendee.name,
+          response: attendee.response,
+          role: attendee.role
+        }))
       };
 
       console.log('Sending event data:', eventData);
 
-      const response = await this.http.post<any>('http://localhost:8000/events', eventData).toPromise();
-      console.log('Backend response:', response);
-      
-      if (response.success) {
-        console.log('Event created successfully:', response.data);
-        console.log('Event reminder data:', response.data.reminder);
-        console.log('Event VALARM data:', response.data.valarm);
-        
-        // Add the new event to the current events list, ensuring no duplicates
-        const newEvents = [...this.events, response.data];
-        this.events = this.removeDuplicateEvents(newEvents);
-        console.log('Updated events list:', this.events);
-        console.log('Events with reminders:', this.events.filter(e => (e.reminder && e.reminder.enabled) || e.valarm));
-        
-        // Check if this new event has a reminder that should trigger immediately
-        if (response.data.reminder && response.data.reminder.enabled || response.data.valarm) {
-          console.log('New event has reminder, checking if it should trigger immediately...');
-          // Use setTimeout to ensure the event is fully added to state before checking
-          setTimeout(() => {
-            // Force immediate check for this specific event
-            const now = new Date();
-            const eventStart = new Date(response.data.start_time);
-            const eventEnd = new Date(response.data.end_time);
+      this.http.post<any>('http://localhost:8000/events', eventData).subscribe({
+        next: (response) => {
+          console.log('Backend response:', response);
+          
+          if (response.success) {
+            console.log('Event created successfully:', response.data);
+            console.log('Event reminder data:', response.data.reminder);
+            console.log('Event VALARM data:', response.data.valarm);
             
-            let reminderTime;
-            if (response.data.valarm) {
-              reminderTime = this.calculateVALARMTime(response.data.valarm, eventStart, eventEnd);
-            } else if (response.data.reminder && response.data.reminder.enabled) {
-              reminderTime = this.calculateLegacyReminderTime(response.data.reminder, eventStart, eventEnd);
+            // Add the new event to the current events list, ensuring no duplicates
+            const newEvents = [...this.events, response.data];
+            this.events = this.removeDuplicateEvents(newEvents);
+            console.log('Updated events list:', this.events);
+            console.log('Events with reminders:', this.events.filter(e => (e.reminder && e.reminder.enabled) || e.valarm));
+            
+            // Check if this new event has a reminder that should trigger immediately
+            if (response.data.reminder && response.data.reminder.enabled || response.data.valarm) {
+              console.log('New event has reminder, checking if it should trigger immediately...');
+              // Use setTimeout to ensure the event is fully added to state before checking
+              setTimeout(() => {
+                // Force immediate check for this specific event
+                const now = new Date();
+                const eventStart = new Date(response.data.start_time);
+                const eventEnd = new Date(response.data.end_time);
+                
+                let reminderTime;
+                if (response.data.valarm) {
+                  reminderTime = this.calculateVALARMTime(response.data.valarm, eventStart, eventEnd);
+                } else if (response.data.reminder && response.data.reminder.enabled) {
+                  reminderTime = this.calculateLegacyReminderTime(response.data.reminder, eventStart, eventEnd);
+                }
+                
+                if (reminderTime) {
+                  const timeDiff = now.getTime() - reminderTime.getTime();
+                  console.log(`Immediate check for new event "${response.data.title}": reminder time ${reminderTime.toLocaleString()}, now ${now.toLocaleString()}, diff ${timeDiff}ms`);
+                  
+                  // Only trigger immediately if reminder is overdue (timeDiff > 0)
+                  if (timeDiff > 0) {
+                    console.log(`🚨 IMMEDIATE TRIGGER for new event "${response.data.title}" - OVERDUE by ${Math.floor(timeDiff / 60000)} minutes`);
+                    this.showReminderNotification(response.data);
+                    this.notifiedEvents.add(response.data.id);
+                  } else {
+                    console.log(`New event reminder not overdue, will be checked in regular interval`);
+                  }
+                }
+              }, 100);
             }
             
-            if (reminderTime) {
-              const timeDiff = now.getTime() - reminderTime.getTime();
-              console.log(`Immediate check for new event "${response.data.title}": reminder time ${reminderTime.toLocaleString()}, now ${now.toLocaleString()}, diff ${timeDiff}ms`);
-              
-              // Only trigger immediately if reminder is overdue (timeDiff > 0)
-              if (timeDiff > 0) {
-                console.log(`🚨 IMMEDIATE TRIGGER for new event "${response.data.title}" - OVERDUE by ${Math.floor(timeDiff / 60000)} minutes`);
-                this.showReminderNotification(response.data);
-                this.notifiedEvents.add(response.data.id);
-              } else {
-                console.log(`New event reminder not overdue, will be checked in regular interval`);
-              }
-            }
-          }, 100);
+            // Close modal and reset form
+            this.showAddEventModal = false;
+            this.resetNewEvent();
+            // Show success message
+            alert('Event created successfully!');
+          } else {
+            console.error('Failed to create event:', response.message);
+            alert(`Failed to create event: ${response.message}`);
+          }
+        },
+        error: (error) => {
+          console.error('Error creating event:', error);
+          alert(`Error creating event: ${error.message || error}`);
         }
-        
-        // Close modal and reset form
-        this.showAddEventModal = false;
-        this.resetNewEvent();
-        // Show success message
-        alert('Event created successfully!');
-      } else {
-        console.error('Failed to create event:', response.message);
-        alert(`Failed to create event: ${response.message}`);
-      }
+      });
     } catch (error) {
-      console.error('Error creating event:', error);
+      console.error('Error in handleAddEvent:', error);
       alert(`Error creating event: ${error}`);
     }
   }
@@ -435,8 +464,59 @@ export class AppComponent implements OnInit, OnDestroy {
   handleInputChange(field: string, value: any): void {
     if (field === 'reminder') {
       this.newEvent.reminder = value;
+    } else if (field === 'attendees') {
+      this.newEvent.attendees = value;
     } else {
       (this.newEvent as any)[field] = value;
+    }
+  }
+
+  // Attendee management methods
+  addAttendee(): void {
+    this.newEvent.attendees.push({
+      email: '',
+      name: '',
+      response: 'pending',
+      role: 'required'
+    });
+  }
+
+  removeAttendee(index: number): void {
+    this.newEvent.attendees.splice(index, 1);
+  }
+
+  updateAttendee(index: number, field: string, value: any): void {
+    this.newEvent.attendees[index] = {
+      ...this.newEvent.attendees[index],
+      [field]: value
+    };
+  }
+
+  downloadCalendarFile(): void {
+    if (this.newEvent.attendees && this.newEvent.attendees.length > 0) {
+      // Filter out attendees without email addresses
+      const validAttendees = this.newEvent.attendees.filter(a => a.email && a.email.trim());
+      
+      if (validAttendees.length === 0) {
+        alert('No valid email addresses found for attendees.');
+        return;
+      }
+
+      // Prepare event details for the calendar file
+      const eventDetails = {
+        title: this.newEvent.summary,
+        description: this.newEvent.description,
+        location: this.newEvent.location,
+        startTime: this.newEvent.start_time,
+        endTime: this.newEvent.end_time,
+        allDay: this.newEvent.all_day,
+        organizer: 'organizer@example.com' // TODO: Get from user profile
+      };
+
+      // Download the iCalendar file
+      this.emailService.downloadICalendar(validAttendees, eventDetails);
+    } else {
+      alert('No attendees found for this event.');
     }
   }
 
@@ -462,7 +542,8 @@ export class AppComponent implements OnInit, OnDestroy {
         time: 15,
         unit: 'minutes',
         relativeTo: 'start'
-      }
+      },
+      attendees: []
     };
   }
 
@@ -482,7 +563,8 @@ export class AppComponent implements OnInit, OnDestroy {
         time: 15,
         unit: 'minutes',
         relativeTo: 'start'
-      }
+      },
+      attendees: []
     };
   }
 
@@ -1101,4 +1183,125 @@ export class AppComponent implements OnInit, OnDestroy {
       left: leftOffset
     };
   }
+
+  // Event detail modal methods
+  openEventDetail(event: Event): void {
+    this.selectedEvent = event;
+    this.showEventDetailModal = true;
+  }
+
+  closeEventDetail(): void {
+    this.showEventDetailModal = false;
+    this.selectedEvent = null;
+  }
+
+  editEvent(event: Event): void {
+    console.log('Edit event:', event);
+    console.log('🔍 DEBUG: Current events in frontend:', this.events);
+    console.log('🔍 DEBUG: Event IDs in frontend:', this.events.map(e => ({ id: e.id, title: e.title })));
+    console.log('🔍 DEBUG: Looking for event with ID:', event.id);
+    
+    // Check if this event actually exists in our events array
+    const eventExists = this.events.find(e => e.id === event.id);
+    if (!eventExists) {
+      console.error('🚨 CRITICAL: Event not found in frontend events array! This indicates a synchronization issue.');
+      console.error('Event to edit:', event);
+      console.error('Available events:', this.events);
+      
+      // Try to refresh events from server first
+      console.log('🔄 Attempting to refresh events from server...');
+      this.fetchEvents().then(() => {
+        const refreshedEventExists = this.events.find(e => e.id === event.id);
+        if (refreshedEventExists) {
+          console.log('✅ Event found after refresh, proceeding with edit...');
+          // Recursively call editEvent with the refreshed event
+          this.editEvent(refreshedEventExists);
+        } else {
+          console.error('❌ Event still not found after refresh. This event may not exist on the server.');
+          alert('Event not found on server. Please refresh the page and try again.');
+        }
+      }).catch(error => {
+        console.error('❌ Failed to refresh events:', error);
+        alert('Failed to refresh events. Please refresh the page and try again.');
+      });
+      return;
+    }
+    
+    // Prepare the event data for the backend
+    const eventData = {
+      title: event.title,
+      description: event.description || '',
+      location: event.location || '',
+      start_time: event.start_time,
+      end_time: event.end_time,
+      all_day: event.all_day,
+      calendar_id: event.calendar_id || 1,
+      valarm: event.valarm || null,
+      attendees: event.attendees ? event.attendees.map(attendee => ({
+        email: attendee.email,
+        name: attendee.name,
+        response: attendee.response,
+        role: attendee.role
+      })) : []
+    };
+
+    console.log('Sending updated event data:', eventData);
+
+    // Send PUT request to update the event
+    this.http.put<any>(`http://localhost:8000/events/${event.id}`, eventData).subscribe({
+      next: (response) => {
+        console.log('Backend response:', response);
+
+        if (response.success) {
+          console.log('Event updated successfully:', response.data);
+          
+          // Update the local events array
+          const updatedEvents = this.events.map(e => 
+            e.id === event.id ? response.data : e
+          );
+          this.events = this.removeDuplicateEvents(updatedEvents);
+          
+          // Close the modal
+          this.closeEventDetail();
+          
+          // Show success message
+          alert('Event updated successfully!');
+        } else {
+          console.error('Failed to update event:', response.message);
+          alert(`Failed to update event: ${response.message}`);
+        }
+      },
+      error: (error) => {
+        console.error('Error updating event:', error);
+        alert(`Error updating event: ${error.message || error}`);
+      }
+    });
+  }
+
+  deleteEventFromModal(event: Event): void {
+    // Use the existing delete functionality
+    this.confirmDeleteEvent(event);
+  }
+
+  // Function to force refresh events and clear any stale data
+  async forceRefreshEvents(): Promise<void> {
+    try {
+      console.log('🔄 Force refreshing events and clearing stale data...');
+      
+      // Clear current events
+      this.events = [];
+      
+      // Fetch fresh events from server
+      await this.fetchEvents();
+      
+      console.log('✅ Events refreshed successfully');
+      console.log('Current events:', this.events);
+      
+      alert('Events refreshed successfully!');
+    } catch (error) {
+      console.error('❌ Failed to refresh events:', error);
+      alert('Failed to refresh events');
+    }
+  }
 }
+

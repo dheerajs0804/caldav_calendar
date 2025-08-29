@@ -669,5 +669,60 @@ class CalDAVClient {
             throw $e;
         }
     }
+    
+    public function updateEvent($calendarUrl, $uid, $icalEvent) {
+        try {
+            error_log("=== Updating CalDAV Event ===");
+            error_log("Calendar URL: " . $calendarUrl);
+            error_log("Event UID: " . $uid);
+            error_log("iCal Event Length: " . strlen($icalEvent));
+            
+            $authToken = $this->getAuthToken();
+            if (!$authToken) {
+                throw new Exception('Failed to get authentication token');
+            }
+            
+            // Create the event URL (usually calendar URL + event UID + .ics extension)
+            $eventUrl = rtrim($calendarUrl, '/') . '/' . $uid . '.ics';
+            error_log("Event URL: " . $eventUrl);
+            
+            // Make PUT request to update the event
+            $response = $this->makeCalDAVRequest($eventUrl, 'PUT', $authToken, [
+                'Content-Type: text/calendar; charset=utf-8',
+                'If-Match: *' // Only update if it exists
+            ], $icalEvent);
+            
+            error_log("CalDAV PUT Update Response Status: " . $response['status']);
+            error_log("CalDAV PUT Update Response Body: " . substr($response['body'], 0, 200));
+            
+            // Return success/failure based on HTTP status
+            $success = $response['status'] >= 200 && $response['status'] < 300;
+            return [
+                'success' => $success,
+                'status' => $response['status'],
+                'body' => $response['body']
+            ];
+            
+        } catch (Exception $e) {
+            error_log("Error updating CalDAV event: " . $e->getMessage());
+            throw $e;
+        }
+    }
+    
+    /**
+     * Get the username used for CalDAV authentication
+     * @return string|null
+     */
+    public function getUsername() {
+        return $this->username;
+    }
+    
+    /**
+     * Get the password used for CalDAV authentication
+     * @return string|null
+     */
+    public function getPassword() {
+        return $this->password;
+    }
 }
 ?>

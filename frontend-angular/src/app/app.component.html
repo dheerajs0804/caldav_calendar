@@ -5,6 +5,7 @@
       <button (click)="openAddEventModal()" class="add-event-btn">+ Add Event</button>
       <button (click)="syncCalDAV()" class="sync-btn">Sync CalDAV</button>
       <button (click)="refreshEvents()" class="sync-btn" style="margin-left: 8px;">🔄 Refresh Events</button>
+      <button (click)="forceRefreshEvents()" class="sync-btn" style="margin-left: 8px;">🧹 Force Refresh</button>
       <button (click)="forceSyncFromServer()" class="sync-btn" style="margin-left: 8px;">🔄 Force Sync</button>
       <button (click)="checkReminders()" class="test-reminder-btn" style="margin-left: 8px;">🔍 Debug Reminders</button>
              <button (click)="clearNotifiedEvents()" class="test-reminder-btn" style="margin-left: 8px;">🧹 Clear Notified</button>
@@ -51,6 +52,7 @@
         [events]="events"
         [calendars]="calendars"
         (deleteEvent)="confirmDeleteEvent($event)"
+        (eventClick)="openEventDetail($event)"
       ></app-day-view>
       
       <!-- Week View -->
@@ -60,6 +62,7 @@
         [events]="events"
         [calendars]="calendars"
         (deleteEvent)="confirmDeleteEvent($event)"
+        (eventClick)="openEventDetail($event)"
       ></app-week-view>
       
       <!-- Month View -->
@@ -193,6 +196,56 @@
         </div>
         
         <div class="form-group">
+          <label for="event-attendees">Attendees</label>
+          <div class="attendees-group">
+            <div *ngFor="let attendee of newEvent.attendees; let i = index" class="attendee-row">
+              <input
+                type="email"
+                [id]="'attendee-email-' + i"
+                [(ngModel)]="attendee.email"
+                class="form-input"
+                placeholder="Email address"
+                style="flex: 2;"
+              />
+              <input
+                type="text"
+                [id]="'attendee-name-' + i"
+                [(ngModel)]="attendee.name"
+                class="form-input"
+                placeholder="Name (optional)"
+                style="flex: 1;"
+              />
+              <select
+                [id]="'attendee-role-' + i"
+                [(ngModel)]="attendee.role"
+                class="form-input"
+                style="flex: 1;"
+              >
+                <option value="required">Required</option>
+                <option value="optional">Optional</option>
+              </select>
+              <button
+                type="button"
+                class="btn btn-danger"
+                style="padding: 4px 8px; font-size: 12px;"
+                (click)="removeAttendee(i)"
+                title="Remove attendee"
+              >
+                ×
+              </button>
+            </div>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              style="width: 100%; margin-top: 8px;"
+              (click)="addAttendee()"
+            >
+              + Add Attendee
+            </button>
+          </div>
+        </div>
+        
+        <div class="form-group">
           <label for="event-reminder">Reminder</label>
           <div class="reminder-group">
             <label class="checkbox-label">
@@ -267,6 +320,15 @@
       </div>
       
       <div class="modal-footer">
+        <div style="display: flex; gap: 8px; margin-right: auto;">
+          <button 
+            *ngIf="newEvent.attendees && newEvent.attendees.length > 0"
+            class="btn btn-info" 
+            (click)="downloadCalendarFile()"
+          >
+            📅 Download Calendar File
+          </button>
+        </div>
         <button 
           class="btn btn-secondary" 
           (click)="showAddEventModal = false"
@@ -284,3 +346,13 @@
     </div>
   </div>
 </div>
+
+<!-- Event Detail Modal -->
+<app-event-detail-modal
+  [event]="selectedEvent"
+  [calendars]="calendars"
+  [isVisible]="showEventDetailModal"
+  (closeModal)="closeEventDetail()"
+  (editEvent)="editEvent($event)"
+  (deleteEvent)="deleteEventFromModal($event)"
+></app-event-detail-modal>

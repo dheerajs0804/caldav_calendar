@@ -1,0 +1,240 @@
+<div *ngIf="isVisible && event" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+    <!-- Header -->
+    <div class="flex justify-between items-center p-6 border-b border-gray-200">
+      <h2 class="text-xl font-semibold text-gray-900">
+        {{ isEditMode ? 'Edit Event' : event.title }}
+      </h2>
+      <button 
+        (click)="onClose()"
+        class="text-gray-400 hover:text-gray-600 text-2xl font-bold leading-none"
+      >
+        ×
+      </button>
+    </div>
+
+    <!-- Content -->
+    <div class="p-6">
+      <!-- Edit Mode Form -->
+      <div *ngIf="isEditMode && editedEvent" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+          <input
+            type="text"
+            [(ngModel)]="editedEvent.title"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Event title"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <textarea
+            [(ngModel)]="editedEvent.description"
+            rows="3"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Event description"
+          ></textarea>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+          <input
+            type="text"
+            [(ngModel)]="editedEvent.location"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Event location"
+          />
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+            <input
+              type="datetime-local"
+              [value]="editedEvent.start_time.slice(0, 16)"
+              (change)="onStartTimeChange($event)"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+            <input
+              type="datetime-local"
+              [value]="editedEvent.end_time.slice(0, 16)"
+              (change)="onEndTimeChange($event)"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="flex items-center">
+            <input
+              type="checkbox"
+              [(ngModel)]="editedEvent.all_day"
+              class="mr-2"
+            />
+            <span class="text-sm font-medium text-gray-700">All Day Event</span>
+          </label>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Attendees</label>
+          <div *ngFor="let attendee of editedEvent.attendees; let i = index" class="flex space-x-2">
+            <input
+              type="email"
+              [(ngModel)]="attendee.email"
+              placeholder="Email"
+              class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <input
+              type="text"
+              [(ngModel)]="attendee.name"
+              placeholder="Name (optional)"
+              class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <select
+              [(ngModel)]="attendee.role"
+              class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="required">Required</option>
+              <option value="optional">Optional</option>
+            </select>
+            <button
+              (click)="removeAttendee(i)"
+              class="px-3 py-2 text-red-600 hover:text-red-800 focus:outline-none"
+              title="Remove attendee"
+            >
+              ×
+            </button>
+          </div>
+          <button
+            (click)="addAttendee()"
+            type="button"
+            class="w-full px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            + Add Attendee
+          </button>
+        </div>
+      </div>
+
+      <!-- View Mode Content -->
+      <div *ngIf="!isEditMode">
+        <!-- General Section -->
+        <div class="mb-6">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">General</h3>
+          <div class="space-y-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Title</label>
+              <p class="mt-1 text-sm text-gray-900">{{ event.title }}</p>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Calendar</label>
+              <p class="mt-1 text-sm text-gray-900">{{ getEventCalendar()?.name || 'Unknown' }}</p>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Start Date</label>
+              <p class="mt-1 text-sm text-gray-900">{{ formatDateTime(event.start_time) }}</p>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700">End Date</label>
+              <p class="mt-1 text-sm text-gray-900">{{ formatDateTime(event.end_time) }}</p>
+            </div>
+            
+            <div *ngIf="event.all_day">
+              <label class="block text-sm font-medium text-gray-700">All Day</label>
+              <p class="mt-1 text-sm text-gray-900">Yes</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Description Section -->
+        <div *ngIf="event.description" class="mb-6">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">Description</h3>
+          <div class="bg-gray-50 p-4 rounded-md">
+            <p class="text-sm text-gray-900 whitespace-pre-wrap">{{ event.description }}</p>
+          </div>
+        </div>
+
+        <!-- Location Section -->
+        <div *ngIf="event.location" class="mb-6">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">Location</h3>
+          <p class="text-sm text-gray-900">{{ event.location }}</p>
+        </div>
+
+        <!-- Attendees Section -->
+        <div *ngIf="event.attendees && event.attendees.length > 0" class="mb-6">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">Attendees</h3>
+          <div class="space-y-2">
+            <div *ngFor="let attendee of event.attendees" class="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+              <div>
+                <p class="text-sm font-medium text-gray-900">{{ attendee.name || 'No name' }}</p>
+                <p class="text-sm text-gray-600">{{ attendee.email }}</p>
+              </div>
+              <div class="flex space-x-2">
+                <span class="px-2 py-1 text-xs font-medium rounded-full" 
+                      [class]="attendee.role === 'required' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'">
+                  {{ attendee.role }}
+                </span>
+                <span class="px-2 py-1 text-xs font-medium rounded-full" 
+                      [class]="attendee.response === 'accepted' ? 'bg-green-100 text-green-800' : 
+                               attendee.response === 'declined' ? 'bg-red-100 text-red-800' : 
+                               attendee.response === 'tentative' ? 'bg-yellow-100 text-yellow-800' : 
+                               'bg-gray-100 text-gray-800'">
+                  {{ attendee.response }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="flex justify-end space-x-3 p-6 border-t border-gray-200">
+      <!-- Edit Mode Buttons -->
+      <div *ngIf="isEditMode" class="flex space-x-3">
+        <button
+          (click)="onCancel()"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
+        >
+          Cancel
+        </button>
+        <button
+          (click)="onSave()"
+          class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          Save
+        </button>
+      </div>
+
+      <!-- View Mode Buttons -->
+      <div *ngIf="!isEditMode" class="flex space-x-3">
+        <div class="flex space-x-2" *ngIf="event.attendees && event.attendees.length > 0">
+          <button
+            (click)="downloadCalendarFile()"
+            class="px-4 py-2 text-sm font-medium text-blue-700 bg-blue-100 border border-blue-300 rounded-md hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            📅 Download Calendar File
+          </button>
+        </div>
+        <button
+          (click)="onDelete()"
+          class="px-4 py-2 text-sm font-medium text-red-700 bg-red-100 border border-red-300 rounded-md hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          Delete
+        </button>
+        <button
+          (click)="onEdit()"
+          class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          Edit
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

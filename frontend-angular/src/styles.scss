@@ -173,15 +173,7 @@ body {
 .week-day-column {
   position: relative !important;
   z-index: 1 !important;
-}
-
-/* Fix CSS Grid positioning context */
-.grid.grid-cols-8 {
-  position: relative !important;
-}
-
-.grid.grid-cols-8 > div {
-  position: relative !important;
+  overflow: visible !important;
 }
 
 /* Ensure week events are positioned correctly */
@@ -197,4 +189,11 @@ body {
 .day-view .absolute.event-container:hover {
   transform: scale(1.02);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Flexbox layout for week view */
+.flex .week-day-column {
+  position: relative !important;
+  overflow: visible !important;
+  flex: 1 !important;
 }
