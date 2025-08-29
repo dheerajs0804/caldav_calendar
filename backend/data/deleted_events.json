@@ -490,5 +490,17 @@
         "title": "Event marked for deletion",
         "deleted_at": "2025-08-29T09:01:17+02:00",
         "deleted_by": "user"
+    },
+    {
+        "uid": "uid_68b159b09fc7b",
+        "title": "Event marked for deletion",
+        "deleted_at": "2025-08-29T11:07:54+02:00",
+        "deleted_by": "user"
+    },
+    {
+        "uid": "uid_68b16e0c46e0a",
+        "title": "Event marked for deletion",
+        "deleted_at": "2025-08-29T11:11:01+02:00",
+        "deleted_by": "user"
     }
 ]
