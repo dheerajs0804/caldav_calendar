@@ -55,3 +55,6 @@ New
 # PHP
 vendor/
 composer.lock
+
+# CalDAV Configuration (contains sensitive credentials)
+backend/config/caldav.php
