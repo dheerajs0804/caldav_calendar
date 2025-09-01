@@ -1,16 +1,22 @@
 <div class="app">
-  <div class="header">
-    <h1>Mithi Calendar</h1>
-    <div class="header-controls">
-      <button (click)="openAddEventModal()" class="add-event-btn">+ Add Event</button>
-      <button (click)="syncCalDAV()" class="sync-btn">Sync CalDAV</button>
-      <button (click)="refreshEvents()" class="sync-btn" style="margin-left: 8px;">🔄 Refresh Events</button>
-      <button (click)="forceRefreshEvents()" class="sync-btn" style="margin-left: 8px;">🧹 Force Refresh</button>
-      <button (click)="forceSyncFromServer()" class="sync-btn" style="margin-left: 8px;">🔄 Force Sync</button>
-      <button (click)="checkReminders()" class="test-reminder-btn" style="margin-left: 8px;">🔍 Debug Reminders</button>
-             <button (click)="clearNotifiedEvents()" class="test-reminder-btn" style="margin-left: 8px;">🧹 Clear Notified</button>
+  <!-- Always show calendar app -->
+  <div class="calendar-app">
+    <div class="header">
+      <h1>Mithi Calendar</h1>
+      <div class="user-info">
+        <span *ngIf="currentUser">Welcome, {{ currentUser.username }}</span>
+        <button (click)="logout()" class="logout-btn">Logout</button>
+      </div>
+      <div class="header-controls">
+        <button (click)="openAddEventModal()" class="add-event-btn">+ Add Event</button>
+        <button (click)="syncCalDAV()" class="sync-btn">Sync CalDAV</button>
+        <button (click)="refreshEvents()" class="sync-btn" style="margin-left: 8px;">🔄 Refresh Events</button>
+        <button (click)="forceRefreshEvents()" class="sync-btn" style="margin-left: 8px;">🧹 Force Refresh</button>
+        <button (click)="forceSyncFromServer()" class="sync-btn" style="margin-left: 8px;">🔄 Force Sync</button>
+        <button (click)="checkReminders()" class="test-reminder-btn" style="margin-left: 8px;">🔍 Debug Reminders</button>
+        <button (click)="clearNotifiedEvents()" class="test-reminder-btn" style="margin-left: 8px;">🧹 Clear Notified</button>
+      </div>
     </div>
-  </div>
   
   <div class="calendar-container">
     <div class="toolbar">
@@ -356,3 +362,4 @@
   (editEvent)="editEvent($event)"
   (deleteEvent)="deleteEventFromModal($event)"
 ></app-event-detail-modal>
+</div>

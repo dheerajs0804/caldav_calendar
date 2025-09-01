@@ -22,7 +22,7 @@ export interface EmailInvitation {
   providedIn: 'root'
 })
 export class EmailService {
-  private apiUrl = 'http://localhost:8000'; // Backend API URL
+  private apiUrl = 'http://localhost:8001'; // Backend API URL
 
   constructor(private http: HttpClient) {}
 

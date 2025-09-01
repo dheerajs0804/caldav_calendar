@@ -9,31 +9,24 @@ class CalDAVClient {
     private $clientSecret;
     private $oauthToken;
     
-    public function __construct() {
-        // Load environment variables from .env file
-        $this->loadEnvVariables();
+    public function __construct($serverUrl = null, $username = null, $password = null) {
+        // Credentials MUST be provided - no fallback to environment variables
+        if (!$serverUrl || !$username || !$password) {
+            throw new Exception('CalDAV credentials are required: serverUrl, username, and password must all be provided');
+        }
         
-        $this->serverUrl = $_ENV['CALDAV_SERVER_URL'] ?? 'http://rc.mithi.com:8008';
-        $this->username = $_ENV['CALDAV_USERNAME'] ?? 'your_username_here';
-        $this->password = $_ENV['CALDAV_PASSWORD'] ?? 'your_password_here';
-        $this->calendarPath = $_ENV['CALDAV_CALENDAR_PATH'] ?? '/calendars/__uids__/80b5d808-0553-1040-8d6f-0f1266787052/calendar/';
-        $this->clientId = $_ENV['GOOGLE_CLIENT_ID'] ?? null;
-        $this->clientSecret = $_ENV['GOOGLE_CLIENT_SECRET'] ?? null;
+        $this->serverUrl = $serverUrl;
+        $this->username = $username;
+        $this->password = $password;
+        
+        // Set default calendar path - this can be discovered dynamically later
+        $this->calendarPath = '/calendars/__uids__/80b5d808-0553-1040-8d6f-0f1266787052/calendar/';
+        $this->clientId = null;
+        $this->clientSecret = null;
         $this->oauthToken = null;
     }
     
-    private function loadEnvVariables() {
-        $envFile = __DIR__ . '/../.env';
-        if (file_exists($envFile)) {
-            $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-            foreach ($lines as $line) {
-                if (strpos($line, '=') !== false && strpos($line, '#') !== 0) {
-                    list($key, $value) = explode('=', $line, 2);
-                    $_ENV[trim($key)] = trim($value);
-                }
-            }
-        }
-    }
+
     
     public function discoverCalendars() {
         try {

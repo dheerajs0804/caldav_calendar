@@ -10,6 +10,9 @@ import { MonthViewComponent } from './components/month-view/month-view.component
 import { EventDetailModalComponent } from './components/event-detail-modal/event-detail-modal.component';
 import { SortByStartTimePipe } from './pipes/sort-by-start-time.pipe';
 import { EmailService } from './services/email.service';
+import { AuthService, User } from './services/auth.service';
+import { LoginComponent } from './components/login.component';
+import { ActivatedRoute } from '@angular/router';
 
 interface Calendar {
   id: number;
@@ -85,7 +88,7 @@ interface NewEvent {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule, DayViewComponent, WeekViewComponent, MonthViewComponent, EventDetailModalComponent, SortByStartTimePipe],
+  imports: [CommonModule, FormsModule, DayViewComponent, WeekViewComponent, MonthViewComponent, EventDetailModalComponent, SortByStartTimePipe, LoginComponent],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss']
 })
@@ -98,6 +101,8 @@ export class AppComponent implements OnInit, OnDestroy {
   ];
 
   currentView: View = this.views[1]; // Start with week view
+  currentUser: User | null = null;
+  isAuthenticated = false;
   currentDate: Date = new Date();
   calendars: Calendar[] = [];
   events: Event[] = [];
@@ -128,12 +133,94 @@ export class AppComponent implements OnInit, OnDestroy {
   public notifiedEvents: Set<string> = new Set();
   private reminderInterval?: Subscription;
 
-  constructor(private http: HttpClient, private emailService: EmailService) {}
+  constructor(private http: HttpClient, private emailService: EmailService, private authService: AuthService, private route: ActivatedRoute) {}
 
   ngOnInit(): void {
-    console.log('App component is loading...');
-    this.fetchCalendars();
-    this.fetchEvents();
+    console.log('🚀 App component is loading...');
+    console.log('🚀 Current URL:', window.location.href);
+    console.log('🚀 Query string:', window.location.search);
+    
+    // Check for auto-login parameters from Roundcube
+    this.route.queryParams.subscribe(params => {
+      console.log('🔍 URL Parameters detected:', params);
+      console.log('🔍 All keys:', Object.keys(params));
+      console.log('🔍 SSO Token:', params['sso_token']);
+      
+      const username = params['username'];
+      const password = params['password'];
+      const ssoToken = params['sso_token'];
+      
+      if (ssoToken) {
+        console.log('🎯 SSO login attempt from Roundcube with token:', ssoToken);
+        this.authService.ssoLogin(ssoToken).subscribe({
+          next: (response) => {
+            console.log('🎯 SSO login response:', response);
+            if (response.success) {
+              console.log('✅ SSO login successful');
+              // Clear URL parameters after successful login
+              window.history.replaceState({}, document.title, window.location.pathname);
+              
+              // Retry fetching calendars and events after successful SSO login
+              console.log('🔄 Retrying data fetch after SSO authentication...');
+              this.fetchCalendars();
+              this.fetchEvents();
+            } else {
+              console.error('❌ SSO login failed:', response.message);
+            }
+          },
+          error: (error) => {
+            console.error('❌ SSO login error:', error);
+          }
+        });
+      } else if (username && password) {
+        console.log('Auto-login attempt from Roundcube for user:', username);
+        this.authService.autoLogin(username, password).subscribe({
+          next: (response) => {
+            if (response.success) {
+              console.log('Auto-login successful');
+              // Clear URL parameters after successful login
+              window.history.replaceState({}, document.title, window.location.pathname);
+            } else {
+              console.error('Auto-login failed:', response.message);
+            }
+          },
+          error: (error) => {
+            console.error('Auto-login error:', error);
+          }
+        });
+      }
+    });
+    
+    // Check authentication status
+    this.authService.currentUser.subscribe(user => {
+      this.currentUser = user;
+      this.isAuthenticated = !!user;
+      
+      // Always try to fetch calendars and events, regardless of authentication status
+      // The backend will handle authentication via SSO tokens or session
+      this.fetchCalendars();
+      this.fetchEvents();
+    });
+    
+    // Check auth status on startup
+    this.authService.checkAuthStatus();
+  }
+
+  logout(): void {
+    this.authService.logout().subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.currentUser = null;
+          this.isAuthenticated = false;
+          this.events = [];
+          this.calendars = [];
+          console.log('Logged out successfully');
+        }
+      },
+      error: (error) => {
+        console.error('Logout error:', error);
+      }
+    });
   }
 
   ngOnDestroy(): void {
@@ -158,18 +245,23 @@ export class AppComponent implements OnInit, OnDestroy {
   async fetchCalendars(): Promise<void> {
     try {
       this.loading = true;
-      const response = await this.http.get<any>('http://localhost:8000/calendars').toPromise();
+      const response = await this.http.get<any>('http://localhost:8001/calendars', { withCredentials: true }).toPromise();
       
       if (response.success) {
         this.calendars = response.data;
         console.log('Calendars loaded:', response.data);
         await this.fetchEvents();
       } else {
+        console.log('Failed to load calendars - might need authentication');
         this.error = 'Failed to load calendars';
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching calendars:', error);
-      this.error = 'Error connecting to backend';
+      if (error.status === 401) {
+        console.log('Authentication required - calendar will show login if needed');
+      } else {
+        this.error = 'Error connecting to backend';
+      }
     } finally {
       this.loading = false;
     }
@@ -178,7 +270,7 @@ export class AppComponent implements OnInit, OnDestroy {
   // Fetch events when calendars change
   async fetchEvents(): Promise<void> {
     try {
-      const response = await this.http.get<any>('http://localhost:8000/events').toPromise();
+              const response = await this.http.get<any>('http://localhost:8001/events', { withCredentials: true }).toPromise();
       
       if (response.success) {
         // Remove duplicate events using utility function
@@ -240,7 +332,7 @@ export class AppComponent implements OnInit, OnDestroy {
       this.events = [];
       
       // Make a request to clear local storage on backend
-      const response = await this.http.post('http://localhost:8000/events/clear-local', {}).toPromise();
+              const response = await this.http.post('http://localhost:8001/events/clear-local', {}, { withCredentials: true }).toPromise();
       
       alert('Local storage cleared! Now refreshing events from server...');
       // Refresh events from server
@@ -278,7 +370,7 @@ export class AppComponent implements OnInit, OnDestroy {
     try {
       console.log('Deleting event:', eventId);
       
-      const response = await this.http.delete(`http://localhost:8000/events/${eventId}`).toPromise();
+              const response = await this.http.delete(`http://localhost:8001/events/${eventId}`, { withCredentials: true }).toPromise();
       
       // Remove event from local state - match by either ID or UID
       this.events = this.events.filter(event => 
@@ -306,11 +398,11 @@ export class AppComponent implements OnInit, OnDestroy {
       console.log('Syncing with CalDAV...');
       
       // First check CalDAV status
-      const statusResponse = await this.http.get<any>('http://localhost:8000/caldav/status').toPromise();
+              const statusResponse = await this.http.get<any>('http://localhost:8001/caldav/status').toPromise();
       console.log('CalDAV Status:', statusResponse);
       
       // Then try to discover calendars
-      const discoverResponse = await this.http.post<any>('http://localhost:8000/caldav/discover', {}).toPromise();
+              const discoverResponse = await this.http.post<any>('http://localhost:8001/caldav/discover', {}, { withCredentials: true }).toPromise();
       console.log('CalDAV Discovery:', discoverResponse);
       
       if (discoverResponse.success) {
@@ -335,7 +427,7 @@ export class AppComponent implements OnInit, OnDestroy {
           if (caldavCalendars.length > 0) {
             const firstCalendar = caldavCalendars[0];
             try {
-              const eventsResponse = await this.http.get<any>(`http://localhost:8000/caldav/events/${firstCalendar.id}`).toPromise();
+              const eventsResponse = await this.http.get<any>(`http://localhost:8001/caldav/events/${firstCalendar.id}`).toPromise();
               if (eventsResponse.success) {
                 // Remove duplicate events using utility function
                 const uniqueEvents = this.removeDuplicateEvents(eventsResponse.data);
@@ -392,7 +484,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
       console.log('Sending event data:', eventData);
 
-      this.http.post<any>('http://localhost:8000/events', eventData).subscribe({
+              this.http.post<any>('http://localhost:8001/events', eventData, { withCredentials: true }).subscribe({
         next: (response) => {
           console.log('Backend response:', response);
           
@@ -1248,7 +1340,7 @@ export class AppComponent implements OnInit, OnDestroy {
     console.log('Sending updated event data:', eventData);
 
     // Send PUT request to update the event
-    this.http.put<any>(`http://localhost:8000/events/${event.id}`, eventData).subscribe({
+            this.http.put<any>(`http://localhost:8001/events/${event.id}`, eventData, { withCredentials: true }).subscribe({
       next: (response) => {
         console.log('Backend response:', response);
 
