@@ -62,3 +62,6 @@ backend/config/caldav.php
 # Test data and runtime files
 backend/data/events.json
 backend/data/*.json
+
+# Roundcube directory (large external dependency)
+roundcube/rc-code/
