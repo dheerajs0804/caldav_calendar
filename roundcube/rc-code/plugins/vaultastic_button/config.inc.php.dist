@@ -1,5 +1,0 @@
-<?php
-// Vaultastic Button URL
-$config['vaultastic_button_url'] = 'https://archive.mithi.com';
-
-?>

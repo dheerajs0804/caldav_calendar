@@ -1,6 +1,0 @@
-<?php
-
-// Caldav server URL
-$rcmail_config ['caldav_server_url'] = 'http://baya11.mithiskyconnect.com:8008';
-
-?>
