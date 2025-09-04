@@ -1,0 +1,102 @@
+<?php
+/*
+ * SSHFTP driver
+ *
+ * @package     plugins
+ * @uses        rcube_plugin
+ * @author      Jasper Slits <jaspersl at gmail dot com>
+ * @version     1.9
+ * @license     GPL
+ * @link        https://sourceforge.net/projects/rcubevacation/
+ * @todo        See README.TXT
+ *
+ * Contributions by Johnson Chow
+ * Changes to work with Round Cube 1.2.4 and UTF-8 : neil77pl
+ */
+
+
+class mithi extends VacationDriver {
+
+	protected $startdate,$enddate,$maxnoofreply,$timeinterval,$body,$subject,$autoreply,$bodyext,$subjectext,$autoreplyextstatus= "";
+	public $startdateOrignal,$enddateOrignal,$xf_instance = "";
+
+        public function init() {
+		 include_once '/var/www/html/roundcubemail/plugins/xf_directory/xf.php';
+		$this->xf_instance = xf2::get_instance();
+		  $arr_properties = array('mdcvacationreplystarttime','mdcvacationreplyendtime','mdcautoreplymaxnoofreply','autoresponsesubject','autoresponsemailbody','mdcautoreply','mdcautoreplytimeinterval','autoresponsemailbodyexternaluser','autoresponsesubjectexternaluser','mdcautoreplystatusexternaluser');
+
+                  //Get server properties from xf
+                $result = $this->xf_instance->get_xf_user_properties($arr_properties);
+                $this->startdateOrignal = $result['mdcvacationreplystarttime'];
+                $this->enddateOrignal = $result['mdcvacationreplyendtime'];
+                return $result;
+
+	}
+
+	  public function _get() {
+                $vacArr = array("subject"=>"","body"=>"","subjectexternaluser"=>"","bodyexternaluser"=>"","autoreplystatus"=>"","timeinterval"=>"","maxnoofreply"=>"","startdate"=>"","enddate"=>"","autoreplyextstatus"=>"");
+		return $vacArr;     
+	}
+
+
+	//set vacation reply properties
+	 public function setVacation() {
+
+		$this->autoreply = (NULL != rcube_utils::get_input_value('_vacation_autoreplystatus', rcube_utils::INPUT_POST));
+		$this->autoreply = $this->getStatus($this->autoreply);
+		
+		$this->autoreplyext = (NULL != rcube_utils::get_input_value('_vacation_autoreplyextstatus', rcube_utils::INPUT_POST));
+                $this->autoreplyext = $this->getStatus($this->autoreplyext);
+
+		//add <br> tag at end of line and update property to ldap
+                $localmessagebody = $this->body = rcube_utils::get_input_value('_vacation_body', rcube_utils::INPUT_POST);
+                $localtemp1 = nl2br($localmessagebody,false);
+
+                $extrnalusermessagebody = $this->bodyext = rcube_utils::get_input_value('_vacation_body_externaluser', rcube_utils::INPUT_POST);
+                $localtemp2 = nl2br($extrnalusermessagebody,false);
+		
+
+		$properties = array(
+	         	'mdcvacationreplystarttime' => $this->startdate = rcube_utils::get_input_value('_vacation_startdate', rcube_utils::INPUT_POST),
+			'mdcvacationreplyendtime' => $this->enddate = rcube_utils::get_input_value('_vacation_enddate', rcube_utils::INPUT_POST),
+			'mdcautoreplymaxnoofreply' => ''.$this->maxnoofreply = rcube_utils::get_input_value('_vacation_maxnoofreply', rcube_utils::INPUT_POST),
+			'mdcautoreplytimeinterval' => ''.$this->timeinterval = rcube_utils::get_input_value('_vacation_timeinterval', rcube_utils::INPUT_POST),
+			'autoresponsesubject' => $this->subject = rcube_utils::get_input_value('_vacation_subject', rcube_utils::INPUT_POST),
+			//'autoresponsemailbody' => $this->body = rcube_utils::get_input_value('_vacation_body', rcube_utils::INPUT_POST),
+			'autoresponsemailbody' => $localtemp1,
+                        'mdcautoreply' =>  $this->autoreply,
+			//'autoresponsemailbodyexternaluser' => $this->bodyext = rcube_utils::get_input_value('_vacation_body_externaluser', rcube_utils::INPUT_POST),
+			'autoresponsemailbodyexternaluser' => $localtemp2,
+			'autoresponsesubjectexternaluser' => $this->subjectext = rcube_utils::get_input_value('_vacation_subject_externaluser', rcube_utils::INPUT_POST),
+			'mdcautoreplystatusexternaluser' =>$this->autoreplyext
+		);
+		foreach($properties as $key => $value)
+		{
+   			 if(empty($value))
+   			 {
+				if(('mdcvacationreplystarttime' == $key) && ! empty($this->startdateOrignal))
+				{
+					return false;
+				}
+				if(('mdcvacationreplyendtime' == $key) && ! empty($this->enddateOrignal)) 
+                                {
+					return false;
+                                }
+				unset($properties[$key]);
+   			 }
+		}
+		// put call to set user properties
+	$this->xf_instance->set_xf_user_properties($properties);
+		return true;
+	}
+
+	protected function getStatus($checkboxstatus){
+		if($checkboxstatus) // if true
+		{
+                     $checkboxstatus = 'Enabled';
+                 }else{
+                     $checkboxstatus = 'Disabled';
+                 }
+		return $checkboxstatus;
+	}
+}

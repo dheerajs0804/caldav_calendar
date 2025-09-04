@@ -1,0 +1,7 @@
+#taskbar a.button-vaultastic {
+	background: url(images/vaultastic.png) 0 2px no-repeat;
+}
+
+#taskbar a.button-vaultastic:before {
+  content: "" !important;
+  }

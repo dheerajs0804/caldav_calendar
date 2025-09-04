@@ -1,0 +1,147 @@
+<?php
+
+class xfgroupab extends rcube_plugin
+{
+    public $task = 'mail|addressbook';
+    private $abook_id = 'xfgroupab';
+    private $rcmail;
+    private $show_groups = true;
+    static private $debug = null;
+  
+    /**
+     * Initialize plugin
+     */
+    public function init()
+    {
+	$this->rcmail = rcube::get_instance();
+
+        $this->add_hook('addressbooks_list', array($this, 'address_sources'));
+        $this->add_hook('addressbook_get', array($this, 'get_address_book'));
+
+	//Check for debugging
+        if(self::$debug === null) {
+            self::$debug = $this->rcmail->config->get('xfgroupab_debug');
+        }
+       
+        $this->add_texts('localization/', false);
+        $this->load_config('config/config.inc.php.dist');
+        if (file_exists("./plugins/xfgroupab/config/config.inc.php")) {
+            $this->load_config('config/config.inc.php');
+        }
+
+        // use this address book for autocompletion queries
+        $config = rcmail::get_instance()->config;
+        $sources = $config->get('autocomplete_addressbooks', array('ldap'));
+        
+        if (!in_array($this->abook_id, $sources) &&
+                      $config->get('use_xfgroup_abook', true) &&
+                      $config->get('use_xfgroup_abook_for_completion', true)) {
+            $sources[] = $this->abook_id;
+            $config->set('autocomplete_addressbooks', $sources);
+        }
+    }
+    
+    /**
+     * Register xfgroupab as address source
+     *
+     * @param  array $p  Hash array with list of available address books
+     * @return array $p  Hash array with list of available address books
+     */
+    public function address_sources($p)
+    {
+        $rcmail = rcmail::get_instance();
+        if ($rcmail->config->get('use_xfgroup_abook', true)) {
+            $p['sources'][$this->abook_id] = 
+                array('id' => $this->abook_id,
+                      'name' => rcube_utils::rep_specialchars_output($this->gettext('xfgroupab')),
+                      'readonly' => TRUE, );#'groups' => $this->show_groups );
+        }
+
+	self::debug_log('Xf group addressbook registration returned::'.print_r($p, true));
+        return $p;
+    }
+  
+    /**
+     * Requests xfgroupab instance
+     *
+     * @param  array $p  Hash array containing the id of the requested abook
+     * @return array $p  Hash array containing instance of the requested abook
+     */
+    public function get_address_book($p)
+    {
+        $rcmail = rcmail::get_instance();
+        if (($p['id'] === $this->abook_id) && $rcmail->config->get('use_xfgroup_abook', true)) {
+            require_once dirname(__FILE__) . '/xfgroupab_backend.php';
+	    $ldap_config = (array)$rcmail->config->get('ldap_xf');
+	    $domain   = $rcmail->config->mail_domain($_SESSION['storage_host']);
+
+	    //Update ldap config with xfgroupab hardcoded configuration
+	    //This is done to avoid large configuration mess in config file.
+	    $ldap_config = $this->hardcore_xfgroupab_config($ldap_config['gab']);
+
+	    //Showing duplicate list in compose contacts. 
+	    //Since we are using contacts as group in addressbook. RC framework shows contacts + groups in compose contacts.
+	    //So, Hide groups from mail compose.
+            //Check to hide duplicate groups in mail task
+            if ( $this->rcmail->task == 'mail' ){
+                $this->show_groups = false;
+            }
+
+            $p['instance'] = new xfgroupab_backend($ldap_config, true, $domain);
+            $p['instance']->groups = $this->show_groups;
+            $p['instance']->readonly = true;
+            $p['instance']->xf_base_dn = $ldap_config['base_dn'];
+        }
+
+	self::debug_log('Returning xf group addressbook instance::'.print_r($p, true));
+        return $p;
+    }
+
+    private function hardcore_xfgroupab_config($xf_groupab_config)
+    {
+	$xf_groupab_config['use_tls'] = false;
+	$xf_groupab_config['filter'] =	'(&(objectclass=mithigroup)(mail=*@%d)(!(mithiAddressBookVisibility=NONE)))';
+	$xf_groupab_config['ldap_version'] = 3;
+	$xf_groupab_config['user_specific'] = true;
+	$xf_groupab_config['base_dn'] = 'o=cd,dc=connectserver';
+	$xf_groupab_config['bind_dn'] = 'cn=bayav4user,dc=connectserver';
+	$xf_groupab_config['bind_pass'] = 'Ram@koli1';
+	$xf_groupab_config['name_field'] = 'displayName';
+        $xf_groupab_config['surname_field'] = 'sn';
+        $xf_groupab_config['firstname_field'] = 'givenName';
+        $xf_groupab_config['jobtitle_field'] = 'title';
+        $xf_groupab_config['email_field'] = 'mail:*';
+        $xf_groupab_config['phone:home_field'] = 'telephoneNumber';
+        $xf_groupab_config['phone:mobile_field'] = 'mobile';
+        $xf_groupab_config['department_field'] = 'ou';
+	$xf_groupab_config['search_fields'] = array( 'mail', 'cn', 'sn', 'givenName', 'telephoneNumber', 'mobile', 'ou' );
+        $xf_groupab_config['required_fields'] = array("givenName", "cn", "sn", "mail");
+	$xf_groupab_config['sort'] = 'sn';
+    	$xf_groupab_config['scope'] = 'sub';
+    	$xf_groupab_config['global_search'] = true;
+	$xf_groupab_config['fuzzy_search'] = true;
+	$xf_groupab_config['vlv'] = true;
+	$xf_groupab_config['vlv_search'] = true;
+	$xf_groupab_config['referrals'] = false;
+
+	//Group Specific
+	$xf_groupab_config['groups']['base_dn'] = 'o=cd,dc=connectserver';
+	$xf_groupab_config['groups']['scope'] = 'sub';
+	$xf_groupab_config['groups']['member_attr'] = 'memberid';
+	$xf_groupab_config['groups']['filter'] = '(&(objectclass=mithigroup)(mail=*@%d))';
+	$xf_groupab_config['groups']['name_attr'] = 'mail';	
+	$xf_groupab_config['groups']['email_attr'] = 'mail';
+        $xf_groupab_config['groups']['vlv'] = false;
+        $xf_groupab_config['groups']['class_member_attr'] = array('groupofnames' => 'memberid','groupofuniquenames' => 'uniquemember');
+
+	return $xf_groupab_config;	
+    }
+
+    static private function debug_log($message) {
+        if(self::$debug === true) {
+            rcmail::console(__CLASS__.': '.$message);
+        }
+    }
+
+
+}

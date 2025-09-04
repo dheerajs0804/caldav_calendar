@@ -1,0 +1,114 @@
+<?php
+
+	//load required js files using CDN
+	echo '<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">';
+        echo '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>';
+        echo '<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>';
+
+	///modal render part
+	echo '<script type="text/javascript" src="updatepass.js"></script>'; 
+	echo '<div class="modal-content" id = "modal-content" style="display:none; width:350px; margin:18% 0 0 38%; text-align:center";>
+	      	<div class="modal-body" id = "modal-body"></div>
+		    <div class="modal-footer">
+		       <button type="button" class="btn btn-default text-center" onclick="closeModal()" style="margin-right:140px;">OK</button>
+		    </div>
+             </div>';
+
+	///get values from form
+	$emailid = $_POST['mailid'];
+	$currentpass =  $_POST['currentpass'];
+	$newpass =  $_POST['newpass'];
+        $confirmpass =  $_POST['confirmpass'];
+
+	///get host name from cookies, to call WS
+        $host = $_COOKIE['host'];
+        $serverhost = $_COOKIE['serverhost'];
+	$redircthost = $_SERVER['SERVER_NAME'];
+
+	///check if all required values exits
+        if($currentPass=="" && $newPass=="" && $confirmPass=="" && $host=="" && $emailid==""){
+                header("Location: https://$redircthost");
+        }
+
+	///decrypt passwords
+	$currentPass = decryptPassword($currentpass);
+        $newPass = decryptPassword($newpass);
+        $confirmPass = decryptPassword($confirmpass);
+
+	//call WS and update user pass
+	$WSResponse = updatePass($currentPass,$newPass,$confirmPass,$host,$emailid);
+
+	renderWSResponse($WSResponse);
+
+    function decryptPassword($password)
+    {
+	$private_key_path = "rsa_1024_priv.pem";
+	$private_key = file_get_contents($private_key_path);
+	$encrypted_pass = $password;
+        $decrypted_pass = '';
+
+        if (openssl_private_decrypt(base64_decode($encrypted_pass), $decrypted, $private_key))
+        {
+            $decrypted_pass = $decrypted;
+        }
+        else
+        {
+            rcube::raise_error("<" . __CLASS__ . "> Error in decrypting password = " . openssl_error_string(), true);
+        }
+	//echo ($decrypted_pass."<br>");
+        return $decrypted_pass;
+     }
+
+     function updatePass($currentPass,$newPass,$confirmPass,$host,$emailid){
+
+	///split username and domain
+	 list($name,$domain) = explode('@', $emailid);
+         $user = $name;
+         $domain = $domain;
+
+	$url = "http://".$host.":8080/orchestration.ws/domain/".$domain."/user/".$user."?&op=replace";
+        $post = '{"password":"'.$newPass.'"}';
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
+        curl_setopt($ch, CURLOPT_TIMEOUT, 50);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 50);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_USERPWD, "$emailid:$currentPass");
+        curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+
+        $response = curl_exec($ch);
+	$httpcode = curl_getinfo($ch,CURLINFO_HTTP_CODE);
+
+	if($httpcode!=200){
+		echo '<script type="text/javascript">','responseMsg();','</script>';
+	}
+
+	return $response;
+
+     }
+
+     function renderWSResponse($WSResponse){
+	
+	$decodejson = json_decode($WSResponse);
+	$status = $decodejson->status;
+	$returncode = $decodejson->returncode;
+	
+	if ($status == "error" && $returncode == 1) {
+		echo '<script type="text/javascript">','errorMsg();','</script>';
+	}
+	else if($status == "warning" && $returncode == 2) {
+		 echo '<script type="text/javascript">','warningMsg();','</script>'; 
+	}
+	else if($status == "success" && $returncode == 0) {
+		echo '<script type="text/javascript">','successMsg();','</script>';
+	}else{
+		echo '<script type="text/javascript">','errorMsg();','</script>';
+	}
+    }
+
+
+?>

@@ -4,7 +4,7 @@ services:
     container_name: roundcube
     restart: unless-stopped
     ports:
-      - "8000:80"
+      - "8001:80"
     environment:
       - ROUNDCUBEMAIL_DEFAULT_HOST=ssl://intmail.mithi.com
       - ROUNDCUBEMAIL_SMTP_SERVER=tls://intmail.mithi.com

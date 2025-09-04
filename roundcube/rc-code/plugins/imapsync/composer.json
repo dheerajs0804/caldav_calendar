@@ -1,0 +1,41 @@
+{
+	"name" : "servergurus/rcimapsync",
+	"type" : "roundcube-plugin",
+	"description" : "Roundcube imapsync plugin is a Roundcube plugin, which allows users to sync their mail from external mailboxes while auto-syncing all IMAP-Folders. Including a completely rewritten (fetchmail.pl) imapsync.pl which is much more secure.",
+	"keywords" : [
+		"imap",
+		"imapsync",		
+		"fetchmail",
+		"download",
+		"mailbox"
+	],
+	"homepage" : "https://github.com/server-gurus/RCimapSync",
+	"license" : "GPL",
+	"authors" : [{
+			"name" : "ServerGurus",
+			"role" : "Developer",
+			"homepage" : "https://servergurus.de"
+		}, {
+			"name" : "Github project contributors page",
+			"homepage" : "https://github.com/server-gurus/RCimapSync/graphs/contributors"
+		}
+	],
+	"repositories" : [{
+			"type" : "composer",
+			"url" : "https://plugins.roundcube.net"
+		}
+	],
+	"require" : {
+		"php": ">=5.3.0",
+		"roundcube/plugin-installer" : ">=0.1.6"
+	},
+	"support" : {
+		"issues" : "https://github.com/server-gurus/RCimapSync/issues",
+		"source" : "https://github.com/server-gurus/RCimapSync"
+	},
+	"extra" : {
+		"roundcube" : {
+			"sql-dir" : "SQL"
+		}
+	}
+}

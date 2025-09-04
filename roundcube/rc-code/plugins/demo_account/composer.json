@@ -1,0 +1,24 @@
+{
+    "name": "demo_account",
+    "type": "roundcube-plugin",
+    "description": "Plugin to configure host as demo account.",
+    "keywords": ["forgot","password"],
+    "license": "GNU GPLv3+",
+    "version": "1.5.1",
+    "authors": [
+        {
+            "name": "Rushikesh Magar",
+            "email": "rushikesh.magar@mithi.com",
+            "role": "Develovper"
+        }
+    ],
+    "require": {
+        "php": ">=5.2.1",
+        "roundcube/plugin-installer": ">=0.1.2"
+    },
+    "extra": {
+    "roundcube": {
+      "min-version": "1.0"
+    }
+  }
+}

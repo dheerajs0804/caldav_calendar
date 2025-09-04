@@ -1,0 +1,61 @@
+update_identity Roundcube plugin 
+---------------------------------------------------
+    This plugin is used to update identity after every login. This plugin is developed to update roundcube identity when user gets logged in by using is employeeid or email. Plugin currently supports active directory driver, to get identity related information from active directory.
+   
+
+Configuration
+---------------------------------------------------
+    ########################################
+    #Add following in host configuration:
+    ########################################
+
+1) active directory driver:
+
+
+    Configuration:
+    Add Following configuration in host config file:
+
+    //Driver to fetch identities from.
+    //Allowed values: 1)active_directory 2)skyconnect
+    $config['updateidentity_driver'] = 'active_directory';
+
+    //For Active directory driver
+    //Identity server info (addict docker)
+    $config['identity_server'] = array(        'host' => 'http://192.168.0.58:12345',    );
+
+    //List of identity fields to update.
+    //Note: Based on ['updateidentity_driver'] config.
+     $config['identity_fields'] = 'mail,displayName';
+
+    //identity_key to attribute_key mapping.
+    //Note: Based on ['updateidentity_driver'] config.
+    //This mapping is useful to map key that are retrieved from directory to keys that are required for roundcube identity.
+     $config['identity_attribute_mapping'] = array(        'mail' => 'email',        'displayName' => 'name'    );
+   
+
+2) skyconnect driver:
+
+    Configuration:
+    Add Following configuration in host config file:
+ 
+    //Driver to fetch identities from.
+    //Allowed values: 1)active_directory 2)skyconnect
+    $config['updateidentity_driver'] = 'skyconnect';
+
+    //Domain to get identity for login id
+    //Note: Required for skyconnect driver only
+    $config['x-mithi-domain'] = 'test.int';
+
+    //Filter to search for identity
+    //Allowed values: 1) employeenumber 2) email
+   $config['get_identity_filter'] = 'email';
+
+    //List of identity fields to update.
+    //Note: Based on ['updateidentity_driver'] config.
+   $config['identity_fields'] = 'mail,username,employeenumber';
+
+    //identity_key to attribute_key mapping.
+    //Note: Based on ['updateidentity_driver'] config.
+    //This mapping is useful to map key that are retrieved from directory to keys that are required for roundcube identity.
+    $config['identity_attribute_mapping'] = array(        'mail' => 'email',        'username' => 'name',        'employeenumber' => 'employeenumber'    );
+

@@ -1,0 +1,100 @@
+<?php
+
+class zoom_button extends rcube_plugin
+{
+	private $zoomurl;
+   	private $username;
+   	private $password;
+   	private $host;
+   	private $uname;
+   	private $domain;
+   	private $debug_flag;
+   	private $timeout;
+   	private $connectiontimeout;
+   	private $clientid;
+   	private $clientsecret;
+   	private $maildomainzoomintegration;
+   	private $mailclientzoomintegration;
+
+        function init()
+        {
+                $this->load_config();
+
+                $this->rc = rcube::get_instance();
+                $this->rcmail = rcmail::get_instance();
+
+                //$this->include_script('zoom_button.js');
+
+                $this->include_stylesheet($this->local_skin_path() . '/zoom_button.css');
+                $this->add_texts('localization/');
+
+		//zoom button to lauch micro app
+                $this->add_button(array(
+                	'label'      => 'zoom_button.zoom',
+                	'type'       => 'link',
+                	'href'       => './?_task=zoom&_action=plugin.launchzoomapp',
+                	'target'     => '_blank',
+                	'class'      => 'button-zoom',
+                	'classsel'   => 'button-zoom button-selected',
+                        'innerclass' => 'button-inner',
+                 ), 'taskbar');
+
+		//register method to be called when clicking on zoom button to lauch micro app
+                $this->register_action('plugin.launchzoomapp', array($this, 'launch_zoom_app'));
+        }
+
+
+        function launch_zoom_app(){
+		
+		$url = rcube::get_instance()->config->get('initaccess_token_url');
+
+                $user='abc@mithi.com';
+                $domain='mithi.com';
+                $zoomclinetid='mLz9GP2rTFeeKqDY9PVEw';
+                $zoomsecretkey='RwltoD1d6CBa4eplA7P9F1xvsnNqMPZ7';
+
+		###call API and get init access token to lauch zoom micro app
+                $ch = curl_init($url);
+
+                $data='{
+                        "user": "'.$user.'",
+                        "domain": "'.$domain.'",
+                        "launcher": "bayav4",
+                        "microApp": "zoom",
+                        "zoomclinetid": "'.$zoomclinetid.'",
+                        "zoomsecretkey": "'.$zoomsecretkey.'"
+                }';
+
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+
+                $headers = [];
+                $headers[] = 'Content-Type:application/json';
+		$headers[] = rcube::get_instance()->config->get('init_token_key');
+                curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+                $result = curl_exec($ch);
+                $httpcode = curl_getinfo($ch,CURLINFO_HTTP_CODE);
+
+                curl_close($ch);
+
+                $decodejson=json_decode($result,true);
+
+                ###parse json and get initaccesstoken.
+                $initaccestoken=$decodejson["initAccessToken"];
+
+                ####lauch zoom micro app new new tab
+		$redirectzoomurl = rcube::get_instance()->config->get('redirect_zoom_url');
+		$zoomredirecturl= $redirectzoomurl .$initaccestoken;
+
+                header("Location: $zoomredirecturl");
+
+                $rcube::console("Inside init");
+        }
+
+
+
+}
+
+?>

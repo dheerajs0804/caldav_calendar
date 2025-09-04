@@ -1,0 +1,5 @@
+<?php
+
+$config['userproperties'] = "userrole,classofservice,mail,username,defaultapp,imapserver,enablepersonalmailarchiving,mdcvacationreplystarttime,mdcvacationreplyendtime,mdcautoreplymaxnoofreply,autoresponsesubject,autoresponsemailbody,mdcautoreply,mdcautoreplytimeinterval,autoresponsemailbodyexternaluser,autoresponsesubjectexternaluser,mdcautoreplystatusexternaluser,messagelifetime";
+
+?>

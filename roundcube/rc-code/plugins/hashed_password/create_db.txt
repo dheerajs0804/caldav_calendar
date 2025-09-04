@@ -1,0 +1,10 @@
+Steps to create table for hashed password
+
+> docker exec -it <server-name>-mysql mysql -u root -p
+enter password = password
+
+> use database roundcubemail;
+> create table baya_v3_salt ( randomid varchar(255) PRIMARY KEY, salt varchar(255) NOT NULL, timestamp TIMESTAMP DEFAULT NOW() );
+
+to check if table baya_v3_salt is created
+> show tables; 

@@ -1,0 +1,47 @@
+
+<roundcube:include file="includes/layout.html" />
+<roundcube:include file="includes/menu.html" />
+<roundcube:include file="includes/settings-menu.html" />
+<div id="layout-content" class="selected" role="main">
+  <div class="header">
+    <a class="button icon back-list-button" href="#back"
+      ><span class="inner"><roundcube:label name="back"/></span
+    ></a>
+    <span class="header-title"></span>
+  </div>
+  <div id="pluginbody" class="container uibox contentbox">
+    <br />
+    <h1 class="boxtitle">Add Calendar</h1>
+    <div id="preferences-details" class="boxcontent">
+      <roundcube:object name="plugin.body" />
+      <h1>Add Calendar</h1>
+      <form
+        name="add_calendar_form"
+        class="formcontent form-inline propform"
+        action="./?_task=settings&_action=plugin.add_calendar.save"
+        method="post"
+      >
+        <roundcube:object name="plugin.add_calendar_form" />
+        <roundcube:button
+          command="plugin.add_calendar.save"
+          type="input"
+          class="button mainaction"
+          label="create"
+        />
+        <input type="text" style="display: none;" /><br />
+      </form>
+      <roundcube:object
+        name="plugin.add_calendar_table"
+        class="add-calendar-table"
+        cellspacing="0"
+        deleteIcon="/this/delete.png"
+        enableIcon="/this/enabled.png"
+        disableIcon="/this/disabled.png"
+      />
+      <roundcube:object name="message" id="message" class="statusbar" />
+    </div>
+  </div>
+  <!--<roundcube:object name="plugin.footer" />-->
+</div>
+<roundcube:include file="includes/footer.html" />
+

@@ -1,0 +1,24 @@
+{
+	"name": "roundcube/txt",
+	"type": "roundcube-plugin",
+	"description": "Textsens app by Algoanalytics",
+	"license": "GPLv3+",
+	"version": "1.0",
+	"authors": [
+		{
+			"name": "Ashutosh Ukey",
+			"email": "aukey@algoanalytics.com",
+			"role": "Developer"
+		}
+	],
+	"repositories": [
+		{
+			"type": "composer",
+			"url": "http://plugins.roundcube.net"
+		}
+	],
+	"require": {
+		"php": ">=5.3.0",
+		"roundcube/plugin-installer": ">=0.1.3"
+	}
+}

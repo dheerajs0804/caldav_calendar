@@ -1,0 +1,239 @@
+<!-- Calendar Header -->
+<div class="calendar-header">
+  <div class="header-left">
+    <h1>📅 Mithi Calendar</h1>
+    <div *ngIf="selectedCalendar" class="calendar-info">
+      <span class="calendar-name">{{ selectedCalendar.name }}</span>
+      <button (click)="changeCalendar()" class="change-calendar-btn">
+        🔄 Change Calendar
+      </button>
+    </div>
+    <div class="date-navigation">
+      <button (click)="previous()" class="nav-btn">◀</button>
+      <button (click)="today()" class="nav-btn today-btn">Today</button>
+      <button (click)="next()" class="nav-btn">▶</button>
+      <span class="date-display">{{ getWeekDateRange() }}</span>
+    </div>
+  </div>
+  
+  <div class="header-right">
+    <div class="view-selector">
+      <button 
+        *ngFor="let view of views" 
+        (click)="changeView(view)"
+        [class.active]="currentView.type === view.type"
+        class="view-btn"
+      >
+        {{ view.icon }} {{ view.label }}
+      </button>
+    </div>
+    
+    <button (click)="openAddEventModal()" class="add-event-btn">
+      ➕ Add Event
+    </button>
+    
+    <button (click)="logout()" class="logout-btn">
+      🚪 Logout
+    </button>
+  </div>
+</div>
+
+<!-- Calendar Content -->
+<div class="calendar-content">
+  <div *ngIf="loading" class="loading">
+    🔄 Loading calendar...
+  </div>
+  
+  <div *ngIf="error" class="error">
+    ❌ {{ error }}
+  </div>
+  
+  <div *ngIf="!loading && !error" class="calendar-view">
+    <!-- Day View -->
+    <app-day-view 
+      *ngIf="currentView.type === 'day'"
+      [date]="currentDate"
+      [events]="getEventsForDay(currentDate)"
+      [calendars]="calendars"
+      (eventClick)="openEventDetailModal($event)"
+    ></app-day-view>
+    
+    <!-- Week View -->
+    <app-week-view 
+      *ngIf="currentView.type === 'week'"
+      [date]="currentDate"
+      [events]="events"
+      [calendars]="calendars"
+      (eventClick)="openEventDetailModal($event)"
+    ></app-week-view>
+    
+    <!-- Month View -->
+    <app-month-view 
+      *ngIf="currentView.type === 'month'"
+      [date]="currentDate"
+      [events]="events"
+      [calendars]="calendars"
+    ></app-month-view>
+    
+    <!-- Agenda View -->
+    <div *ngIf="currentView.type === 'agenda'" class="agenda-view">
+      <h2>Agenda View</h2>
+      <div class="agenda-events">
+        <div 
+          *ngFor="let event of events | sortByStartTime"
+          (click)="openEventDetailModal(event)"
+          class="agenda-event"
+        >
+          <div class="event-time">{{ formatTime(event.start_time) }}</div>
+          <div class="event-title">{{ event.title }}</div>
+          <div *ngIf="event.location" class="event-location">📍 {{ event.location }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Event Modal -->
+<div *ngIf="showAddEventModal" class="modal-overlay" (click)="closeAddEventModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>➕ Add New Event</h2>
+      <button (click)="closeAddEventModal()" class="close-btn">✕</button>
+    </div>
+    
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="summary">Event Title *</label>
+        <input 
+          type="text" 
+          id="summary" 
+          [(ngModel)]="newEvent.summary" 
+          required
+          placeholder="Enter event title"
+        />
+      </div>
+      
+      <div class="form-group">
+        <label for="location">Location</label>
+        <input 
+          type="text" 
+          id="location" 
+          [(ngModel)]="newEvent.location" 
+          placeholder="Enter location"
+        />
+      </div>
+      
+      <div class="form-group">
+        <label for="description">Description</label>
+        <textarea 
+          id="description" 
+          [(ngModel)]="newEvent.description" 
+          placeholder="Enter event description"
+          rows="3"
+        ></textarea>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="start_date">Start Date *</label>
+          <input 
+            type="date" 
+            id="start_date" 
+            [(ngModel)]="newEvent.start_date" 
+            required
+          />
+        </div>
+        
+        <div class="form-group" *ngIf="!newEvent.all_day">
+          <label for="start_time">Start Time</label>
+          <input 
+            type="time" 
+            id="start_time" 
+            [(ngModel)]="newEvent.start_time"
+          />
+        </div>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="end_date">End Date *</label>
+          <input 
+            type="date" 
+            id="end_date" 
+            [(ngModel)]="newEvent.end_date" 
+            required
+          />
+        </div>
+        
+        <div class="form-group" *ngIf="!newEvent.all_day">
+          <label for="end_time">End Time</label>
+          <input 
+            type="time" 
+            id="end_time" 
+            [(ngModel)]="newEvent.end_time"
+          />
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input 
+            type="checkbox" 
+            [(ngModel)]="newEvent.all_day"
+          />
+          All-day event
+        </label>
+      </div>
+      
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input 
+            type="checkbox" 
+            [(ngModel)]="newEvent.reminder.enabled"
+          />
+          Set reminder
+        </label>
+        
+        <div *ngIf="newEvent.reminder.enabled" class="reminder-settings">
+          <select [(ngModel)]="newEvent.reminder.time">
+            <option value="5">5</option>
+            <option value="10">10</option>
+            <option value="15" selected>15</option>
+            <option value="30">30</option>
+            <option value="60">60</option>
+          </select>
+          
+          <select [(ngModel)]="newEvent.reminder.unit">
+            <option value="minutes" selected>minutes</option>
+            <option value="hours">hours</option>
+            <option value="days">days</option>
+          </select>
+          
+          <span>before event</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button (click)="closeAddEventModal()" class="btn btn-secondary">Cancel</button>
+      <button (click)="createEvent()" class="btn btn-primary">Create Event</button>
+    </div>
+  </div>
+</div>
+
+<!-- Event Detail Modal -->
+<app-event-detail-modal
+  *ngIf="showEventDetailModal"
+  [event]="selectedEvent"
+  (close)="closeEventDetailModal()"
+></app-event-detail-modal>
+
+<!-- Reminder Notifications -->
+<app-reminder-notification
+  *ngIf="showReminderWindow"
+  [reminders]="activeReminders"
+  (reminderDismissed)="onReminderDismissed($event)"
+  (reminderSnoozed)="onReminderSnoozed($event)"
+  (reminderDetails)="onReminderDetails($event)"
+  (windowClosed)="onReminderWindowClosed()"
+></app-reminder-notification>

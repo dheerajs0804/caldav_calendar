@@ -1,0 +1,1 @@
+ALTER TABLE  `caldav_calendars` ADD  `readonly` TINYINT(0) NOT NULL DEFAULT  '1' AFTER  `showalarms` ;

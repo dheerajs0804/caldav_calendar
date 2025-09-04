@@ -5,10 +5,6 @@
       <button (click)="openAddEventModal()" class="add-event-btn">+ Add Event</button>
       <button (click)="syncCalDAV()" class="sync-btn">Sync CalDAV</button>
       <button (click)="refreshEvents()" class="sync-btn" style="margin-left: 8px;">🔄 Refresh Events</button>
-      <button (click)="forceRefreshEvents()" class="sync-btn" style="margin-left: 8px;">🧹 Force Refresh</button>
-      <button (click)="forceSyncFromServer()" class="sync-btn" style="margin-left: 8px;">🔄 Force Sync</button>
-      <button (click)="checkReminders()" class="test-reminder-btn" style="margin-left: 8px;">🔍 Debug Reminders</button>
-             <button (click)="clearNotifiedEvents()" class="test-reminder-btn" style="margin-left: 8px;">🧹 Clear Notified</button>
     </div>
   </div>
   
@@ -356,3 +352,12 @@
   (editEvent)="editEvent($event)"
   (deleteEvent)="deleteEventFromModal($event)"
 ></app-event-detail-modal>
+
+<!-- Reminder Notification Component -->
+<app-reminder-notification
+  [reminders]="activeReminders"
+  (reminderDismissed)="onReminderDismissed($event)"
+  (reminderSnoozed)="onReminderSnoozed($event)"
+  (reminderDetails)="onReminderDetails($event)"
+  (windowClosed)="onReminderWindowClosed()"
+></app-reminder-notification>

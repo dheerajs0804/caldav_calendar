@@ -1,0 +1,9 @@
+<?php
+##
+## Cloud Button configuration file
+##
+
+// URL to cloud storage
+$config['cloud_button_url'] = 'https://cloud.example.com';
+
+?>

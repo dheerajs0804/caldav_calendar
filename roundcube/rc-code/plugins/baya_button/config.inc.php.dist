@@ -1,0 +1,5 @@
+<?php
+// Baya Button URL
+$config['baya_button_url'] = 'https://intmail.mithi.com';
+
+?>

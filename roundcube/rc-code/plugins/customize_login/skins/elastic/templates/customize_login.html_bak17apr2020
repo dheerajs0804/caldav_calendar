@@ -1,0 +1,313 @@
+<roundcube:include file="includes/layout.html" />
+<roundcube:include file="includes/menu.html" />
+<roundcube:include file="includes/settings-menu.html" />
+<h1 class="voice">
+  <roundcube:label name="settings" /> :
+  <roundcube:label name="customize_login" />
+</h1>
+<div id="layout-content" class="selected" role="main">
+  <div class="header">
+    <a class="button icon back-list-button" href="#back"
+      ><span class="inner"><roundcube:label name="back" /></span
+    ></a>
+    <span class="header-title"></span>
+  </div>
+  <div id="pluginbody" class="uibox contentbox" style="overflow-y: scroll;">
+    <h1 class="boxtitle">Customize login page</h1>
+    <div id="preferences-details" class="boxcontent">
+      <div class="container">
+        <div class="row ml-1">
+          <h1>Customize Login Page</h1>
+        </div>
+        <div class="row">
+          <ul class="nav nav-tabs">
+            <li class="nav-item">
+              <a
+                class="nav-link active"
+                href="?_task=settings&_action=plugin.customize_login"
+                >Edit</a
+              >
+            </li>
+            <li class="nav-item">
+              <a
+                class="nav-link"
+                href="?_task=settings&_action=plugin.preview_login"
+                >Preview</a
+              >
+            </li>
+          </ul>
+        </div>
+        <div class="formcontent" id="bg-choice">
+          <div class="bg-choice-label">
+            <p class="lead">
+              Choose what you want as your login page background:
+            </p>
+          </div>
+          <div class="row">
+            <div class="col-md-7 p-0">
+              <div
+                id="bg-choice-option"
+                class="btn-group btn-group-toggle"
+                data-toggle="buttons"
+              >
+                <label class="btn btn-secondary active">
+                  <input
+                    type="radio"
+                    name="bg-option"
+                    id="login-bg-img"
+                    autocomplete="off"
+                  />
+                  Background Image
+                </label>
+                <label class="btn btn-secondary">
+                  <input
+                    type="radio"
+                    name="bg-option"
+                    id="login-bg-color"
+                    autocomplete="off"
+                  />
+                  Background Color
+                </label>
+              </div>
+            </div>
+            <div class="col-md-5 p-0">
+              <button id="reset-default-bgimg" type="button" class="btn float-right btn-outline-secondary">
+                Reset to default background
+              </button>
+            </div>
+          </div>
+        </div>
+        <form
+          id="login-bgimg-form"
+          method="POST"
+          class="formcontent form-horizontal"
+          enctype="multipart/form-data"
+        >
+          <div class="form-group mb-3">
+            <label
+              class="control-label col-sm-2"
+              for="login-bgimg"
+              style="font-size: large;"
+              ><b>Background Image</b></label
+            >
+            <div class="col-xs-12">
+              <input
+                type="file"
+                class="form-control-file"
+                name="bgimg-content"
+                id="login-bgimg"
+                accept="image/*"
+              />
+            </div>
+          </div>
+          <div class="form-group mb-3">
+            <button id="bgimg-upload-btn" type="submit" class="btn btn-primary">
+              Save
+            </button>
+          </div>
+        </form>
+        <div class="ml-3" style="display: none; height: 250px; width: 400px;">
+          <p class="lead m-0">Background Image Preview:</p>
+          <img
+            id="bg-img-preview"
+            src="skins/elastic/SkyConnectloginpage.jpg"
+            class="rounded"
+            alt="background-preview"
+            height="90%"
+            width="90%"
+          />
+        </div>
+        <form
+          id="login-bgcolor-form"
+          method="POST"
+          class="formcontent form-horizontal"
+        >
+          <div class="form-group mb-3">
+            <label
+              class="control-label col-sm-2"
+              for="login-bgcolor"
+              style="font-size: large;"
+              ><b>Background Color</b></label
+            >
+            <div class="col-xs-12">
+              <input
+                type="color"
+                class="form-control"
+                name="bgcolor-content"
+                id="login-bgcolor"
+              />
+            </div>
+          </div>
+          <div class="form-group mb-3">
+            <button
+              id="bgcolor-upload-btn"
+              type="submit"
+              class="btn btn-primary"
+            >
+              Save
+            </button>
+          </div>
+        </form>
+        <hr />
+        <form
+          id="login-top-frame-form"
+          method="POST"
+          class="formcontent form-horizontal"
+        >
+          <div class="form-group mb-3">
+            <label
+              class="control-label col-sm-2"
+              for="login-top-frame"
+              style="font-size: large;"
+              ><b>Top frame</b></label
+            >
+            <div class="col-xs-12">
+              <textarea
+                class="form-control"
+                name="top-frame-content"
+                id="login-top-frame"
+                rows="15"
+              ></textarea>
+            </div>
+          </div>
+          <div class="form-group mb-3">
+            <button type="submit" class="btn btn-primary">
+              Save
+            </button>
+          </div>
+        </form>
+        <hr />
+        <form
+          id="login-right-frame-form"
+          method="POST"
+          class="formcontent form-horizontal"
+        >
+          <div class="form-group mb-3">
+            <label
+              class="control-label col-sm-2"
+              for="login-right-frame"
+              style="font-size: large;"
+              ><b>Right frame</b></label
+            >
+            <div class="col-xs-12">
+              <textarea
+                class="form-control"
+                name="right-frame-content"
+                id="login-right-frame"
+                rows="15"
+              ></textarea>
+            </div>
+          </div>
+          <div class="form-group mb-3">
+            <button type="submit" class="btn btn-primary">
+              Save
+            </button>
+          </div>
+        </form>
+        <hr />
+        <form
+          id="login-bottom-frame-form"
+          method="POST"
+          class="formcontent form-horizontal"
+        >
+          <div class="form-group mb-3">
+            <label
+              class="control-label col-sm-2"
+              for="login-bottom-frame"
+              style="font-size: large;"
+              ><b>Bottom frame</b></label
+            >
+            <div class="col-xs-12">
+              <textarea
+                class="form-control"
+                name="bottom-frame-content"
+                id="login-bottom-frame"
+                rows="15"
+              ></textarea>
+            </div>
+          </div>
+          <div class="form-group mb-3">
+            <button type="submit" class="btn btn-primary">
+              Save
+            </button>
+          </div>
+        </form>
+        <hr />
+        <form
+          id="login-left-frame-form"
+          method="POST"
+          class="formcontent form-horizontal"
+        >
+          <div class="form-group mb-3">
+            <label
+              class="control-label col-sm-2"
+              for="login-left-frame"
+              style="font-size: large;"
+              ><b>Left frame</b></label
+            >
+            <div class="col-xs-12">
+              <textarea
+                class="form-control"
+                name="left-frame-content"
+                id="login-left-frame"
+                rows="15"
+              ></textarea>
+            </div>
+          </div>
+          <div class="form-group mb-3">
+            <button type="submit" class="btn btn-primary">
+              Save
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<roundcube:include file="includes/footer.html" />
+<script src="program/js/tinymce/tinymce.min.js"></script>
+<script>
+  tinymce.init({
+    selector: "textarea",
+    allow_html_in_named_anchor: true,
+    element_format: "html",
+    invalid_elements: "script",
+    branding: false,
+    toolbar:
+      "preview code image | undo redo | outdent indent | styleselect | forecolor backcolor",
+    menubar: "edit | tools | view",
+    statusbar: true,
+    resize: true,
+    brand: false,
+    entity_encoding: "raw",
+    plugins: "code preview textcolor image",
+    relative_urls: false,
+    images_upload_url:
+      "plugins/customize_login/drivers/frames_image_uploader.php",
+    images_upload_handler: function (blobInfo, success, failure) {
+      var xhr, formData;
+      xhr = new XMLHttpRequest();
+      xhr.withCredentials = false;
+      xhr.open(
+        "POST",
+        "plugins/customize_login/drivers/frames_image_uploader.php"
+      );
+      xhr.onload = function () {
+        var json;
+        if (xhr.status != 200) {
+          failure("HTTP Error " + xhr.status + ": " + xhr.statusText);
+          return;
+        }
+        json = JSON.parse(xhr.responseText);
+        if (!json || typeof json.location != "string") {
+          failure("Invalid JSON: " + xhr.responseText);
+          return;
+        }
+        success(json.location);
+      };
+      formData = new FormData();
+      formData.append("file", blobInfo.blob(), blobInfo.filename());
+      xhr.send(formData);
+    },
+  });
+</script>

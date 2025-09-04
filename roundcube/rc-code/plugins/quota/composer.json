@@ -1,0 +1,24 @@
+{
+    "name": "quota",
+    "type": "roundcube-plugin",
+    "description": "A plugin that shows/update quota information for Roundcube using configured drivers.",
+    "keywords": ["quota"],
+    "license": "GNU GPLv3+",
+    "version": "1.0",
+    "authors": [
+        {
+            "name": "",
+            "email": "",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=5.2.1",
+        "roundcube/plugin-installer": ">=0.1.2"
+    },
+    "extra": {
+    "roundcube": {
+      "min-version": "1.0"
+    }
+  }
+}

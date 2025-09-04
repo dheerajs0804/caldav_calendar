@@ -1,0 +1,17 @@
+INSTALLATION
+============
+
+1) Extract the archive in the plugin directory of RoundCube
+2) Enable this plugin in the main.inc.php config file of RoundCube by 
+   adding the name of the plugin directory (flags) to the rcmail_config['plugins']
+   PHP array.
+3) See the config.inc.php.dist file in the plugin directory to create your own config
+   file. This file is used to tell the plugin which are the tags you want to use.
+
+Changelog:
+
+V 1.1
+- Layout support for roundcube 1.0
+
+V1.0
+- Initial release roundcube 0.9.5

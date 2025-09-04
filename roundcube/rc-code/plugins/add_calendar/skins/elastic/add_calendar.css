@@ -1,0 +1,35 @@
+#user_calendars_container {
+	border: 1px solid #999999;
+	background-color: #F9F9F9;
+	overflow: auto;
+}
+
+body.user_calendars {
+	margin: 0px;
+	background-color: #F9F9F9;
+}
+
+#user_calendars {
+	width: 100%;
+	display: table;
+	table-layout: fixed;
+	/* css hack for IE */
+	width: expression('auto');
+}
+
+/* safari hack \*/
+html>body*#user_calendars[id$="user_calendars"]:not ([class="none"] ) {
+	table-layout: auto;
+}
+
+#selected {
+	color: #FFFFFF;
+	background-color: #CC3333;
+}
+
+#addcalendarbutton {
+	padding-top: 6px;
+	padding-bottom: 12px;
+	padding-right: 2px;
+	text-align: right;
+}

@@ -1,0 +1,41 @@
+<roundcube:object name="doctype" value="html5" />
+<html>
+<head>
+<title><roundcube:object name="pagetitle" /></title>
+<roundcube:include file="/includes/links.html" />
+<link rel="stylesheet" type="text/css" href="/this/add_calendar.css" />
+</head>
+<body class="noscroll">
+	<roundcube:include file="/includes/header.html" />
+	<div id="mainscreen" class="offset">
+		<roundcube:if condition="env:task == 'settings'" />
+		<roundcube:include file="/includes/settingstabs.html" />
+		<roundcube:endif />
+		<div id="pluginbody" class="uibox contentbox">
+            <roundcube:object name="plugin.body" />
+            <form name="add_calendar_form" class="propform" action="./?_task=settings&_action=plugin.add_calendar.save" method="post">
+                <div class="box">
+                    <div id="prefs-title" class="boxtitle">Add calendar</div>
+                        <div class="boxcontent">
+                            <roundcube:object name="plugin.add_calendar_form" />
+                            <div id="addcalendarbutton">
+                                <roundcube:button command="plugin.add_calendar.save" type="input" class="button mainaction" label="create" />
+                            </div>
+                            <!-- Prevent form submit -->
+                            <input type="text" style="display: none;" />
+                        </div>
+                </div>
+                <div class="box uibox listbox" style="margin-top: 15px;">
+                    <div class="boxcontent">
+                        <div id="usercalendartable">
+                            <roundcube:object name="plugin.add_calendar_table" class="add-calendar-table" cellspacing="0" deleteIcon="/this/delete.png" enableIcon="/this/enabled.png" disableIcon="/this/disabled.png" />
+                            <roundcube:object name="message" id="message" class="statusbar" />
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <roundcube:object name="plugin.footer" />
+        <roundcube:include file="/includes/footer.html" />
+</body>
+</html>

@@ -1,0 +1,425 @@
+<?php
+
+
+class server_side_filter extends rcube_plugin{
+
+  ###get WS id and password for authorization
+  private $username;
+  private $password;
+  private $host;
+  private $uname;
+  private $domain;
+  private $debug_flag;
+  private $timeout;
+  private $connectiontimeout;
+
+  function init(){
+
+    $rcmail = rcmail::get_instance();
+    $this->rc = &$rcmail;
+
+    ###get values for WS auth
+    $this->username= $this->rc->user->data['username'];
+    $this->password=$this->rc->decrypt($_SESSION['password']);
+
+
+    ###get host name from conf  file
+    ###$this->host = $this->rc->config->get('default_host');
+    $dir_serverinfo_from_conf = $this->rc->config->get('xf_directory_server', array());
+    $securehost = $dir_serverinfo_from_conf['securehost'];
+    list($protocol,$hostname) = explode('//', $securehost);
+    $this->host = $hostname;
+
+    $this->debug_flag = $this->rc->config->get('server_side_filter_debug'); // get debug flag - enable/disable debugging
+    $this->pe_write_log('server_side_filter - START'); // debug message, writes to roundcube/logs/server_side_filter
+
+    if ($this->rc->task == 'settings'){
+      $this->add_hook('settings_actions', array($this, 'settings_actions'));
+      $this->register_action('plugin.server_side_filter', array($this, 'filters_init'));
+      $this->register_action('plugin.filters-delete', array($this, 'filters_delete'));
+      $this->register_action('plugin.filters-save', array($this, 'filters_save'));
+      $this->add_texts('localization/', array('server_side_filter','nosearchstring'));
+      $this->rc->output->add_label('server_side_filter');
+      $this->include_script('server_side_filter.js');
+    }
+
+    ###get login user email id and extract username and domain from it
+    if ( $identity = $this->rc->user->get_identity() ){
+        list($name,$domain) = explode('@', $identity['email']);
+        $this->uname = $name;
+        $this->domain = $domain;
+    }else{
+        list($name,$domain) = explode('@', $this->rc->user->data['username']);
+        $this->uname = $name;
+        $this->domain = $domain;
+    }
+
+    ###get session timeout values
+    $this->timeout=$this->rc->config->get('ws_timeout');
+    $this->connectiontimeout=$this->rc->config->get('ws_connectiontimeout');
+
+  }
+
+  function settings_actions($args){
+    $args['actions'][] = array(
+      'action' => 'plugin.server_side_filter',
+      'class' => 'server_side_filter',
+      'label' => 'server_side_filter',
+      'domain' => 'server_side_filter',
+    );
+
+    return $args;
+  }
+
+
+  function filters_init(){
+    $this->add_texts('localization/');
+    $this->register_handler('plugin.body', array($this, 'filters_form'));
+    $this->rc->output->set_pagetitle($this->gettext('server_side_filter'));
+    $this->rc->output->send('plugin');
+  }
+
+  function filters_save(){
+
+        $this->add_texts('localization/');
+        $this->register_handler('plugin.body', array($this, 'filters_form'));
+        $this->rc->output->set_pagetitle($this->gettext('server_side_filter'));
+
+        $this->pe_write_log('Input parameters :');
+
+        $whatfilter = trim(rcube_utils::get_input_value('_whatfilter', rcube_utils::INPUT_POST, true));
+        $this->pe_write_log('input filter : "'.$whatfilter.'"');
+        $searchstring = trim(rcube_utils::get_input_value('_searchstring', rcube_utils::INPUT_POST, true));
+        $this->pe_write_log('input contains : "'.$searchstring.'"');
+        $destfolder = trim(rcube_utils::get_input_value('_folders', rcube_utils::INPUT_POST, true));
+        $this->pe_write_log('input destination folder : "'.$destfolder.'"');
+
+        ###remove INBOX. from destination folder
+        $destfolder2=substr($destfolder, 6);
+
+        ###check if destination folder contains single quote
+        if(strpos($destfolder2,"'")!==false){
+                $this->rc->output->command('display_message','Folders with single quote cannot be used in filters. Please rename the folder such that it does not contain single quote.', 'error');
+        }
+        else{
+
+                ###call WS and check if mailfilter is enabled for user
+                $url = 'https://'.$this->host.'/orchestration.ws/domain/'.$this->domain.'/user/'.$this->uname.'?properties=mailclientfilterssupport';
+                $this->pe_write_log('URI to call GET WS to get mailclientfilterssupport : "'.$url.'"');
+
+                $ch = curl_init($url);
+                curl_setopt($ch, CURLOPT_TIMEOUT, $this->timeout);
+                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $this->connectiontimeout);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_USERPWD, "$this->username:$this->password");
+                curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+                $data = curl_exec($ch);
+                $httpcode = curl_getinfo($ch,CURLINFO_HTTP_CODE);
+                curl_close($ch);
+
+                $this->pe_write_log('WS Called with return code : "'.$httpcode.'"');
+
+                $decodejson=json_decode($data,true);
+                $this->pe_write_log('JSON response: "'.$decodejson.'"');
+
+                $mailclientfilterssupport=$decodejson['result']['mailclientfilterssupport'];
+
+                ####check if user has permission to save filter
+                if($mailclientfilterssupport=="True"){
+
+                        ###call WS to get user mail store path
+                        $url = 'https://'.$this->host.'/orchestration.ws/domain/'.$this->domain.'/user/'.$this->uname.'?properties=messagestore';
+                        $this->pe_write_log('URI to call GET WS to get messagestorepath : "'.$url.'"');
+
+                        $ch = curl_init($url);
+                        curl_setopt($ch, CURLOPT_TIMEOUT, $this->timeout);
+                        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $this->connectiontimeout);
+                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                        curl_setopt($ch, CURLOPT_USERPWD, "$this->username:$this->password");
+                        curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+                        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+                        $data = curl_exec($ch);
+                        $httpcode = curl_getinfo($ch,CURLINFO_HTTP_CODE);
+                        curl_close($ch);
+
+                        $this->pe_write_log('WS Called with return code : "'.$httpcode.'"');
+
+                        $decodejson=json_decode($data,true);
+                        $this->pe_write_log('JSON response: "'.$decodejson.'"');
+
+                        $path=$decodejson['result']['messagestore'];
+                        $completepath= $path . "/Maildir/.".$destfolder2."";
+
+                        $currenttime=time();
+                        $timestramp=date("Y_m_d_h_i_s",$currenttime);
+
+                        $mailfiltername="mailfilter_" .$timestramp;
+                        $mailfilterid="mailfilterid_" .$timestramp;
+
+                        ###call WS to add bew filters
+
+                        $url2='https://'.$this->host.'/orchestration.ws/domain/'.$this->domain.'/user/'.$this->uname.'/mailfilter';
+                        $post = '{  "mailfiltersname": "'.$mailfiltername.'",    "mailfiltersattachments": false, "mailfiltersactive":true, "mailfiltersaction": "move",  "mailfiltersactionparam": "'.$completepath.'",  "id": "'.$mailfilterid.'",  "filterrule": [    {      "mailfiltersrulefield": "'.$whatfilter.'",      "mailfilterscondition": "Contains",      "mailfiltersdata": "'.$searchstring.'",      "mailfilterscasesensitivity": false,      "mailfiltersnotoperator": false    }  ]}';
+
+                        $this->pe_write_log('URI to call PUT WS to add filter : "'.$url2.'"');
+                        $this->pe_write_log('JSON passed for WS : "'.$post.'"');
+
+                        $ch = curl_init($url2);
+                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                        curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
+                        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
+                        curl_setopt($ch, CURLOPT_TIMEOUT, $this->timeout);
+                        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $this->connectiontimeout);
+                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                        curl_setopt($ch, CURLOPT_USERPWD, "$this->username:$this->password");
+                        curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+                        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+
+                        $response = curl_exec($ch);
+                        $httpcode = curl_getinfo($ch,CURLINFO_HTTP_CODE);
+                        curl_close($ch);
+
+                        $this->pe_write_log('WS Called with return code : "'.$httpcode.'"');
+                        $this->pe_write_log('JSON response: "'.$response.'"');
+
+                        if($httpcode==200){
+                                $this->rc->output->command('display_message', $this->gettext('successfullysaved'), 'confirmation');
+                        }
+                        else{
+                                $this->rc->output->command('display_message', $this->gettext('unsuccessfullysaved'), 'error');
+                        }
+
+                }else{
+                        $this->rc->output->command('display_message', $this->gettext('permissionerror'), 'error');
+                }
+        }
+
+        $this->rc->overwrite_action('plugin.server_side_filter');
+        $this->rc->output->send('plugin');
+  }
+
+  function filters_delete(){
+
+        $this->add_texts('localization/');
+        $this->register_handler('plugin.body', array($this, 'filters_form'));
+        $this->rc->output->set_pagetitle($this->gettext('server_side_filter'));
+
+        if (isset($_GET[filterid])){
+
+                $url = 'https://'.$this->host.'/orchestration.ws/domain/'.$this->domain.'/user/'.$this->uname.'/mailfilter';
+                $this->pe_write_log('URI to call POST WS to delete filter : "'.$url.'"');
+
+                $ch = curl_init($url);
+                $filterid = $_GET[filterid];
+                $post = '{"mailfilter":"'.$filterid.'"}';
+                $this->pe_write_log('JSON passed for WS : "'.$post.'"');
+
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
+                curl_setopt($ch, CURLOPT_TIMEOUT, $this->timeout);
+                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $this->connectiontimeout);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_USERPWD, "$this->username:$this->password");
+                curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+
+                $response = curl_exec($ch);
+                $httpcode = curl_getinfo($ch,CURLINFO_HTTP_CODE);
+
+                curl_close($ch);
+
+                $this->pe_write_log('WS Called with return code : "'.$httpcode.'"');
+                $this->pe_write_log('JSON response: "'.$response.'"');
+
+                if($httpcode==200){
+                        $this->rc->output->command('display_message', $this->gettext('successfullydeleted'), 'confirmation');
+                }else{
+                        $this->rc->output->command('display_message', $this->gettext('unsuccessfullydeleted'), 'error');
+                }
+
+        }
+
+        if (function_exists('rcmail::get_instance()->overwrite_action'))
+                rcmail::get_instance()->overwrite_action('plugin.server_side_filter');
+        else $this->rc->overwrite_action('plugin.server_side_filter');
+
+        $this->rc->output->send('plugin');
+
+  }
+
+  function filters_form(){
+
+    $table = new html_table(array('cols' => 2, 'class' => 'propform cols-sm-6-6'));
+    $table->add('title', rcube_utils::rep_specialchars_output($this->gettext('whatfilter').":", 'html'));
+
+    $select = new html_select(array('name' => '_whatfilter', 'id' => 'whatfilter'));
+    $select->add($this->gettext('from'), 'from');
+    $select->add($this->gettext('to'), 'to');
+    $select->add($this->gettext('cc'), 'cc');
+    $select->add($this->gettext('subject'), 'subject');
+    $table->add('', $select->show($this->gettext('from')));
+
+    $table->add('title', rcube_utils::rep_specialchars_output($this->gettext('searchstring').":"), 'html');
+    $inputfield = new html_inputfield(array('name' => '_searchstring', 'id' => 'searchstring'));
+    $table->add('', $inputfield->show(""));
+
+    $table->add('title', rcube_utils::rep_specialchars_output($this->gettext('moveto').":"));
+    if (function_exists('rcmail::get_instance()->folder_selector'))
+      $select = rcmail::get_instance()->folder_selector(array('name' => '_folders', 'id' => 'folders'));
+    else $select = $this->rc->folder_selector(array('name' => '_folders', 'id' => 'folders'));
+    $table->add('title',  $select->show());
+
+
+    // load saved filters
+
+    $table2 = new html_table(array('cols' => 2));
+
+    ###call WS and check if mailfilter is enabled for user
+    $url = 'https://'.$this->host.'/orchestration.ws/domain/'.$this->domain.'/user/'.$this->uname.'?properties=mailclientfilterssupport';
+    $this->pe_write_log('URI to call GET WS to get mailclientfilterssupport : "'.$url.'"');
+
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_TIMEOUT, $this->timeout);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $this->connectiontimeout);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_USERPWD, "$this->username:$this->password");
+    curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+    $data = curl_exec($ch);
+    $httpcode = curl_getinfo($ch,CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    $this->pe_write_log('WS Called with return code : "'.$httpcode.'"');
+
+    $decodejson=json_decode($data,true);
+    $this->pe_write_log('JSON response: "'.$decodejson.'"');
+
+    $mailclientfilterssupport=$decodejson['result']['mailclientfilterssupport'];
+
+    ####check if user has permission to view filter
+    if($mailclientfilterssupport=="True"){
+        ###call WS to get filter list
+        $url = 'https://'.$this->host.'/orchestration.ws/domain/'.$this->domain.'/user/'.$this->uname.'/mailfilter/allmailfilters';
+        $this->pe_write_log('Calling WS to get filter list by URI:"'.$url1.'" ');
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $this->timeout);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $this->connectiontimeout);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_USERPWD, "$this->username:$this->password");
+        curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+        $data = curl_exec($ch);
+        $httpcode = curl_getinfo($ch,CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $this->pe_write_log('WS Called with Status code:"'.$httpcode.'" ');
+
+        if($httpcode!=200){
+                $this->rc->output->command('display_message', $this->gettext('unsuccessfullload'), 'error');
+        }
+
+        $decodejson=json_decode($data,true);
+        $this->pe_write_log('GET WS JSON:"'.$decodejson.'" ');
+
+        ###parse json and print required fields.
+        $filterarraycount=count($decodejson["result"]["filter"]);
+        for($i=0;$i<$filterarraycount;$i++){
+                $j=$i+1;
+                $msg=$j ."-";
+                $fieldname=$decodejson["result"]["filter"][$i]["filterrule"][0]["mailfiltersrulefield"];
+                $this->pe_write_log('filter field name:"'.$fieldname.'" ');
+                $containtext=$decodejson["result"]["filter"][$i]["filterrule"][0]["mailfiltersdata"];
+                $this->pe_write_log('contains text:"'.$containtext.'" ');
+                $mailstorepath=$decodejson["result"]["filter"][$i]["mailfiltersactionparam"];
+                $this->pe_write_log('full mailstore path:"'.$mailstorepath.'" ');
+                ###get destinationfolder path from mailstorepath
+                //list($subpart1,$subpart2) = explode('//', $mailstorepath);
+                //list($subpart3,$subfolder) = explode('/', $subpart2);
+                if(strpos($mailstorepath,'//')!==false){
+                        list($subpart1,$subpart2) = explode('//', $mailstorepath);
+                        list($subpart3,$subfolder) = explode('/', $subpart2);
+                }else{
+                        list($subpart3,$subfolder) = explode('Maildir/', $mailstorepath);
+                }
+
+                $this->pe_write_log('subfolder path:"'.$subfolder.'" ');
+
+                $msg .= $this->gettext('msg_if_field') ." <b>" .$fieldname. "</b> " .$this->gettext('msg_contains'). " <b>" .$containtext. "</b> " .$this->gettext('msg_move_msg_in'). " <b>INBOX" .$subfolder ."</b> ".$this->gettext('msg_move_msg_from'). " <b>INBOX</b>";
+                $table2->add('title',$msg);
+                $key=$decodejson["result"]["filter"][$i]["mailfilter"];
+                $this->pe_write_log('mailfilter:"'.$key.'" ');
+                $dlink = "<a href='./?_task=settings&_action=plugin.filters-delete&filterid=".$key."'>".$this->gettext('delete')."</a>";
+                $table2->add('title',$dlink);
+        }
+    }else{
+        $msg="<b>Not having permission to view filter</b>";
+        $table2->add('title',$msg);
+     }
+
+        $this->pe_write_log('server_side_filter- STOP ');
+
+        if ($this->rc->config->get('skin') == 'elastic') {
+                $out = html::tag('fieldset', array('class' => 'main'),
+                  html::tag('legend', null, $this->gettext('mainoptions')).
+                  $table->show() .
+                  html::p(null,
+                    $this->rc->output->button(array(
+                          'command' => 'plugin.filters-save',
+                          'type' => 'input',
+                          'class' => 'button mainaction',
+                          'label' => 'save'
+                    ))
+                  )
+                );
+
+                $out.= html::tag('fieldset', array('id' => 'prefs-title', 'class' => 'boxtitle3'),
+                  html::tag('legend', null, $this->gettext('storedfilters')).
+                  $table2->show()
+                );
+        } else {
+                $out = html::div(array('class' => 'box'),
+                  html::div(array('id' => 'prefs-title', 'class' => 'boxtitle'), $this->gettext('server_side_filter')).
+                  html::div(array('class' => 'boxcontent'), $table->show() .
+                  html::p(null,
+                        $this->rc->output->button(array(
+                          'command' => 'plugin.filters-save',
+                          'type' => 'input',
+                          'class' => 'button mainaction',
+                          'label' => 'save'
+                  )))));
+                $out.= html::div(array('id' => 'prefs-title','class' => 'boxtitle'), $this->gettext('storedfilters')).
+                  html::div(array('class' => 'uibox listbox scroller','style'=>'margin-top:250px;'),
+                        html::div(array('class' => 'boxcontent'), $table2->show() ));
+        }
+
+    $this->rc->output->add_gui_object('filtersform', 'filters-form');
+
+    $form = $this->rc->output->form_tag(array(
+        'id' => 'filters-form',
+        'name' => 'filters-form',
+        'method' => 'post',
+            'class' => 'propform cols-sm-6-6',
+        'action' => './?_task=settings&_action=plugin.filters-save',
+    ), $out);
+
+        if ($this->rc->config->get('skin') == 'elastic') {
+                return html::div(array('class' => 'formcontent'), $form);
+        } else {
+                return $form;
+        }
+
+  }
+
+    // function for writing logs after checking if debug flag is set
+    // enable disable logging in config.inc.php from config folder
+    function pe_write_log($log)
+    {
+        if ($this->debug_flag)
+        {
+            rcube::write_log('server_side_filter', $log);
+        }
+    }
+
+}
+?>

@@ -1,0 +1,23 @@
+<?php
+
+	include 'DBConnection.php';
+	
+	$db = new DBConnection();
+	$userid = $_COOKIE['username'];
+
+	$captchanumber = 'ABCDEFGHIJKLMNPQRSTUVWXYZ23456789abcdefghijkmnpqrstuvwxyz';
+	$captchanumber = substr(str_shuffle($captchanumber), 0, 4); 
+	
+	$result = $db->query("INSERT INTO bayav4_update_pass(userid, captcha) VALUES('".$userid."', '". $captchanumber."')");
+
+	$captchanumber = preg_replace('/(.)/','$1 ', $captchanumber);
+	$layer = imagecreatetruecolor(125, 37);
+        $captcha_bg = imagecolorallocate($layer, 215, 215, 215);
+  	imagefill($layer, 0, 0, $captcha_bg);
+  	$captcha_text_color = imagecolorallocate($layer, 0, 0, 0);
+  	imagestring($layer, 5, 30, 10, $captchanumber, $captcha_text_color);
+  	header("Content-type: image/jpeg");
+  	imagejpeg($layer);
+
+	$db = null;
+?>

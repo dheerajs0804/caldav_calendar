@@ -1,0 +1,12 @@
+#taskbar a.button-baya span.button-inner {
+	background: url(images/baya.png) 0 3px no-repeat;
+}
+#taskbar a.button-baya:hover span.button-inner,
+#taskbar a.button-baya.button-selected span.button-inner {
+	background-position: 0 -28px;
+}
+
+#taskbar a.button-baya:before {
+  content: "" !important;
+  }
+

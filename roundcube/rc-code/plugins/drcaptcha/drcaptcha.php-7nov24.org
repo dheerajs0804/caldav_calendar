@@ -1,0 +1,306 @@
+<?php
+/**
+* drcaptcha Roundcube Webmail plugin
+*
+* More secure login to Roundcube
+*
+* @version 1.0
+* @license GNU GPLv3+
+* @author Dejan Roncevic
+* @website http://sourceforge.net/projects/drcaptcha/
+*/
+
+class drcaptcha extends rcube_plugin
+{
+
+  public $task = 'login|logout';
+  public $noajax  = true;
+  public $noframe = true;
+  protected $capimg;
+  protected $capcode;
+  private $image_height = 45;
+  private $image_width;
+  private $font_factor = 0.75;
+  private $characters = '23456789ABCDEFGHKMNPRSTVWXYZ';
+  private $codesize  = 3;
+  private $text_colour = '#707070';
+  private $num_lines = 0;
+  private $error_delay = 5;
+  protected $font;
+  public function init()
+  {
+    $this->load_config();
+    $rcmail = rcmail::get_instance();
+    $this->add_texts('localization/', false);
+    if ( ! $this-> isWhitelisted($rcmail->config->get('drcaptcha_whitelist','') ) ) {
+	$this->add_hook('template_object_loginform', array($this,'login_form'));
+	$this->add_hook('authenticate', array($this, 'authenticate'));
+	$this->add_hook('session_destroy', array($this, 'ses_des'));
+    }
+  }
+
+ public  function login_form($args)
+  {
+    $this->load_config();
+    $rcmail = rcmail::get_instance();
+    $this->image_height  = $rcmail->config->get('drcaptcha_height',45);
+    $this->codesize  = $rcmail->config->get('drcaptcha_codesize',3);
+    $this->characters = $rcmail->config->get('drcaptcha_characters','23456789ABCDEFGHKMNPRSTVWXYZ');
+    $this->font_factor = $rcmail->config->get('drcaptcha_font_factor',0.75);
+    $this->text_colour = $rcmail->config->get('drcaptcha_text_colour','#000000');
+
+    $this->generateImage();
+    $bimg = base64_encode($this->capimg);
+    $imgattr['src'] = 'data:image/gif;base64,'.$bimg;
+    $img_captcha = html::img($imgattr);
+
+    $table = new html_table(array('cols' => 2));
+    $input_captcha   = new html_inputfield(array('name' => '_captcha', 'id' => 'drcaptcha', 'placeholder' => 'Enter Captcha' )); //'value' => $this->capcode
+
+    $table->add('captcha',$img_captcha);
+    $table->add('captcha',$input_captcha->show());
+    $pos = $pos = strpos( $args['content'], '<p class="formbuttons"');
+    if ($pos === false) {
+	$args['content'] .= $table->show() ;
+    } else {
+	$args['content'] = substr($args['content'], 0, $pos) . $table->show() . substr($args['content'], $pos); ;
+    }
+    $_SESSION['drcaptcha'] = $this->capcode;
+    $_SESSION['drcaptchaexp'] = time() + 90;
+
+    return $args;
+  } 
+
+public function authenticate($args)
+  {
+    $this->load_config();
+    $rcmail = rcmail::get_instance();
+
+    if ($_SESSION['temp'] && isset($_POST['drcaptcha']) && !empty($_POST['drcaptcha'])) {
+      if (strtoupper($_POST['drcaptcha']) != strtoupper(rcube_utils::get_input_value('_captcha', rcube_utils::INPUT_POST)) ) {
+	$args['abort'] = 1;	
+	$this->error_delay = $rcmail->config->get('drcaptcha_error_delay',5);
+	sleep($this->error_delay);
+
+	$this->add_texts('localization/');
+        $rcmail->output->show_message('drcaptcha.recaptchafailed', 'error');
+        $rcmail->output->set_env('task', 'login');
+        $rcmail->output->send('login');
+	return $args;
+      }
+    }
+    if (isset($_POST['drcaptchaexp']) && !empty($_POST['drcaptchaexp']) && time() >  $_POST['drcaptchaexp']) {
+	$args['abort'] = 1;
+	$this->error_delay = $rcmail->config->get('drcaptcha_error_delay',5);
+	sleep($this->error_delay);
+
+	$this->add_texts('localization/');
+        $rcmail->output->show_message('drcaptcha.recaptchaexpired', 'error');
+        $rcmail->output->set_env('task', 'login');
+        $rcmail->output->send('login');
+	return $args;
+    }
+    return $args;
+  }
+
+public function ses_des()
+{
+    if (isset($_POST['drcaptcha'])) {
+        unset( $_POST['drcaptcha']);
+    }
+    if (isset($_POST['drcaptchaexp'])) {
+        unset( $_POST['drcaptchaexp']);
+    }
+
+    //Preserve drcaptcha session variable in post to survive session_destroy caled before authenticate 
+    if ( isset($_SESSION['drcaptcha']) && isset($_SESSION['temp']) && ($_SESSION['temp'] == 1) ) {
+        $_POST['drcaptcha'] = $_SESSION['drcaptcha'];
+    } 
+    if ( isset($_SESSION['drcaptchaexp']) && isset($_SESSION['temp']) && ($_SESSION['temp'] == 1) ) {
+        $_POST['drcaptchaexp'] = $_SESSION['drcaptchaexp'];
+    }
+}
+
+private function generateCode () 
+  {
+    
+      $code = '';
+      $i = 0;
+      while ($i < $this->codesize ) { 
+	$code .= substr($this->characters, mt_rand(0, strlen($this->characters)-1), 1);
+	$i++;
+      }
+      return $code;
+  }
+
+private function generateImage () 
+  {
+      $this->font = dirname(__FILE__) . '/AHGBold.ttf';
+      $code = $this->generateCode();
+      $this->capcode = $code; 
+
+
+      /* seed random number gen to produce the same noise pattern time after time */
+      mt_srand(crc32($code));	
+
+      /* init image */
+      $font_size = $this->image_height * $this->font_factor;
+      
+      $textbox = imagettfbbox($font_size, 0, $this->font, $code) or die('Error in imagettfbbox function');
+      $textwidth = abs($textbox[4] - $textbox[0]);
+      $textheight = abs($textbox[5] - $textbox[1]);
+      $this->image_width = ($textwidth+$this->image_height - $textheight);
+      $image = @imagecreate($this->image_width, $this->image_height) or die('Cannot initialize new GD image stream');
+      $colr = $this->hex2rgb($this->text_colour);
+      /* set the colours */
+      $background_color = imagecolorallocate($image, 250, 250, 250);
+      $text_color = imagecolorallocate($image, $colr[r],$colr[g],$colr[b]);
+      $noise_color = imagecolorallocate($image, $colr[r],  $colr[g],  $colr[b]);
+
+      /* create textbox and add text */
+
+      $x = ($this->image_width - $textbox[4])/2;
+      $y = ($this->image_height - $textbox[5])/2;
+      $d = -1;
+
+      imagettftext(
+	    $image, $font_size, 0, $x + $d, $y + $d, $noise_color, $this->font , $code
+      ) or die('Error in imagettftext function');
+      imagettftext(
+	    $image, $font_size, 0, $x + 2 * $d + 1, $y + 2 * $d + 1, $noise_color, $this->font , $code
+      ) or die('Error in imagettftext function');
+
+
+      /* mix in background dots */
+      for( $i=0; $i<($this->image_width*$this->image_height)/10; $i++ ) { 
+	    imagefilledellipse($image, mt_rand(0,$this->image_width), mt_rand(0,$this->image_height), 1, 1, $background_color);		 
+      }
+
+      /* mix in text and noise dots */
+      for( $i=0; $i<($this->image_width*$this->image_height)/130; $i++ ) {
+	$ef = 25;
+	$wr = mt_rand(0,$this->image_width);
+	$hr = mt_rand(0,$this->image_height);
+
+	imagefilledellipse($image, mt_rand(0,$this->image_width), mt_rand(0,$this->image_height), 1, 1, $noise_color);		 
+	imagefilledellipse($image, mt_rand(0,$this->image_width), mt_rand(0,$this->image_height), 1, 1, $text_color);		 
+      }
+    // Draw Background Lines
+	for ($line = 0; $line < $this->num_lines; ++ $line) {
+	    $x = $this->image_width * (1 + $line) / ($this->num_lines + 1);
+	    $x += (0.5 - $this->frand()) * $this->image_width / $this->num_lines;
+	    $y = mt_rand($this->image_height * 0.1, $this->image_height * 0.9);
+
+	    $theta = ($this->frand() - 0.5) * M_PI * 0.7;
+	    $w = $this->image_width;
+	    $len = mt_rand($w * 0.4, $w * 0.7);
+	    $lwid = mt_rand(0, 2);
+
+	    $k = $this->frand() * 0.6 + 0.2;
+	    $k = $k * $k * 0.5;
+	    $phi = $this->frand() * 6.28;
+	    $step = 0.5;
+	    $dx = $step * cos($theta);
+	    $dy = $step * sin($theta);
+	    $n = $len / $step;
+	    $amp = 1.5 * $this->frand() / ($k + 5.0 / $len);
+	    $x0 = $x - 0.5 * $len * cos($theta);
+	    $y0 = $y - 0.5 * $len * sin($theta);
+
+	    $ldx = round(- $dy * $lwid);
+	    $ldy = round($dx * $lwid);
+
+	    for ($i = 0; $i < $n; ++ $i) {
+		$x = $x0 + $i * $dx + $amp * $dy * sin($k * $i * $step + $phi);
+		$y = $y0 + $i * $dy - $amp * $dx * sin($k * $i * $step + $phi);
+		imagefilledrectangle($image, $x, $y, $x + $lwid,$y + $lwid, $background_color);
+	    }
+	}
+      /* rotate a bit to add fuzziness */
+      $image = imagerotate($image, 1, $background_color);
+      // Make transparent
+      imagecolortransparent($image, $background_color);
+      imagealphablending($image, true);
+      ob_start();
+
+      imagepng($image);
+      // Capture the output
+      $cimage = ob_get_contents();
+
+      // Clear the output buffer
+      ob_end_clean();
+
+      imagedestroy($image);
+      $this->capimg = $cimage;
+  }
+
+private function hex2rgb($c)
+  {
+  if(!$c) return false;
+  $c = trim($c);
+  $out = false;
+  if(preg_match("/^[0-9ABCDEFabcdef\#]+$/i", $c)){
+      $c = str_replace('#','', $c);
+      $l = strlen($c) == 3 ? 1 : (strlen($c) == 6 ? 2 : false);
+
+      if($l){
+	unset($out);
+	$out[0] = $out['r'] = $out['red'] = hexdec(substr($c, 0,1*$l));
+	$out[1] = $out['g'] = $out['green'] = hexdec(substr($c, 1*$l,1*$l));
+	$out[2] = $out['b'] = $out['blue'] = hexdec(substr($c, 2*$l,1*$l));
+      }else $out = false;
+
+  }else {$out = false;}
+    return $out;
+  }
+
+    /**
+    * Return a random float between 0 and 0.9999
+    *
+    * @return float Random float between 0 and 0.9999
+    */
+    function frand()
+    {
+	return 0.0001 * mt_rand(0,9999);
+    }
+
+private function ip2bin($x)
+  {
+    preg_match_all("/[0-9]{1,3}/","$x",$a);
+    $b=array_map("decbin",$a[0]);
+    $p2=array(8,8,8,8);
+    $p3=array('0','0','0','0');
+    $p4=array(STR_PAD_LEFT, STR_PAD_LEFT, STR_PAD_LEFT, STR_PAD_LEFT);
+    $c=array_map("str_pad",$b,$p2,$p3,$p4);
+    return ("$c[0]$c[1]$c[2]$c[3]");
+  }
+
+  /*
+  * Evaluates whether the ip belongs to the network informed or not 
+  */
+private function isInNet($net) {
+    $net = trim($net);
+    if ($net == null) return false; // if not defined network returns false
+    $ip=explode(",",getenv('REMOTE_ADDR'));
+    $ip=trim($ip[0]);
+    if ($net == $ip) return true; // if the ip itself returns true
+    if (strpos($net,"/") > 1) {
+      $subnet=explode('/',$net);
+      $netip = $this->ip2bin($ip); 
+      $netnet = $this->ip2bin($subnet[0]); 
+      $ret=($netnet & $netip);
+      return ($netnet === $ret);
+    }
+    return false;
+}
+
+private function isWhitelisted($netss) {
+      $nets = explode(',', $netss);
+      foreach($nets as $net) {
+	if ( $this-> isInNet($net) ) {return true;};
+      }  
+    return false;
+}
+
+
+} #end class

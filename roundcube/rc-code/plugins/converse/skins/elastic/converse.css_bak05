@@ -1,0 +1,142 @@
+a.configure-chatroom-button,
+a.close-chatbox-button,
+.chatroom-form
+{
+        font-family: 'Roboto,sans-serif' !important;
+        font-size: 16px !important;
+},
+.chat-body p
+{
+        font-family: 'Roboto,sans-serif' !important;
+        font-size: 16px !important;
+},
+.chat-content{
+        font-family: 'Roboto,sans-serif' !important;
+        font-size: 16px !important;
+},
+.chatroom-form legend
+{
+        font-family: 'Roboto,sans-serif' !important;
+        font-size: 16px !important;
+},
+#available-chatrooms dt
+{
+        font-family: 'Roboto,sans-serif' !important;
+        font-size: 16px !important;
+},
+#converse-roster dt
+{
+        font-family: 'Roboto,sans-serif' !important;
+        font-size: 16px !important;
+},
+.room-info{
+        font-family: 'Roboto,sans-serif' !important;
+        font-size: 16px !important;
+},
+div.chat-title
+{
+        font-family: 'Roboto,sans-serif' !important;
+        font-size: 16px !important;
+},
+.chat-head #controlbox-tabs,
+.participants ul.participant-list li,
+ul#controlbox-tabs li a,
+div#users
+{
+        font-family: 'Roboto,sans-serif' !important;
+        font-size: 16px !important;
+},
+div#chatrooms
+{
+        font-family: 'Roboto,sans-serif' !important;
+        font-size: 16px !important;
+},
+div#login-dialog,
+
+div#settings
+{
+	font-family: 'Roboto,sans-serif' !important;
+	font-size: 16px !important;
+}
+
+.chatbox .dropdown dt a span.icon-online,
+#converse-roster dd.current-xmpp-contact span.icon-online {
+    color: #0c0;
+    font-family: 'Roboto,sans-serif' !important;
+        font-size: 16px !important;
+}
+
+.chatbox .dropdown dt a span.icon-dnd,
+#converse-roster dd.current-xmpp-contact span.icon-dnd {
+    color: #c00;
+    font-family: 'Roboto,sans-serif' !important;
+        font-size: 16px !important;
+}
+
+.chatbox .dropdown dt a span.icon-away,
+#converse-roster dd.current-xmpp-contact span.icon-away {
+    color: orange;
+    font-family: 'Roboto,sans-serif' !important;
+        font-size: 16px !important;
+}
+
+.chatbox .dropdown dt a span.icon-offline,
+#converse-roster dd.current-xmpp-contact span.icon-offline {
+    color: #ccc;
+    font-family: 'Roboto,sans-serif' !important;
+        font-size: 16px !important;
+}
+
+#conversejs a, #conversejs a:visited {
+    color: #4C4C4C;
+    font-family: 'Roboto,sans-serif' !important;
+        font-size: 16px !important;
+}
+
+#conversejs #controlbox .controlbox-head , 
+#conversejs .chat-head.chat-head-chatbox {
+    background-color: #00346d;
+   font-family: 'Roboto,sans-serif' !important;
+        font-size: 16px !important;
+}
+
+#conversejs .chatbox .chat-body .chat-message span.chat-msg-me {
+    color: #4C4C4C;
+    font-family: 'Roboto,sans-serif' !important;
+        font-size: 16px !important;
+}
+
+#conversejs .chatbox .chat-body .chat-message span.chat-msg-them {
+    color: #F25829;
+    font-family: 'Roboto,sans-serif' !important;
+        font-size: 16px !important;
+}
+
+#conversejs .chatbox form.sendXMPPMessage .chat-toolbar a,
+#conversejs .chatbox form.sendXMPPMessage .chat-toolbar .toggle-smiley,
+#conversejs #controlbox #fancy-xmpp-status-select a.change-xmpp-status-message {
+    color: #4C4C4C;
+}
+
+#conversejs #converse-roster .roster-contacts dd.current-xmpp-contact span.icon-online {
+    color: #adce4a;
+    font-family: 'Roboto,sans-serif' !important;
+        font-size: 16px !important;
+}
+
+#conversejs #converse-roster .roster-contacts dd.current-xmpp-contact span.icon-offline {
+    color: #4C4C4C;
+    font-family: 'Roboto,sans-serif' !important;
+        font-size: 16px !important;
+}
+
+#conversejs .button-primary,
+#conversejs .button-secondary {
+    background-color: #4C4C4C;
+    font-family: 'Roboto,sans-serif' !important;
+        font-size: 16px !important;
+}
+
+.modal-backdrop {
+  z-index: -1;
+}

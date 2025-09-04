@@ -1,0 +1,261 @@
+.PERSON {
+	border: 1px solid #ff5252;
+	background-color: #ffcdd2;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.NORP {
+	border: 1px solid #FF4081;
+	background-color: #F8BBD0;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.FACILITY {
+	border: 1px solid #E040FB;
+	background-color: #E1BEE7;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.ORG {
+	border: 1px solid #7C4DFF;
+	background-color: #D1C4E9;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.GPE {
+	border: 1px solid #536DFE;
+	background-color: #C5CAE9;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.LOC {
+	border: 1px solid #448AFF;
+	background-color: #BBDEFB;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.PRODUCT {
+	border: 1px solid #40C4FF;
+	background-color: #B3E5FC;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.EVENT {
+	border: 1px solid #18FFFF;
+	background-color: #B2EBF2;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.WORK_OF_ART {
+	border: 1px solid #B2FF59;
+	background-color: #B2DFDB;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.LAW {
+	border: 1px solid #69F0AE;
+	background-color: #C8E6C9;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.LANGUAGE {
+	border: 1px solid #EEFF41;
+	background-color: #DCEDC8;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.DATE {
+	border: 1px solid #FFFF00;
+	background-color: #F0F4C3;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.TIME {
+	border: 1px solid #FFD740;
+	background-color: #FFF9C4;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.PERCENT {
+	border: 1px solid #FFAB40;
+	background-color: #FFECB3;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.MONEY {
+	border: 1px solid #FF6E40;
+	background-color: #FFE0B2;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.QUANTITY {
+	border: 1px solid #8D6E63;
+	background-color: #D7CCC8;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.ORDINAL {
+	border: 1px solid #BDBDBD;
+	background-color: #F5F5F5;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.CARDINAL {
+	border: 1px solid #78909C;
+	background-color: #CFD8DC;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.sentiment_zero {
+	background-color: #f44336;
+	padding: 3px;
+}
+
+.sentiment_one {
+	color: #ef5350;
+}
+
+.sentiment_two {
+	color: #e57373;
+}
+
+.sentiment_three {
+	color: #ef9a9a;
+}
+
+.sentiment_four {
+	color: #ffebee;
+}
+
+.sentiment_five {
+	
+}
+
+.sentiment_six {
+	color: #F1F8E9;
+}
+
+.sentiment_seven {
+	color: #DCEDC8;
+}
+
+.sentiment_eight {
+	color: #C5E1A5;
+}
+
+.sentiment_nine {
+	color: #AED581;
+}
+
+.sentiment_ten {
+	color: #9CCC65;
+}
+
+.one {
+	border: 1px solid #ff5252;
+	background-color: #ffcdd2;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.two {
+	border: 1px solid #40C4FF;
+	background-color: #B3E5FC;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.three {
+	border: 1px solid #B2FF59;
+	background-color: #B2DFDB;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.four {
+	border: 1px solid #FFD740;
+	background-color: #FFF9C4;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.five {
+	border: 1px solid #FF6E40;
+	background-color: #FFE0B2;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.CREDIT_DEBIT_CARD_NUMBER {
+	border: 1px solid #ff5252;
+	background-color: #ffcdd2;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.PAN_NUMBER {
+	border: 1px solid #FF4081;
+	background-color: #F8BBD0;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.AADHAR_NUMBER {
+	border: 1px solid #E040FB;
+	background-color: #E1BEE7;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.PASSWORD {
+	border: 1px solid #7C4DFF;
+	background-color: #D1C4E9;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.BANK_ACCOUNT_NUMBER {
+	border: 1px solid #536DFE;
+	background-color: #C5CAE9;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.DATE_OF_BIRTH {
+	border: 1px solid #448AFF;
+	background-color: #BBDEFB;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.UPI_ID {
+	border: 1px solid #40C4FF;
+	background-color: #B3E5FC;
+	border-radius: 3px;
+	padding: 3px;
+}
+
+.PHONE_NUMBER {
+	border: 1px solid #B2FF59;
+	background-color: #B2DFDB;
+	border-radius: 3px;
+	padding: 3px;
+}

@@ -1,0 +1,95 @@
+
+<roundcube:include file="includes/layout.html" />
+<roundcube:include file="includes/menu.html" />
+<roundcube:include file="includes/settings-menu.html" />
+<h1 class="voice">
+  <roundcube:label name="settings" /> :
+  <roundcube:label name="preview_login" />
+</h1>
+<div id="layout-content" class="selected" role="main">
+  <div class="header">
+    <a class="button icon back-list-button" href="#back"
+      ><span class="inner"><roundcube:label name="back"/></span
+    ></a>
+    <span class="header-title"></span>
+  </div>
+  <div
+    id="pluginbody"
+    class="uibox contentbox h-100"
+    style="overflow-y: scroll;"
+  >
+    <h1 class="boxtitle">Preview login page</h1>
+    <div id="preferences-details" class="boxcontent h-100">
+      <div class="container">
+        <div class="row ml-3">
+          <h1>Preview Login Page</h1>
+        </div>
+        <div class="row">
+          <ul class="nav nav-tabs">
+            <li class="nav-item">
+              <a
+                class="nav-link"
+                href="?_task=settings&_action=plugin.customize_login"
+                >Edit</a
+              >
+            </li>
+            <li class="nav-item active">
+              <a
+                class="nav-link active"
+                href="?_task=settings&_action=plugin.preview_login"
+                >Preview</a
+              >
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="container-fluid h-100 p-0 mt-3" style="border: 4px solid coral; background-image=url('/roundcubemail/skins/elastic/templates/Skyconnect.jpg');">
+        <div class="row no-gutters h-100">
+          <div class="row no-gutters w-100">
+            <iframe
+              id="logintopframe"
+              src="media/mithi.com/top_frame_content.html"
+              frameborder="0"
+              style="position: relative; height: 100%; width: 100%;"
+              scrolling="no"
+            ></iframe>
+          </div>
+          <div class="row no-gutters w-100">
+            <div class="col-sm-4 p-0">
+              <iframe
+                id="loginleftframe"
+                src="media/mithi.com/left_frame_content.html"
+                frameborder="0"
+                style="position: relative; height: 100%; width: 100%;"
+                scrolling="no"
+              ></iframe>
+            </div>
+            <div class="col-sm-4 p-0">
+	      <img src="skins/elastic/templates/login-form.jpg" alt="login-form" style="max-width: 100%; max-height: 100%; border-radius: 8px;"/>
+            </div>
+            <div class="col-sm-4 p-0">
+              <iframe
+                id="loginrightframe"
+                src="media/mithi.com/right_frame_content.html"
+                frameborder="0"
+                style="position: relative; height: 100%; width: 100%;"
+                scrolling="no"
+              ></iframe>
+            </div>
+          </div>
+          <div class="row no-gutters w-100">
+            <iframe
+              id="loginbottomframe"
+              src="media/mithi.com/bottom_frame_content.html"
+              frameborder="0"
+              style="position: relative; height: 100%; width: 100%;"
+              scrolling="no"
+            ></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<roundcube:include file="includes/footer.html" />
+
