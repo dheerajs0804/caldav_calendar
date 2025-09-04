@@ -1,12 +1,31 @@
 <div class="app">
+<<<<<<< HEAD
   <div class="header">
     <h1>Mithi Calendar</h1>
     <div class="header-controls">
       <button (click)="openAddEventModal()" class="add-event-btn">+ Add Event</button>
       <button (click)="syncCalDAV()" class="sync-btn">Sync CalDAV</button>
       <button (click)="refreshEvents()" class="sync-btn" style="margin-left: 8px;">🔄 Refresh Events</button>
+=======
+  <!-- Always show calendar app -->
+  <div class="calendar-app">
+    <div class="header">
+      <h1>Mithi Calendar</h1>
+      <div class="user-info">
+        <span *ngIf="currentUser">Welcome, {{ currentUser.username }}</span>
+        <button (click)="logout()" class="logout-btn">Logout</button>
+      </div>
+      <div class="header-controls">
+        <button (click)="openAddEventModal()" class="add-event-btn">+ Add Event</button>
+        <button (click)="syncCalDAV()" class="sync-btn">Sync CalDAV</button>
+        <button (click)="refreshEvents()" class="sync-btn" style="margin-left: 8px;">🔄 Refresh Events</button>
+        <button (click)="forceRefreshEvents()" class="sync-btn" style="margin-left: 8px;">🧹 Force Refresh</button>
+        <button (click)="forceSyncFromServer()" class="sync-btn" style="margin-left: 8px;">🔄 Force Sync</button>
+        <button (click)="checkReminders()" class="test-reminder-btn" style="margin-left: 8px;">🔍 Debug Reminders</button>
+        <button (click)="clearNotifiedEvents()" class="test-reminder-btn" style="margin-left: 8px;">🧹 Clear Notified</button>
+      </div>
+>>>>>>> 7a0647a0a1dd634bb8dc15c71db3aef7d799893d
     </div>
-  </div>
   
   <div class="calendar-container">
     <div class="toolbar">
@@ -352,6 +371,7 @@
   (editEvent)="editEvent($event)"
   (deleteEvent)="deleteEventFromModal($event)"
 ></app-event-detail-modal>
+<<<<<<< HEAD
 
 <!-- Reminder Notification Component -->
 <app-reminder-notification
@@ -361,3 +381,6 @@
   (reminderDetails)="onReminderDetails($event)"
   (windowClosed)="onReminderWindowClosed()"
 ></app-reminder-notification>
+=======
+</div>
+>>>>>>> 7a0647a0a1dd634bb8dc15c71db3aef7d799893d

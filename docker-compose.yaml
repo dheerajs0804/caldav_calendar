@@ -13,4 +13,5 @@ services:
       - ROUNDCUBEMAIL_PLUGINS=archive,zipdownload,calendar_link
     volumes:
       - ./roundcube/plugins/calendar_link:/var/www/html/plugins/calendar_link
+      - ./roundcube-config.php:/var/www/html/config/config.inc.php
 

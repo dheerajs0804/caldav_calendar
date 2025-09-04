@@ -10,6 +10,7 @@ class CalDAVClient {
     private $oauthToken;
     
     public function __construct($serverUrl = null, $username = null, $password = null) {
+<<<<<<< HEAD
         // Only load environment variables if no explicit credentials are provided
         if ($serverUrl === null || $username === null || $password === null) {
             $this->loadEnvVariables();
@@ -25,23 +26,27 @@ class CalDAVClient {
         
         $this->clientId = $_ENV['GOOGLE_CLIENT_ID'] ?? null;
         $this->clientSecret = $_ENV['GOOGLE_CLIENT_SECRET'] ?? null;
+=======
+        // Credentials MUST be provided - no fallback to environment variables
+        if (!$serverUrl || !$username || !$password) {
+            throw new Exception('CalDAV credentials are required: serverUrl, username, and password must all be provided');
+        }
+        
+        $this->serverUrl = $serverUrl;
+        $this->username = $username;
+        $this->password = $password;
+        
+        // Set default calendar path - this can be discovered dynamically later
+        $this->calendarPath = '/calendars/__uids__/80b5d808-0553-1040-8d6f-0f1266787052/calendar/';
+        $this->clientId = null;
+        $this->clientSecret = null;
+>>>>>>> 7a0647a0a1dd634bb8dc15c71db3aef7d799893d
         $this->oauthToken = null;
         
         error_log("CalDAVClient initialized with server: " . $this->serverUrl . ", username: " . ($this->username ? 'provided' : 'not provided'));
     }
     
-    private function loadEnvVariables() {
-        $envFile = __DIR__ . '/../.env';
-        if (file_exists($envFile)) {
-            $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-            foreach ($lines as $line) {
-                if (strpos($line, '=') !== false && strpos($line, '#') !== 0) {
-                    list($key, $value) = explode('=', $line, 2);
-                    $_ENV[trim($key)] = trim($value);
-                }
-            }
-        }
-    }
+
     
     public function discoverCalendars() {
         try {
