@@ -216,7 +216,7 @@ export class CalendarSelectionComponent implements OnInit {
     this.loading = true;
     this.error = '';
 
-    this.http.get<CalendarResponse>('http://localhost:8000/calendars/user').subscribe({
+    this.http.get<CalendarResponse>('http://localhost:8000/calendars/user', { withCredentials: true }).subscribe({
       next: (response) => {
         this.loading = false;
         if (response.success && response.data) {

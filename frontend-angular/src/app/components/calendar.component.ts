@@ -197,7 +197,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   async fetchCalendars(): Promise<void> {
     try {
       this.loading = true;
-      const response = await this.http.get<any>('http://localhost:8000/calendars').toPromise();
+      const response = await this.http.get<any>('http://localhost:8000/calendars', { withCredentials: true }).toPromise();
       
       if (response.success) {
         this.calendars = response.data;
@@ -227,7 +227,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
       // Build the URL with the selected calendar
       const eventsUrl = `http://localhost:8000/events?calendar_url=${encodeURIComponent(this.selectedCalendar.href)}`;
       
-      const response = await this.http.get<any>(eventsUrl).toPromise();
+      const response = await this.http.get<any>(eventsUrl, { withCredentials: true }).toPromise();
       
       if (response.success) {
         // Remove duplicate events using utility function
