@@ -438,16 +438,23 @@ export class CalendarComponent implements OnInit, OnDestroy {
   async createEvent(): Promise<void> {
     try {
       const eventData = {
-        ...this.newEvent,
+        title: this.newEvent.summary, // Map summary to title for backend
+        description: this.newEvent.description,
+        location: this.newEvent.location,
         start_time: this.newEvent.all_day 
           ? dayjs(this.newEvent.start_date).format('YYYY-MM-DDTHH:mm:ss')
           : dayjs(`${this.newEvent.start_date}T${this.newEvent.start_time}`).format('YYYY-MM-DDTHH:mm:ss'),
         end_time: this.newEvent.all_day
           ? dayjs(this.newEvent.end_date).format('YYYY-MM-DDTHH:mm:ss')
-          : dayjs(`${this.newEvent.end_date}T${this.newEvent.end_time}`).format('YYYY-MM-DDTHH:mm:ss')
+          : dayjs(`${this.newEvent.end_date}T${this.newEvent.end_time}`).format('YYYY-MM-DDTHH:mm:ss'),
+        all_day: this.newEvent.all_day,
+        attendees: this.newEvent.attendees,
+        reminder: this.newEvent.reminder
       };
 
-      const response = await this.http.post<any>('http://localhost:8000/events', eventData).toPromise();
+      const response = await this.http.post<any>('http://localhost:8000/events', eventData, {
+        withCredentials: true
+      }).toPromise();
       
       if (response.success) {
         console.log('Event created successfully:', response.data);

@@ -443,11 +443,11 @@ function getRawCalDAVData() {
         }
         $calendars = $caldavClient->discoverCalendars();
         
-        if (empty($calendars['calendars'])) {
+        if (empty($calendars)) {
             throw new Exception('No calendars found');
         }
         
-        $calendarUrl = $calendars['calendars'][0]['url'];
+        $calendarUrl = $calendars[0]['href'];
         
         // Get the raw CalDAV response
         $authToken = $caldavClient->getAuthToken();
@@ -604,16 +604,24 @@ function createEvent() {
         // Write back to file
         file_put_contents($eventsFile, json_encode($existingEvents, JSON_PRETTY_PRINT));
         
-        // Now POST the event to the actual CalDAV server
+        // Now POST the event to the actual CalDAV server (optional)
         try {
             $caldavClient = getCalDAVClient();
             if (!$caldavClient) {
-                throw new Exception('Failed to get CalDAV client - user not authenticated');
+                // User not authenticated - just store locally
+                $response = [
+                    'success' => true,
+                    'data' => $event,
+                    'message' => 'Event created locally (CalDAV sync requires authentication)'
+                ];
+                error_log("Sending local-only response: " . json_encode($response));
+                echo json_encode($response);
+                return;
             }
             $calendars = $caldavClient->discoverCalendars();
             
-            if (!empty($calendars['calendars'])) {
-                $calendarUrl = $calendars['calendars'][0]['url'];
+            if (!empty($calendars)) {
+                $calendarUrl = $calendars[0]['href'];
                 
                 // Use the proper generateICalEvent function for CalDAV storage
                 $icalContent = generateICalEvent($event);
@@ -824,8 +832,8 @@ function updateEvent($id) {
                     }
                     $calendars = $caldavClient->discoverCalendars();
                     
-                    if (!empty($calendars['calendars'])) {
-                        $calendarUrl = $calendars['calendars'][0]['url'];
+                    if (!empty($calendars)) {
+                        $calendarUrl = $calendars[0]['href'];
                         $caldavEvents = $caldavClient->getEvents($calendarUrl);
                         
                         // Look for the event in CalDAV events
@@ -925,8 +933,8 @@ function updateEvent($id) {
                 }
                 $calendars = $caldavClient->discoverCalendars();
                 
-                if (!empty($calendars['calendars'])) {
-                    $calendarUrl = $calendars['calendars'][0]['url'];
+                if (!empty($calendars)) {
+                    $calendarUrl = $calendars[0]['href'];
                     
                     // Generate updated iCalendar content
                     $updatedICal = generateICalEvent($eventToUpdate);
@@ -1015,8 +1023,8 @@ function deleteEvent($id) {
             }
             $calendars = $caldavClient->discoverCalendars();
             
-            if (!empty($calendars['calendars'])) {
-                $calendarUrl = $calendars['calendars'][0]['url'];
+            if (!empty($calendars)) {
+                $calendarUrl = $calendars[0]['href'];
                 error_log("Calendar URL: " . $calendarUrl);
                 
                 // Get all events to find the one we want to delete
@@ -1189,7 +1197,7 @@ function syncAllCalendars() {
         // Discover calendars and sync events
         $calendars = $caldavClient->discoverCalendars();
         
-        if (empty($calendars['calendars'])) {
+        if (empty($calendars)) {
             sendJsonResponse([
                 'success' => false,
                 'message' => 'No calendars found to sync'
@@ -1198,9 +1206,9 @@ function syncAllCalendars() {
         }
         
         $syncedEvents = [];
-        foreach ($calendars['calendars'] as $calendar) {
+        foreach ($calendars as $calendar) {
             try {
-                $events = $caldavClient->getEvents($calendar['url']);
+                $events = $caldavClient->getEvents($calendar['href']);
                 if (is_array($events)) {
                     $syncedEvents = array_merge($syncedEvents, $events);
                 }
@@ -2515,20 +2523,20 @@ function authenticateUser() {
             // Try to discover calendars to test authentication
             $calendars = $testClient->discoverCalendars();
             
-            if (!empty($calendars['calendars'])) {
+            if (!empty($calendars)) {
                 // Authentication successful - store credentials in session
                 $_SESSION['user_authenticated'] = true;
                 $_SESSION['username'] = $username;
                 $_SESSION['password'] = $password; // In production, consider encrypting this
                 $_SESSION['caldav_server_url'] = $caldavConfig['server_url'];
-                $_SESSION['calendar_url'] = $calendars['calendars'][0]['url'];
+                $_SESSION['calendar_url'] = $calendars[0]['href'];
                 
                 echo json_encode([
                     'success' => true,
                     'message' => 'Authentication successful',
                     'data' => [
                         'username' => $username,
-                        'calendar_name' => $calendars['calendars'][0]['name'] ?? 'Personal Calendar'
+                        'calendar_name' => $calendars[0]['name'] ?? 'Personal Calendar'
                     ]
                 ]);
             } else {
@@ -2761,7 +2769,7 @@ function createSSOToken() {
             
             $calendars = $testClient->discoverCalendars();
             
-            if (!empty($calendars['calendars'])) {
+            if (!empty($calendars)) {
                 // Generate SSO token
                 $token = bin2hex(random_bytes(32));
                 
@@ -2771,8 +2779,8 @@ function createSSOToken() {
                     'username' => $username,
                     'password' => $password,
                     'server_url' => $caldavConfig['server_url'],
-                    'calendar_url' => $calendars['calendars'][0]['url'],
-                    'calendar_name' => $calendars['calendars'][0]['name'] ?? 'Personal Calendar',
+                    'calendar_url' => $calendars[0]['href'],
+                    'calendar_name' => $calendars[0]['name'] ?? 'Personal Calendar',
                                            'expires' => time() + 3600 // 1 hour
                 ];
                 setSSOTokens($ssoTokens);
@@ -2932,20 +2940,20 @@ function autoLoginFromRoundcube() {
             // Try to discover calendars to test authentication
             $calendars = $testClient->discoverCalendars();
             
-            if (!empty($calendars['calendars'])) {
+            if (!empty($calendars)) {
                 // Authentication successful - store credentials in session
                 $_SESSION['user_authenticated'] = true;
                 $_SESSION['username'] = $username;
                 $_SESSION['password'] = $password; // In production, consider encrypting this
                 $_SESSION['caldav_server_url'] = $caldavConfig['server_url'];
-                $_SESSION['calendar_url'] = $calendars['calendars'][0]['url'];
+                $_SESSION['calendar_url'] = $calendars[0]['href'];
                 
                 echo json_encode([
                     'success' => true,
                     'message' => 'Auto-login successful from Roundcube',
                     'data' => [
                         'username' => $username,
-                        'calendar_name' => $calendars['calendars'][0]['name'] ?? 'Personal Calendar'
+                        'calendar_name' => $calendars[0]['name'] ?? 'Personal Calendar'
                     ]
                 ]);
             } else {
