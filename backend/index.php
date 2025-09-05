@@ -1,16 +1,4 @@
 <?php
-<<<<<<< HEAD
-// Start output buffering to prevent any output before JSON
-ob_start();
-
-// Disable error output to prevent JSON corruption
-error_reporting(E_ALL);
-ini_set('display_errors', 0);
-ini_set('log_errors', 1);
-
-// Enable CORS for cross-origin requests
-header('Access-Control-Allow-Origin: http://localhost:4200');
-=======
 // Enable CORS for cross-origin requests with credentials
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 $allowedOrigins = ['http://localhost:4200', 'http://localhost:8000', 'null']; // Allow Angular, Roundcube, and file:// origins
@@ -20,8 +8,6 @@ if (in_array($origin, $allowedOrigins)) {
 } else {
     header('Access-Control-Allow-Origin: http://localhost:4200'); // Default fallback
 }
-
->>>>>>> 7a0647a0a1dd634bb8dc15c71db3aef7d799893d
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 header('Access-Control-Allow-Credentials: true');
@@ -58,6 +44,17 @@ function sendJsonResponse($data) {
     // Send the JSON response
     echo json_encode($data, JSON_PRETTY_PRINT);
     exit();
+}
+
+// Helper function to get CalDAV client with session credentials
+function getCalDAVClient() {
+    if (isset($_SESSION['caldav_credentials']) && !empty($_SESSION['caldav_credentials']['username'])) {
+        $credentials = $_SESSION['caldav_credentials'];
+        return new CalDAVClient($credentials['serverUrl'], $credentials['username'], $credentials['password']);
+    } else {
+        // Fall back to environment variables
+        return new CalDAVClient();
+    }
 }
 
 // Load environment variables
@@ -159,35 +156,23 @@ function handleGetRequest($path) {
 }
 
 function handlePostRequest($path) {
-<<<<<<< HEAD
-    switch ($path) {
-        case 'events':
-            createEvent();
-            break;
-        case 'calendars/sync':
-            syncAllCalendars();
-            break;
-        default:
-            http_response_code(404);
-            echo json_encode(['error' => 'Endpoint not found']);
-=======
     try {
         switch ($path) {
-                    case 'auth/login':
-            authenticateUser();
-            break;
-        case 'auth/auto-login':
-            autoLoginFromRoundcube();
-            break;
-        case 'auth/sso-token':
-            createSSOToken();
-            break;
-        case 'auth/sso-login':
-            loginWithSSOToken();
-            break;
-        case 'auth/logout':
-            logoutUser();
-            break;
+            case 'auth/login':
+                authenticateUser();
+                break;
+            case 'auth/auto-login':
+                autoLoginFromRoundcube();
+                break;
+            case 'auth/sso-token':
+                createSSOToken();
+                break;
+            case 'auth/sso-login':
+                loginWithSSOToken();
+                break;
+            case 'auth/logout':
+                logoutUser();
+                break;
             case 'calendars':
                 createCalendar();
                 break;
@@ -220,7 +205,6 @@ function handlePostRequest($path) {
         error_log("Stack trace: " . $e->getTraceAsString());
         http_response_code(500);
         echo json_encode(['error' => 'Fatal error: ' . $e->getMessage()]);
->>>>>>> 7a0647a0a1dd634bb8dc15c71db3aef7d799893d
     }
 }
 
@@ -253,11 +237,11 @@ function getCalendars() {
         
         $calendars = $caldavClient->discoverCalendars();
         
-        if (!empty($calendars['calendars'])) {
+        if ($calendars && is_array($calendars) && count($calendars) > 0) {
             // Return real CalDAV calendars
             echo json_encode([
                 'success' => true,
-                'data' => $calendars['calendars'],
+                'data' => $calendars,
                 'message' => 'Calendars retrieved successfully from CalDAV server'
             ]);
         } else {
@@ -275,37 +259,68 @@ function getCalendars() {
     }
 }
 
+function getUserCalendars() {
+    try {
+        error_log("=== getUserCalendars() called ===");
+        error_log("Session ID: " . session_id());
+        error_log("Session data: " . print_r($_SESSION, true));
+        
+        // Check if user is authenticated via session
+        if (isset($_SESSION['caldav_credentials']) && !empty($_SESSION['caldav_credentials']['username'])) {
+            $credentials = $_SESSION['caldav_credentials'];
+            error_log("Getting user calendars for: " . $credentials['username']);
+            $caldavClient = new CalDAVClient($credentials['serverUrl'], $credentials['username'], $credentials['password']);
+        } else {
+            // Fall back to environment variables
+            error_log("No session credentials found, using environment variables for calendar discovery");
+            error_log("Available session keys: " . implode(', ', array_keys($_SESSION)));
+            $caldavClient = new CalDAVClient();
+        }
+        
+        // Discover calendars
+        error_log("Calling discoverCalendars()...");
+        $calendars = $caldavClient->discoverCalendars();
+        error_log("discoverCalendars() returned: " . print_r($calendars, true));
+
+        if ($calendars && is_array($calendars) && count($calendars) > 0) {
+            sendJsonResponse([
+                'success' => true,
+                'data' => [
+                    'calendars' => $calendars
+                ],
+                'message' => 'Calendars discovered successfully'
+            ]);
+        } else {
+            // Check if it's a server configuration issue
+            sendJsonResponse([
+                'success' => false,
+                'message' => 'Unable to discover calendars. The CalDAV server may have configuration issues or the endpoint may be different.',
+                'error_type' => 'server_configuration',
+                'suggestions' => [
+                    'Contact your server administrator to enable CalDAV protocol support',
+                    'Check if the CalDAV endpoint is at a different URL path',
+                    'Verify that WebDAV methods (PROPFIND, REPORT) are allowed'
+                ]
+            ]);
+        }
+        
+    } catch (Exception $e) {
+        error_log("Error in getUserCalendars: " . $e->getMessage());
+        error_log("Stack trace: " . $e->getTraceAsString());
+        sendJsonResponse([
+            'success' => false,
+            'message' => 'Error discovering calendars: ' . $e->getMessage(),
+            'error_type' => 'discovery_error'
+        ]);
+    }
+}
+
 function getEvents() {
     try {
-<<<<<<< HEAD
-        // Check if user is authenticated via session
+        // Check if user is authenticated via session credentials
         if (!isset($_SESSION['caldav_credentials']) || empty($_SESSION['caldav_credentials']['username'])) {
-            http_response_code(401);
-            sendJsonResponse(['success' => false, 'message' => 'User not authenticated']);
+            sendJsonResponse(['success' => false, 'message' => 'User not authenticated - please login first']);
             return;
-=======
-        $allEvents = [];
-        
-        // Get events from CalDAV server first
-        try {
-            $caldavClient = getCalDAVClient();
-            if (!$caldavClient) {
-                throw new Exception('Failed to get CalDAV client - user not authenticated');
-            }
-            $calendars = $caldavClient->discoverCalendars();
-            
-            if (!empty($calendars['calendars'])) {
-                $calendarUrl = $calendars['calendars'][0]['url'];
-                $caldavEvents = $caldavClient->getEvents($calendarUrl);
-                
-                // Add CalDAV events to the list
-                if (is_array($caldavEvents)) {
-                    $allEvents = array_merge($allEvents, $caldavEvents);
-                }
-            }
-        } catch (Exception $caldavError) {
-            error_log("CalDAV error in getEvents: " . $caldavError->getMessage());
->>>>>>> 7a0647a0a1dd634bb8dc15c71db3aef7d799893d
         }
         
         $credentials = $_SESSION['caldav_credentials'];
@@ -364,8 +379,8 @@ function getEvents() {
 }
 
 function getCalDAVStatus() {
-    // Check if user is authenticated
-    if (!isset($_SESSION['user_authenticated']) || !$_SESSION['user_authenticated']) {
+    // Check if user is authenticated via session credentials
+    if (!isset($_SESSION['caldav_credentials']) || empty($_SESSION['caldav_credentials']['username'])) {
         echo json_encode([
             'success' => false,
             'data' => [
@@ -389,19 +404,6 @@ function getCalDAVStatus() {
 
 function discoverCalDAVCalendars() {
     try {
-<<<<<<< HEAD
-        // Check if user is authenticated via session
-        if (isset($_SESSION['caldav_credentials']) && !empty($_SESSION['caldav_credentials']['username'])) {
-            $credentials = $_SESSION['caldav_credentials'];
-            error_log("Using session credentials for calendar discovery: " . $credentials['username']);
-            $caldavClient = new CalDAVClient($credentials['serverUrl'], $credentials['username'], $credentials['password']);
-        } else {
-            // Fall back to environment variables
-            error_log("No session credentials found for calendar discovery, using environment variables");
-            $caldavClient = new CalDAVClient();
-        }
-        
-=======
         $caldavClient = getCalDAVClient();
         if (!$caldavClient) {
             http_response_code(401);
@@ -411,7 +413,6 @@ function discoverCalDAVCalendars() {
             ]);
             return;
         }
->>>>>>> 7a0647a0a1dd634bb8dc15c71db3aef7d799893d
         $calendars = $caldavClient->discoverCalendars();
         
         sendJsonResponse([
@@ -431,19 +432,6 @@ function discoverCalDAVCalendars() {
 
 function getRawCalDAVData() {
     try {
-<<<<<<< HEAD
-        // Check if user is authenticated via session
-        if (isset($_SESSION['caldav_credentials']) && !empty($_SESSION['caldav_credentials']['username'])) {
-            $credentials = $_SESSION['caldav_credentials'];
-            error_log("Using session credentials for raw data: " . $credentials['username']);
-            $caldavClient = new CalDAVClient($credentials['serverUrl'], $credentials['username'], $credentials['password']);
-        } else {
-            // Fall back to environment variables
-            error_log("No session credentials found for raw data, using environment variables");
-            $caldavClient = new CalDAVClient();
-        }
-        
-=======
         $caldavClient = getCalDAVClient();
         if (!$caldavClient) {
             http_response_code(401);
@@ -453,7 +441,6 @@ function getRawCalDAVData() {
             ]);
             return;
         }
->>>>>>> 7a0647a0a1dd634bb8dc15c71db3aef7d799893d
         $calendars = $caldavClient->discoverCalendars();
         
         if (empty($calendars['calendars'])) {
@@ -619,24 +606,10 @@ function createEvent() {
         
         // Now POST the event to the actual CalDAV server
         try {
-<<<<<<< HEAD
-            // Check if user is authenticated via session
-            if (isset($_SESSION['caldav_credentials']) && !empty($_SESSION['caldav_credentials']['username'])) {
-                $credentials = $_SESSION['caldav_credentials'];
-                error_log("Using session credentials for event creation: " . $credentials['username']);
-                $caldavClient = new CalDAVClient($credentials['serverUrl'], $credentials['username'], $credentials['password']);
-            } else {
-                // Fall back to environment variables
-                error_log("No session credentials found for event creation, using environment variables");
-                $caldavClient = new CalDAVClient();
-            }
-            
-=======
             $caldavClient = getCalDAVClient();
             if (!$caldavClient) {
                 throw new Exception('Failed to get CalDAV client - user not authenticated');
             }
->>>>>>> 7a0647a0a1dd634bb8dc15c71db3aef7d799893d
             $calendars = $caldavClient->discoverCalendars();
             
             if (!empty($calendars['calendars'])) {
@@ -845,24 +818,10 @@ function updateEvent($id) {
                 // Try to find the event in CalDAV server
                 error_log("Event not found in local storage, checking CalDAV server...");
                 try {
-<<<<<<< HEAD
-                    // Check if user is authenticated via session
-                    if (isset($_SESSION['caldav_credentials']) && !empty($_SESSION['caldav_credentials']['username'])) {
-                        $credentials = $_SESSION['caldav_credentials'];
-                        error_log("Using session credentials for event update: " . $credentials['username']);
-                        $caldavClient = new CalDAVClient($credentials['serverUrl'], $credentials['username'], $credentials['password']);
-                    } else {
-                        // Fall back to environment variables
-                        error_log("No session credentials found for event update, using environment variables");
-                        $caldavClient = new CalDAVClient();
-                    }
-                    
-=======
                     $caldavClient = getCalDAVClient();
                     if (!$caldavClient) {
                         throw new Exception('Failed to get CalDAV client - user not authenticated');
                     }
->>>>>>> 7a0647a0a1dd634bb8dc15c71db3aef7d799893d
                     $calendars = $caldavClient->discoverCalendars();
                     
                     if (!empty($calendars['calendars'])) {
@@ -960,17 +919,11 @@ function updateEvent($id) {
             // Find the event in CalDAV server to update it
             try {
                 error_log("Attempting to update event on CalDAV server...");
-<<<<<<< HEAD
-                
-                $caldavClient = new CalDAVClient();
-                    $calendars = $caldavClient->discoverCalendars();
-=======
                 $caldavClient = getCalDAVClient();
                 if (!$caldavClient) {
                     throw new Exception('Failed to get CalDAV client - user not authenticated');
                 }
                 $calendars = $caldavClient->discoverCalendars();
->>>>>>> 7a0647a0a1dd634bb8dc15c71db3aef7d799893d
                 
                 if (!empty($calendars['calendars'])) {
                     $calendarUrl = $calendars['calendars'][0]['url'];
@@ -1056,24 +1009,10 @@ function deleteEvent($id) {
         $deletedFromServer = false;
         $allEvents = []; // Initialize empty array
         try {
-<<<<<<< HEAD
-            // Check if user is authenticated via session
-            if (isset($_SESSION['caldav_credentials']) && !empty($_SESSION['caldav_credentials']['username'])) {
-                $credentials = $_SESSION['caldav_credentials'];
-                error_log("Using session credentials for event deletion: " . $credentials['username']);
-                $caldavClient = new CalDAVClient($credentials['serverUrl'], $credentials['username'], $credentials['password']);
-            } else {
-                // Fall back to environment variables
-                error_log("No session credentials found for event deletion, using environment variables");
-                $caldavClient = new CalDAVClient();
-            }
-            
-=======
             $caldavClient = getCalDAVClient();
             if (!$caldavClient) {
                 throw new Exception('Failed to get CalDAV client - user not authenticated');
             }
->>>>>>> 7a0647a0a1dd634bb8dc15c71db3aef7d799893d
             $calendars = $caldavClient->discoverCalendars();
             
             if (!empty($calendars['calendars'])) {
@@ -1242,15 +1181,9 @@ function clearLocalEvents() {
 
 function syncAllCalendars() {
     try {
-        // Check if user is authenticated via session
-        if (isset($_SESSION['caldav_credentials']) && !empty($_SESSION['caldav_credentials']['username'])) {
-            $credentials = $_SESSION['caldav_credentials'];
-            error_log("Using session credentials for calendar sync: " . $credentials['username']);
-            $caldavClient = new CalDAVClient($credentials['serverUrl'], $credentials['username'], $credentials['password']);
-        } else {
-            // Fall back to environment variables
-            error_log("No session credentials found for calendar sync, using environment variables");
-            $caldavClient = new CalDAVClient();
+        $caldavClient = getCalDAVClient();
+        if (!$caldavClient) {
+            throw new Exception('Failed to get CalDAV client - user not authenticated');
         }
         
         // Discover calendars and sync events
@@ -2551,9 +2484,6 @@ function sendEmailViaCompanySMTP($to, $subject, $htmlBody, $textBody, $config, $
 }
 
 /**
-<<<<<<< HEAD
- * Handle authentication requests
-=======
  * Authentication Functions
  */
 
@@ -2635,13 +2565,13 @@ function logoutUser() {
 }
 
 function getAuthStatus() {
-    $isAuthenticated = isset($_SESSION['user_authenticated']) && $_SESSION['user_authenticated'];
+    $isAuthenticated = isset($_SESSION['caldav_credentials']) && !empty($_SESSION['caldav_credentials']['username']);
     
     echo json_encode([
         'success' => true,
         'data' => [
             'authenticated' => $isAuthenticated,
-            'username' => $isAuthenticated ? $_SESSION['username'] : null
+            'username' => $isAuthenticated ? $_SESSION['caldav_credentials']['username'] : null
         ]
     ]);
 }
@@ -2671,7 +2601,6 @@ function handleAuthRequest($path) {
  */
 function handleLogin() {
     try {
-<<<<<<< HEAD
         $input = json_decode(file_get_contents('php://input'), true);
         
         if (!$input) {
@@ -2688,29 +2617,6 @@ function handleLogin() {
             sendJsonResponse(['success' => false, 'message' => 'Username and password are required']);
             return;
         }
-=======
-        // Check if user is authenticated
-        if (!isset($_SESSION['user_authenticated']) || !$_SESSION['user_authenticated']) {
-            throw new Exception('User not authenticated');
-        }
-        
-        // Check if CalDAV client class exists
-        if (!class_exists('CalDAVClient')) {
-            require_once 'classes/CalDAVClient.php';
-        }
-        
-        // Use user credentials from session
-        $username = $_SESSION['username'];
-        $password = $_SESSION['password'];
-        $serverUrl = $_SESSION['caldav_server_url'];
-        
-        // Create CalDAV client instance with user credentials
-        $caldavClient = new CalDAVClient(
-            $serverUrl,
-            $username,
-            $password
-        );
->>>>>>> 7a0647a0a1dd634bb8dc15c71db3aef7d799893d
         
         // Get server URL from environment variable
         $serverUrl = $_ENV['CALDAV_SERVER_URL'] ?? 'http://rc.mithi.com:18008';
@@ -2762,76 +2668,6 @@ function handleLogin() {
         error_log("Login error: " . $e->getMessage());
         http_response_code(401);
         sendJsonResponse(['success' => false, 'message' => 'Authentication failed: ' . $e->getMessage()]);
-    }
-}
-
-/**
- * Handle user logout
- */
-function handleLogout() {
-    // Clear session data
-    unset($_SESSION['caldav_credentials']);
-    session_destroy();
-    
-    sendJsonResponse([
-        'success' => true,
-        'message' => 'Logout successful'
-    ]);
-}
-
-/**
- * Get user's discovered calendars
- */
-function getUserCalendars() {
-    try {
-        // Debug session information
-        error_log("Session ID: " . session_id());
-        error_log("Session data: " . print_r($_SESSION, true));
-        
-        // Check if user is authenticated via session
-        if (isset($_SESSION['caldav_credentials']) && !empty($_SESSION['caldav_credentials']['username'])) {
-            $credentials = $_SESSION['caldav_credentials'];
-            error_log("Getting user calendars for: " . $credentials['username']);
-            $caldavClient = new CalDAVClient($credentials['serverUrl'], $credentials['username'], $credentials['password']);
-        } else {
-            // Fall back to environment variables
-            error_log("No session credentials found, using environment variables for calendar discovery");
-            error_log("Available session keys: " . implode(', ', array_keys($_SESSION)));
-            $caldavClient = new CalDAVClient();
-        }
-        
-                // Discover calendars
-        $calendars = $caldavClient->discoverCalendars();
-
-        if ($calendars && is_array($calendars) && count($calendars) > 0) {
-            sendJsonResponse([
-                'success' => true,
-                'data' => [
-                    'calendars' => $calendars
-                ],
-                'message' => 'Calendars retrieved successfully'
-            ]);
-        } else {
-            // Check if it's a server configuration issue
-            sendJsonResponse([
-                'success' => false,
-                'message' => 'Unable to discover calendars. The CalDAV server may have configuration issues or the endpoint may be different.',
-                'error_type' => 'server_configuration',
-                'suggestions' => [
-                    'Contact your server administrator to enable CalDAV protocol support',
-                    'Check if the CalDAV endpoint is at a different URL path',
-                    'Verify that WebDAV methods (PROPFIND, REPORT) are allowed'
-                ]
-            ]);
-        }
-        
-    } catch (Exception $e) {
-        error_log("Error getting user calendars: " . $e->getMessage());
-        http_response_code(500);
-        sendJsonResponse([
-            'success' => false,
-            'message' => 'Failed to retrieve calendars: ' . $e->getMessage()
-        ]);
     }
 }
 
