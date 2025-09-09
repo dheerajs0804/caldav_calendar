@@ -490,6 +490,54 @@ export class CalendarComponent implements OnInit, OnDestroy {
     };
   }
 
+  // Delete event handler
+  async onDeleteEvent(event: Event): Promise<void> {
+    try {
+      console.log('🗑️ Delete event requested:', event);
+      console.log('🗑️ Event ID:', event.id);
+      console.log('🗑️ Event UID:', event.uid);
+      console.log('🗑️ Event Title:', event.title);
+      
+      // Check if we have a selected calendar
+      if (!this.selectedCalendar || !this.selectedCalendar.href) {
+        console.error('No calendar selected for deletion');
+        alert('No calendar selected. Please select a calendar first.');
+        return;
+      }
+
+      // Use UID for deletion (the actual CalDAV identifier) instead of generated ID
+      const eventIdentifier = event.uid || event.id;
+      console.log('🗑️ Using identifier for deletion:', eventIdentifier, '(UID:', event.uid, 'ID:', event.id, ')');
+      
+      // Build the delete URL with calendar context
+      const deleteUrl = `http://localhost:8000/events/${eventIdentifier}?calendar_url=${encodeURIComponent(this.selectedCalendar.href)}`;
+      
+      console.log('🗑️ Deleting event from URL:', deleteUrl);
+      
+      const response = await this.http.delete<any>(deleteUrl, { withCredentials: true }).toPromise();
+      
+      console.log('🗑️ Delete response:', response);
+      
+      if (response.success) {
+        // Remove the event from the local events array using the same identifier
+        this.events = this.events.filter(e => (e.uid || e.id) !== eventIdentifier);
+        console.log('✅ Event deleted successfully from local array');
+        
+        // Close the modal
+        this.closeEventDetailModal();
+        
+        // Show success message
+        alert('Event deleted successfully!');
+      } else {
+        console.error('❌ Delete failed:', response.message);
+        alert('Failed to delete event: ' + (response.message || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('❌ Error deleting event:', error);
+      alert('Error deleting event. Please try again.');
+    }
+  }
+
   // Get events for a specific day
   getEventsForDay(date: Date): Event[] {
     return this.events.filter(event => {

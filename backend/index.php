@@ -1021,55 +1021,67 @@ function deleteEvent($id) {
             if (!$caldavClient) {
                 throw new Exception('Failed to get CalDAV client - user not authenticated');
             }
-            $calendars = $caldavClient->discoverCalendars();
             
-            if (!empty($calendars)) {
-                $calendarUrl = $calendars[0]['href'];
-                error_log("Calendar URL: " . $calendarUrl);
+            // Get calendar URL from GET parameter (passed from frontend)
+            $calendarUrl = $_GET['calendar_url'] ?? null;
+            if (!$calendarUrl) {
+                error_log("No calendar_url provided in DELETE request");
+                throw new Exception('No calendar URL provided');
+            }
+            
+            error_log("Calendar URL from request: " . $calendarUrl);
+            
+            // Get all events to find the one we want to delete
+            $allEvents = $caldavClient->getEvents($calendarUrl);
+            error_log("Found " . count($allEvents) . " events from CalDAV server");
+            
+            // Find the event with matching ID or UID
+            $eventToDelete = null;
+            error_log("Looking for event with ID/UID: " . $id);
+            error_log("Total events to search through: " . count($allEvents));
+            
+            foreach ($allEvents as $index => $event) {
+                error_log("Event #" . $index . " - ID: " . ($event['id'] ?? 'null') . ", UID: " . ($event['uid'] ?? 'null') . ", Title: " . ($event['title'] ?? 'null'));
                 
-                // Get all events to find the one we want to delete
-                $allEvents = $caldavClient->getEvents($calendarUrl);
-                error_log("Found " . count($allEvents) . " events from CalDAV server");
-                
-                // Find the event with matching ID or UID
-                $eventToDelete = null;
-                error_log("Looking for event with ID/UID: " . $id);
-                foreach ($allEvents as $event) {
-                    error_log("Checking event - ID: " . ($event['id'] ?? 'null') . ", UID: " . ($event['uid'] ?? 'null') . ", Title: " . ($event['title'] ?? 'null'));
-                    
-                    // Try to match by UID first (more reliable), then by ID
-                    if (($event['uid'] ?? null) == $id || ($event['id'] ?? null) == $id) {
-                        $eventToDelete = $event;
-                        error_log("Found matching event: " . $event['title']);
-                        break;
-                    }
+                // Try to match by UID first (more reliable), then by ID
+                if (($event['uid'] ?? null) == $id || ($event['id'] ?? null) == $id) {
+                    $eventToDelete = $event;
+                    error_log("✅ Found matching event: " . $event['title']);
+                    error_log("✅ Event UID: " . ($event['uid'] ?? 'null'));
+                    error_log("✅ Event ID: " . ($event['id'] ?? 'null'));
+                    break;
                 }
+            }
+            
+            if (!$eventToDelete) {
+                error_log("No matching event found for ID/UID: " . $id);
+            }
+            
+            // If we found the event, try to delete it from the server
+            if ($eventToDelete && !empty($eventToDelete['uid'])) {
+                // Construct the event URL (this is the standard CalDAV format)
+                $eventUrl = rtrim($calendarUrl, '/') . '/' . $eventToDelete['uid'] . '.ics';
                 
-                if (!$eventToDelete) {
-                    error_log("No matching event found for ID/UID: " . $id);
-                }
+                error_log("🔗 Calendar URL: " . $calendarUrl);
+                error_log("🔗 Event UID: " . $eventToDelete['uid']);
+                error_log("🔗 Constructed Event URL: " . $eventUrl);
+                error_log("🗑️ Attempting to delete event from CalDAV server...");
                 
-                // If we found the event, try to delete it from the server
-                if ($eventToDelete && !empty($eventToDelete['uid'])) {
-                    // Construct the event URL (this is the standard CalDAV format)
-                    $eventUrl = rtrim($calendarUrl, '/') . '/' . $eventToDelete['uid'] . '.ics';
-                    
-                    error_log("Attempting to delete event from CalDAV server: " . $eventUrl);
-                    
-                    // Delete from CalDAV server
-                    $deleteResult = $caldavClient->deleteEvent($eventUrl, $caldavClient->getAuthToken());
-                    
-                    if ($deleteResult) {
-                        $deletedFromServer = true;
-                        error_log("Successfully deleted event from CalDAV server");
-                    } else {
-                        error_log("Failed to delete event from CalDAV server");
-                    }
+                // Delete from CalDAV server
+                $deleteResult = $caldavClient->deleteEvent($eventUrl, $caldavClient->getAuthToken());
+                
+                if ($deleteResult) {
+                    $deletedFromServer = true;
+                    error_log("✅ Successfully deleted event from CalDAV server");
                 } else {
-                    error_log("Event not found in CalDAV server or missing UID. EventToDelete: " . ($eventToDelete ? 'found' : 'null'));
+                    error_log("❌ Failed to delete event from CalDAV server");
                 }
             } else {
-                error_log("No calendars found");
+                error_log("❌ Event not found in CalDAV server or missing UID.");
+                error_log("❌ EventToDelete: " . ($eventToDelete ? 'found' : 'null'));
+                if ($eventToDelete) {
+                    error_log("❌ EventToDelete UID: " . ($eventToDelete['uid'] ?? 'null'));
+                }
             }
         } catch (Exception $caldavError) {
             error_log("CalDAV error in deleteEvent: " . $caldavError->getMessage());

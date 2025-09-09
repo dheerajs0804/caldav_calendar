@@ -225,7 +225,10 @@
 <app-event-detail-modal
   *ngIf="showEventDetailModal"
   [event]="selectedEvent"
-  (close)="closeEventDetailModal()"
+  [calendars]="calendars"
+  [isVisible]="showEventDetailModal"
+  (closeModal)="closeEventDetailModal()"
+  (deleteEvent)="onDeleteEvent($event)"
 ></app-event-detail-modal>
 
 <!-- Reminder Notifications -->
