@@ -875,9 +875,14 @@ class CalDAVClient {
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
         
+        error_log("cURL Response - HTTP Code: $httpCode");
+        error_log("cURL Response - Body length: " . strlen($responseBody));
+        error_log("cURL Response - Error: " . ($error ?: 'none'));
+        
         curl_close($ch);
         
         if ($error) {
+            error_log("cURL error occurred: $error");
             throw new Exception("cURL error: " . $error);
         }
         
@@ -1238,6 +1243,117 @@ class CalDAVClient {
             }
         }
         return $clark;
+    }
+
+    /**
+     * Generate a GUID for calendar creation
+     */
+    private function generateGUID() {
+        $charid = strtoupper(md5(uniqid(rand(), true)));
+        $hyphen = chr(45); // "-"
+        $uuid = ""
+            . substr($charid, 0, 8) . $hyphen
+            . substr($charid, 8, 4) . $hyphen
+            . substr($charid, 12, 4) . $hyphen
+            . substr($charid, 16, 4) . $hyphen
+            . substr($charid, 20, 12)
+            . "";
+        return $uuid;
+    }
+
+    /**
+     * Create a new calendar using MKCALENDAR method
+     * Based on Roundcube's add_calendar plugin implementation
+     */
+    public function createCalendar($calendarName, $description = '', $color = '#4285f4') {
+        try {
+            error_log("=== Creating Calendar: $calendarName ===");
+            error_log("CalDAVClient class: " . get_class($this));
+            error_log("Available methods: " . implode(', ', get_class_methods($this)));
+            
+            // First, discover the calendar home set to get the base URL
+            $calendars = $this->discoverCalendars();
+            if (empty($calendars)) {
+                throw new Exception('Could not discover calendar home set');
+            }
+            
+            // Get the first calendar URL to extract the base path
+            $firstCalendar = $calendars[0];
+            $firstCalendarUrl = $firstCalendar['url'] ?? $firstCalendar['href'] ?? '';
+            error_log("First calendar URL: $firstCalendarUrl");
+            
+            // Extract the base path (everything before the calendar name)
+            // Example: /calendars/__uids__/80b5d808-0553-1040-8d6f-0f1266787052/calendar/
+            // We want: /calendars/__uids__/80b5d808-0553-1040-8d6f-0f1266787052/
+            $basePath = dirname($firstCalendarUrl) . '/';
+            error_log("Base path: $basePath");
+            
+            // Generate a unique GUID for the new calendar
+            $calendarUUID = $this->generateGUID();
+            error_log("Generated UUID: $calendarUUID");
+            
+            // Construct the full calendar URL
+            $calendarUrl = $basePath . $calendarUUID . '/';
+            error_log("Full calendar URL: $calendarUrl");
+            
+            // Prepare the MKCALENDAR XML request
+            $xml = '<?xml version="1.0" encoding="utf-8"?>
+            <C:mkcalendar xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+            <D:set>
+                <D:prop>
+                    <D:displayname>' . htmlspecialchars($calendarName) . '</D:displayname>
+                </D:prop>
+            </D:set>
+            </C:mkcalendar>';
+            
+            error_log("MKCALENDAR XML: $xml");
+            
+            // Make the MKCALENDAR request
+            // $calendarUrl already contains the full URL, so we don't need to prepend $this->serverUrl
+            $authToken = $this->getAuthToken();
+            if (!$authToken) {
+                throw new Exception('Authentication token not available');
+            }
+            
+            error_log("Making MKCALENDAR request to: $calendarUrl");
+            error_log("Auth token: " . substr($authToken, 0, 20) . "...");
+            
+            $response = $this->makeCalDAVRequest($calendarUrl, 'MKCALENDAR', $authToken, [
+                'Content-Type: application/xml; charset="utf-8"'
+            ], $xml);
+            
+            error_log("MKCALENDAR response code: " . $response['status']);
+            error_log("MKCALENDAR response body: " . $response['body']);
+            
+            if ($response['status'] == 201) {
+                // Calendar created successfully
+                $newCalendar = [
+                    'id' => 'cal_' . uniqid(),
+                    'name' => $calendarName,
+                    'url' => $this->serverUrl . $calendarUrl,
+                    'color' => $color,
+                    'description' => $description,
+                    'created_at' => date('c'),
+                    'updated_at' => date('c')
+                ];
+                
+                error_log("Calendar created successfully: " . json_encode($newCalendar));
+                return [
+                    'success' => true,
+                    'data' => $newCalendar,
+                    'message' => 'Calendar created successfully'
+                ];
+            } else {
+                throw new Exception('MKCALENDAR failed with HTTP code: ' . $response['status'] . '. Response: ' . $response['body']);
+            }
+            
+        } catch (Exception $e) {
+            error_log("Calendar creation error: " . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Failed to create calendar: ' . $e->getMessage()
+            ];
+        }
     }
 }
 ?>

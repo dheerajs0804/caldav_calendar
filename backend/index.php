@@ -29,6 +29,13 @@ ini_set('session.cookie_path', '/'); // Set path to root
 // Start session for user event storage
 session_start();
 
+// Debug: Log all requests
+error_log("=== REQUEST RECEIVED ===");
+error_log("Method: " . $_SERVER['REQUEST_METHOD']);
+error_log("Path: " . ($_SERVER['PATH_INFO'] ?? $_SERVER['REQUEST_URI'] ?? 'unknown'));
+error_log("Request URI: " . ($_SERVER['REQUEST_URI'] ?? 'unknown'));
+error_log("DEBUG: Server is loading updated index.php at " . date('Y-m-d H:i:s'));
+
 header('Content-Type: application/json');
 
 // Helper function to send clean JSON response
@@ -495,8 +502,55 @@ function getCalendarEvents($id) {
 }
 
 function createCalendar() {
-    // TODO: Implement
-    echo json_encode(['error' => 'Not implemented yet']);
+    try {
+        // Get the request body
+        $input = json_decode(file_get_contents('php://input'), true);
+        
+        if (!$input) {
+            throw new Exception('Invalid JSON input');
+        }
+        
+        // Validate required fields
+        if (empty($input['name'])) {
+            throw new Exception('Calendar name is required');
+        }
+        
+        // Get CalDAV client
+        $caldavClient = getCalDAVClient();
+        if (!$caldavClient) {
+            throw new Exception('CalDAV client not available');
+        }
+        
+        error_log("CalDAVClient class: " . get_class($caldavClient));
+        error_log("CalDAVClient methods: " . implode(', ', get_class_methods($caldavClient)));
+        
+        // Extract calendar details
+        $calendarName = trim($input['name']);
+        $description = isset($input['description']) ? trim($input['description']) : '';
+        $color = isset($input['color']) ? $input['color'] : '#4285f4';
+        
+        error_log("Creating calendar: $calendarName");
+        
+        // Create the calendar using CalDAV client
+        $result = $caldavClient->createCalendar($calendarName, $description, $color);
+        
+        if ($result['success']) {
+            sendJsonResponse([
+                'success' => true,
+                'data' => $result['data'],
+                'message' => $result['message']
+            ]);
+        } else {
+            throw new Exception($result['message']);
+        }
+        
+    } catch (Exception $e) {
+        error_log("Calendar creation error: " . $e->getMessage());
+        sendJsonResponse([
+            'success' => false,
+            'message' => 'Failed to create calendar: ' . $e->getMessage()
+        ]);
+    }
 }
 
 function createEvent() {
