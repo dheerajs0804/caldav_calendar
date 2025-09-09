@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Creation Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        input, textarea { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Event Creation Test</h1>
+    <p>Test if event creation is working properly.</p>
+    
+    <div>
+        <label for="title">Event Title:</label>
+        <input type="text" id="title" value="Test Event" />
+    </div>
+    
+    <div>
+        <label for="description">Description:</label>
+        <textarea id="description" rows="3">This is a test event</textarea>
+    </div>
+    
+    <div>
+        <label for="startTime">Start Time:</label>
+        <input type="datetime-local" id="startTime" />
+    </div>
+    
+    <div>
+        <label for="endTime">End Time:</label>
+        <input type="datetime-local" id="endTime" />
+    </div>
+    
+    <button onclick="testEventCreation()">Test Event Creation</button>
+    <button onclick="testServerStatus()">Test Server Status</button>
+    
+    <div id="results"></div>
+
+    <script>
+        // Set default times
+        const now = new Date();
+        const startTime = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour from now
+        const endTime = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2 hours from now
+        
+        document.getElementById('startTime').value = startTime.toISOString().slice(0, 16);
+        document.getElementById('endTime').value = endTime.toISOString().slice(0, 16);
+        
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.innerHTML = message;
+            resultsDiv.appendChild(resultDiv);
+        }
+        
+        function testServerStatus() {
+            addResult('Testing server status...', 'info');
+            
+            fetch('http://localhost:8000/', {
+                method: 'GET',
+                headers: {
+                    'Origin': 'http://localhost:4200'
+                }
+            })
+            .then(response => {
+                addResult(`✅ Server is running! Status: ${response.status}`, 'success');
+            })
+            .catch(error => {
+                addResult(`❌ Server not accessible: ${error.message}`, 'error');
+            });
+        }
+        
+        function testEventCreation() {
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('description').value;
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            
+            if (!title || !startTime || !endTime) {
+                addResult('❌ Please fill in all required fields', 'error');
+                return;
+            }
+            
+            addResult('Testing event creation...', 'info');
+            
+            const eventData = {
+                title: title,
+                description: description,
+                start_time: new Date(startTime).toISOString(),
+                end_time: new Date(endTime).toISOString(),
+                all_day: false
+            };
+            
+            fetch('http://localhost:8000/events', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Origin': 'http://localhost:4200'
+                },
+                credentials: 'include',
+                body: JSON.stringify(eventData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    addResult(`✅ Event created successfully!<br>
+                        <strong>Event ID:</strong> ${data.data.id}<br>
+                        <strong>Message:</strong> ${data.message}`, 'success');
+                } else {
+                    addResult(`❌ Event creation failed: ${data.message}`, 'error');
+                }
+            })
+            .catch(error => {
+                addResult(`❌ Error creating event: ${error.message}`, 'error');
+            });
+        }
+    </script>
+</body>
+</html>

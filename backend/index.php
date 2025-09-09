@@ -2543,6 +2543,14 @@ function authenticateUser() {
                 $_SESSION['caldav_server_url'] = $caldavConfig['server_url'];
                 $_SESSION['calendar_url'] = $calendars[0]['href'];
                 
+                // Also store in the format expected by getCalDAVClient()
+                $_SESSION['caldav_credentials'] = [
+                    'serverUrl' => $caldavConfig['server_url'],
+                    'username' => $username,
+                    'password' => $password,
+                    'authenticated_at' => time()
+                ];
+                
                 echo json_encode([
                     'success' => true,
                     'message' => 'Authentication successful',
@@ -2959,6 +2967,14 @@ function autoLoginFromRoundcube() {
                 $_SESSION['password'] = $password; // In production, consider encrypting this
                 $_SESSION['caldav_server_url'] = $caldavConfig['server_url'];
                 $_SESSION['calendar_url'] = $calendars[0]['href'];
+                
+                // Also store in the format expected by getCalDAVClient()
+                $_SESSION['caldav_credentials'] = [
+                    'serverUrl' => $caldavConfig['server_url'],
+                    'username' => $username,
+                    'password' => $password,
+                    'authenticated_at' => time()
+                ];
                 
                 echo json_encode([
                     'success' => true,
