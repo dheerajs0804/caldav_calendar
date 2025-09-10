@@ -449,7 +449,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
           : dayjs(`${this.newEvent.end_date}T${this.newEvent.end_time}`).format('YYYY-MM-DDTHH:mm:ss'),
         all_day: this.newEvent.all_day,
         attendees: this.newEvent.attendees,
-        reminder: this.newEvent.reminder
+        reminder: this.newEvent.reminder,
+        calendar_url: this.selectedCalendar?.href || this.selectedCalendar?.url  // Pass the selected calendar URL
       };
 
       const response = await this.http.post<any>('http://localhost:8000/events', eventData, {

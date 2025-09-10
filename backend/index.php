@@ -675,7 +675,9 @@ function createEvent() {
             $calendars = $caldavClient->discoverCalendars();
             
             if (!empty($calendars)) {
-                $calendarUrl = $calendars[0]['href'];
+                // Use provided calendar URL or fallback to first calendar
+                $calendarUrl = $input['calendar_url'] ?? $calendars[0]['href'];
+                error_log("Using calendar URL: " . $calendarUrl);
                 
                 // Use the proper generateICalEvent function for CalDAV storage
                 $icalContent = generateICalEvent($event);
