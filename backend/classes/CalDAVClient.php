@@ -34,15 +34,26 @@ class CalDAVClient {
         // Load environment variables from .env file if it exists
         $envFile = __DIR__ . '/../.env';
         if (file_exists($envFile)) {
-            $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-            foreach ($lines as $line) {
-                if (strpos($line, '=') !== false && strpos($line, '#') !== 0) {
-                    list($key, $value) = explode('=', $line, 2);
-                    $key = trim($key);
-                    $value = trim($value);
-                    if (!array_key_exists($key, $_ENV)) {
-                        $_ENV[$key] = $value;
-                    }
+            $this->loadEnvFromFile($envFile);
+        }
+        
+        // Also check for test environment file
+        $testEnvFile = __DIR__ . '/../test.env';
+        if (file_exists($testEnvFile)) {
+            error_log("Loading test environment variables from: " . $testEnvFile);
+            $this->loadEnvFromFile($testEnvFile);
+        }
+    }
+    
+    private function loadEnvFromFile($envFile) {
+        $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($lines as $line) {
+            if (strpos($line, '=') !== false && strpos($line, '#') !== 0) {
+                list($key, $value) = explode('=', $line, 2);
+                $key = trim($key);
+                $value = trim($value);
+                if (!array_key_exists($key, $_ENV)) {
+                    $_ENV[$key] = $value;
                 }
             }
         }
@@ -1369,6 +1380,46 @@ class CalDAVClient {
             return [
                 'success' => false,
                 'message' => 'Failed to create calendar: ' . $e->getMessage()
+            ];
+        }
+    }
+    
+    public function deleteCalendar($calendarUrl) {
+        try {
+            error_log("=== Deleting Calendar ===");
+            error_log("Calendar URL: $calendarUrl");
+            
+            // Get authentication token
+            $authToken = $this->getAuthToken();
+            if (!$authToken) {
+                throw new Exception('Authentication token not available');
+            }
+            
+            error_log("Making DELETE request to: $calendarUrl");
+            error_log("Auth token: " . substr($authToken, 0, 20) . "...");
+            
+            // Make the DELETE request
+            $response = $this->makeCalDAVRequest($calendarUrl, 'DELETE', $authToken);
+            
+            error_log("DELETE response code: " . $response['status']);
+            error_log("DELETE response body: " . $response['body']);
+            
+            if ($response['status'] == 204 || $response['status'] == 200) {
+                // Calendar deleted successfully
+                error_log("Calendar deleted successfully");
+                return [
+                    'success' => true,
+                    'message' => 'Calendar deleted successfully'
+                ];
+            } else {
+                throw new Exception('DELETE failed with HTTP code: ' . $response['status'] . '. Response: ' . $response['body']);
+            }
+            
+        } catch (Exception $e) {
+            error_log("Calendar deletion error: " . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Failed to delete calendar: ' . $e->getMessage()
             ];
         }
     }

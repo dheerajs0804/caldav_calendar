@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CalDAV Calendar App - Automated Tests</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        
+        .test-controls {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: all 0.2s ease;
+        }
+        
+        .btn:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .test-results {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            max-height: 600px;
+            overflow-y: auto;
+            border: 1px solid #e1e5e9;
+        }
+        
+        .test-summary {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .test-summary.failed {
+            background: #ffeaea;
+            border-color: #f44336;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-running {
+            background: #ff9800;
+            animation: pulse 1s infinite;
+        }
+        
+        .status-passed {
+            background: #4caf50;
+        }
+        
+        .status-failed {
+            background: #f44336;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .feature-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .feature-card h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        
+        .feature-card p {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .test-status {
+            margin-top: 10px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 CalDAV Calendar App - Automated Tests</h1>
+        
+        <div class="feature-list">
+            <div class="feature-card">
+                <h3>🔐 User Login</h3>
+                <p>Test authentication with valid/invalid credentials and status checking</p>
+                <div class="test-status" id="login-status">Not tested</div>
+            </div>
+            
+            <div class="feature-card">
+                <h3>📅 List Calendars</h3>
+                <p>Test calendar discovery and listing functionality</p>
+                <div class="test-status" id="calendars-status">Not tested</div>
+            </div>
+            
+            <div class="feature-card">
+                <h3>➕ Add Calendar</h3>
+                <p>Test creating new calendars with custom names and colors</p>
+                <div class="test-status" id="add-calendar-status">Not tested</div>
+            </div>
+            
+            <div class="feature-card">
+                <h3>📊 Calendar Views</h3>
+                <p>Test Day, Week, Month, and Agenda view functionality</p>
+                <div class="test-status" id="views-status">Not tested</div>
+            </div>
+            
+            <div class="feature-card">
+                <h3>📝 Event Management</h3>
+                <p>Test adding and deleting events with proper validation</p>
+                <div class="test-status" id="events-status">Not tested</div>
+            </div>
+            
+            <div class="feature-card">
+                <h3>⏰ Reminder Popup</h3>
+                <p>Test reminder functionality and popup notifications</p>
+                <div class="test-status" id="reminder-status">Not tested</div>
+            </div>
+            
+            <div class="feature-card">
+                <h3>🔄 Reload</h3>
+                <p>Test calendar and events reload functionality</p>
+                <div class="test-status" id="reload-status">Not tested</div>
+            </div>
+        </div>
+        
+        <div class="test-controls">
+            <button class="btn" id="run-tests" onclick="runTests()">🚀 Run All Tests</button>
+            <button class="btn" id="clear-results" onclick="clearResults()">🗑️ Clear Results</button>
+        </div>
+        
+        <div id="test-results" class="test-results" style="display: none;">
+            <div id="test-output"></div>
+        </div>
+        
+        <div id="test-summary" class="test-summary" style="display: none;">
+            <h3>📊 Test Summary</h3>
+            <div id="summary-content"></div>
+        </div>
+    </div>
+
+    <script src="frontend_tests.js"></script>
+    <script>
+        let testSuite = null;
+        let isRunning = false;
+        
+        function runTests() {
+            if (isRunning) return;
+            
+            isRunning = true;
+            const runButton = document.getElementById('run-tests');
+            const resultsDiv = document.getElementById('test-results');
+            const outputDiv = document.getElementById('test-output');
+            
+            runButton.disabled = true;
+            runButton.textContent = '🔄 Running Tests...';
+            resultsDiv.style.display = 'block';
+            outputDiv.textContent = '';
+            
+            // Clear previous status indicators
+            document.querySelectorAll('.test-status').forEach(el => {
+                el.innerHTML = '<span class="status-indicator status-running"></span>Running...';
+            });
+            
+            // Override console.log to capture test output
+            const originalLog = console.log;
+            const originalError = console.error;
+            
+            console.log = function(...args) {
+                originalLog.apply(console, args);
+                outputDiv.textContent += args.join(' ') + '\n';
+                outputDiv.scrollTop = outputDiv.scrollHeight;
+            };
+            
+            console.error = function(...args) {
+                originalError.apply(console, args);
+                outputDiv.textContent += 'ERROR: ' + args.join(' ') + '\n';
+                outputDiv.scrollTop = outputDiv.scrollHeight;
+            };
+            
+            // Create and run test suite
+            testSuite = new FrontendTestSuite();
+            
+            // Override the printSummary method to show results in UI
+            const originalPrintSummary = testSuite.printSummary.bind(testSuite);
+            testSuite.printSummary = function() {
+                originalPrintSummary();
+                showTestSummary();
+            };
+            
+            testSuite.runAllTests().then(() => {
+                // Restore console functions
+                console.log = originalLog;
+                console.error = originalError;
+                
+                runButton.disabled = false;
+                runButton.textContent = '🚀 Run All Tests';
+                isRunning = false;
+            }).catch(error => {
+                console.error('Test suite failed:', error);
+                runButton.disabled = false;
+                runButton.textContent = '🚀 Run All Tests';
+                isRunning = false;
+            });
+        }
+        
+        function showTestSummary() {
+            const summaryDiv = document.getElementById('test-summary');
+            const summaryContent = document.getElementById('summary-content');
+            
+            if (!testSuite || !testSuite.testResults) return;
+            
+            const totalTests = Object.keys(testSuite.testResults).length;
+            const passedTests = Object.values(testSuite.testResults).filter(result => result === 'PASS').length;
+            const failedTests = totalTests - passedTests;
+            const successRate = ((passedTests / totalTests) * 100).toFixed(2);
+            
+            summaryContent.innerHTML = `
+                <p><strong>Total Tests:</strong> ${totalTests}</p>
+                <p><strong>Passed:</strong> ${passedTests} ✅</p>
+                <p><strong>Failed:</strong> ${failedTests} ❌</p>
+                <p><strong>Success Rate:</strong> ${successRate}%</p>
+            `;
+            
+            summaryDiv.className = failedTests > 0 ? 'test-summary failed' : 'test-summary';
+            summaryDiv.style.display = 'block';
+            
+            // Update individual test statuses
+            updateTestStatuses();
+        }
+        
+        function updateTestStatuses() {
+            const statusMap = {
+                'login_valid': 'login-status',
+                'login_invalid': 'login-status',
+                'auth_status': 'login-status',
+                'list_calendars': 'calendars-status',
+                'discover_calendars': 'calendars-status',
+                'add_calendar': 'add-calendar-status',
+                'view_day': 'views-status',
+                'view_week': 'views-status',
+                'view_month': 'views-status',
+                'view_agenda': 'views-status',
+                'add_event': 'events-status',
+                'delete_event': 'events-status',
+                'reminder_popup': 'reminder-status',
+                'reload_calendars': 'reload-status',
+                'reload_events': 'reload-status'
+            };
+            
+            const statusCounts = {};
+            
+            Object.entries(testSuite.testResults).forEach(([test, result]) => {
+                const statusId = statusMap[test];
+                if (statusId) {
+                    if (!statusCounts[statusId]) {
+                        statusCounts[statusId] = { passed: 0, total: 0 };
+                    }
+                    statusCounts[statusId].total++;
+                    if (result === 'PASS') {
+                        statusCounts[statusId].passed++;
+                    }
+                }
+            });
+            
+            Object.entries(statusCounts).forEach(([statusId, counts]) => {
+                const statusEl = document.getElementById(statusId);
+                const indicator = counts.passed === counts.total ? 'status-passed' : 'status-failed';
+                const text = counts.passed === counts.total ? 'PASS' : 'FAIL';
+                
+                statusEl.innerHTML = `<span class="status-indicator ${indicator}"></span>${text} (${counts.passed}/${counts.total})`;
+            });
+        }
+        
+        function clearResults() {
+            document.getElementById('test-results').style.display = 'none';
+            document.getElementById('test-summary').style.display = 'none';
+            document.getElementById('test-output').textContent = '';
+            
+            document.querySelectorAll('.test-status').forEach(el => {
+                el.textContent = 'Not tested';
+            });
+        }
+        
+        // Auto-run tests on page load (optional)
+        // document.addEventListener('DOMContentLoaded', () => {
+        //     setTimeout(runTests, 1000);
+        // });
+    </script>
+</body>
+</html>

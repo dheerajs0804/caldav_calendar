@@ -32,6 +32,11 @@ interface CreateCalendarResponse {
   data?: Calendar;
 }
 
+interface DeleteCalendarResponse {
+  success: boolean;
+  message: string;
+}
+
 @Component({
   selector: 'app-calendar-selection',
   standalone: true,
@@ -57,14 +62,23 @@ interface CreateCalendarResponse {
             *ngFor="let calendar of calendars" 
             class="calendar-item"
             [style.border-left-color]="calendar.color"
-            (click)="selectCalendar(calendar)"
           >
-            <div class="calendar-info">
+            <div class="calendar-info" (click)="selectCalendar(calendar)">
               <h3>{{ calendar.name }}</h3>
               <p *ngIf="calendar.description" class="description">{{ calendar.description }}</p>
               <p class="url">{{ calendar.url }}</p>
             </div>
-            <div class="select-arrow">→</div>
+            <div class="calendar-actions">
+              <button 
+                class="delete-btn" 
+                (click)="deleteCalendar(calendar, $event)"
+                [disabled]="deletingCalendarId === calendar.id"
+                title="Delete calendar"
+              >
+                {{ deletingCalendarId === calendar.id ? '⏳' : '🗑️' }}
+              </button>
+              <div class="select-arrow" (click)="selectCalendar(calendar)">→</div>
+            </div>
           </div>
           
           <!-- Add Calendar Button -->
@@ -221,7 +235,6 @@ interface CreateCalendarResponse {
       border: 2px solid #e1e5e9;
       border-radius: 8px;
       border-left: 4px solid #4285f4;
-      cursor: pointer;
       transition: all 0.2s ease;
     }
     
@@ -229,6 +242,45 @@ interface CreateCalendarResponse {
       border-color: #667eea;
       transform: translateY(-2px);
       box-shadow: 0 8px 16px rgba(102, 126, 234, 0.2);
+    }
+    
+    .calendar-info {
+      flex: 1;
+      cursor: pointer;
+    }
+    
+    .calendar-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .delete-btn {
+      background: #fee2e2;
+      border: 1px solid #fecaca;
+      border-radius: 6px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 40px;
+      height: 40px;
+    }
+    
+    .delete-btn:hover:not(:disabled) {
+      background: #fecaca;
+      border-color: #f87171;
+      transform: scale(1.05);
+    }
+    
+    .delete-btn:disabled {
+      background: #f3f4f6;
+      border-color: #d1d5db;
+      cursor: not-allowed;
+      transform: none;
     }
     
     .calendar-info h3 {
@@ -476,6 +528,9 @@ export class CalendarSelectionComponent implements OnInit {
     description: '',
     color: '#4285f4'
   };
+  
+  // Delete Calendar Properties
+  deletingCalendarId: number | null = null;
 
   constructor(
     private http: HttpClient,
@@ -568,6 +623,36 @@ export class CalendarSelectionComponent implements OnInit {
         this.creatingCalendar = false;
         this.error = 'Failed to create calendar. Please try again.';
         console.error('Calendar creation error:', error);
+      }
+    });
+  }
+  
+  deleteCalendar(calendar: Calendar, event: Event): void {
+    event.stopPropagation(); // Prevent triggering selectCalendar
+    
+    if (!confirm(`Are you sure you want to delete "${calendar.name}"? This action cannot be undone.`)) {
+      return;
+    }
+    
+    this.deletingCalendarId = calendar.id;
+    
+    this.http.delete<DeleteCalendarResponse>(`http://localhost:8000/calendars/${calendar.id}`, { 
+      withCredentials: true 
+    }).subscribe({
+      next: (response) => {
+        this.deletingCalendarId = null;
+        if (response.success) {
+          // Remove the calendar from the list
+          this.calendars = this.calendars.filter(c => c.id !== calendar.id);
+          console.log('Calendar deleted successfully:', calendar.name);
+        } else {
+          this.error = response.message || 'Failed to delete calendar';
+        }
+      },
+      error: (error) => {
+        this.deletingCalendarId = null;
+        this.error = 'Failed to delete calendar. Please try again.';
+        console.error('Calendar deletion error:', error);
       }
     });
   }

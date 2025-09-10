@@ -192,12 +192,12 @@ function handlePostRequest($path) {
             case 'caldav/discover':
                 discoverCalDAVCalendars();
                 break;
-            case 'calendars/sync':
-                syncCalendar();
-                break;
-            case 'email':
-                handleEmailInvitation();
-                break;
+        case 'calendars/sync':
+            syncCalendar();
+            break;
+        case 'email':
+            handleEmailInvitation();
+            break;
             default:
                 http_response_code(404);
                 echo json_encode(['error' => 'Endpoint not found']);
@@ -227,6 +227,8 @@ function handlePutRequest($path) {
 function handleDeleteRequest($path) {
     if (preg_match('/^events\/(.+)$/', $path, $matches)) {
         deleteEvent($matches[1]);
+    } elseif (preg_match('/^calendars\/(.+)$/', $path, $matches)) {
+        deleteCalendar($matches[1]);
     } else {
         http_response_code(404);
         echo json_encode(['error' => 'Endpoint not found']);
@@ -290,10 +292,24 @@ function getUserCalendars() {
         error_log("discoverCalendars() returned: " . print_r($calendars, true));
 
         if ($calendars && is_array($calendars) && count($calendars) > 0) {
+            // Add ID and other properties to each calendar
+            $processedCalendars = [];
+            foreach ($calendars as $index => $calendar) {
+                $processedCalendars[] = [
+                    'id' => $index + 1, // Simple numeric ID
+                    'name' => $calendar['name'],
+                    'url' => $calendar['href'],
+                    'color' => '#4285f4', // Default color
+                    'description' => '',
+                    'created_at' => date('c'),
+                    'updated_at' => date('c')
+                ];
+            }
+            
             sendJsonResponse([
                 'success' => true,
                 'data' => [
-                    'calendars' => $calendars
+                    'calendars' => $processedCalendars
                 ],
                 'message' => 'Calendars discovered successfully'
             ]);
@@ -1053,8 +1069,62 @@ function updateEvent($id) {
 }
 
 function deleteCalendar($id) {
-    // TODO: Implement
-    echo json_encode(['error' => 'Not implemented yet']);
+    try {
+        // Validate calendar ID
+        if (!is_numeric($id)) {
+            throw new Exception('Invalid calendar ID');
+        }
+        
+        // Get CalDAV client
+        $caldavClient = getCalDAVClient();
+        if (!$caldavClient) {
+            throw new Exception('CalDAV client not available');
+        }
+        
+        error_log("Deleting calendar with ID: $id");
+        
+        // First, get the calendar details to find the URL
+        $calendars = $caldavClient->discoverCalendars();
+        if (!$calendars || empty($calendars)) {
+            throw new Exception('No calendars found');
+        }
+        
+        // Convert ID to array index (ID 1 = index 0, ID 2 = index 1, etc.)
+        $calendarIndex = intval($id) - 1;
+        
+        if ($calendarIndex < 0 || $calendarIndex >= count($calendars)) {
+            throw new Exception('Calendar not found');
+        }
+        
+        $calendarToDelete = $calendars[$calendarIndex];
+        
+        // Get the calendar URL
+        $calendarUrl = $calendarToDelete['href'] ?? '';
+        if (empty($calendarUrl)) {
+            throw new Exception('Calendar URL not found');
+        }
+        
+        error_log("Deleting calendar URL: $calendarUrl");
+        
+        // Delete the calendar using CalDAV client
+        $result = $caldavClient->deleteCalendar($calendarUrl);
+        
+        if ($result['success']) {
+            sendJsonResponse([
+                'success' => true,
+                'message' => 'Calendar deleted successfully'
+            ]);
+        } else {
+            throw new Exception($result['message']);
+        }
+        
+    } catch (Exception $e) {
+        error_log("Calendar deletion error: " . $e->getMessage());
+        sendJsonResponse([
+            'success' => false,
+            'message' => 'Failed to delete calendar: ' . $e->getMessage()
+        ]);
+    }
 }
 
 function deleteEvent($id) {

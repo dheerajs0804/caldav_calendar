@@ -167,7 +167,6 @@ export class CalendarComponent implements OnInit, OnDestroy {
     }
     
     this.fetchCalendars();
-    this.fetchEvents();
   }
 
   ngOnDestroy(): void {
@@ -218,14 +217,14 @@ export class CalendarComponent implements OnInit, OnDestroy {
   async fetchEvents(): Promise<void> {
     try {
       // Check if we have a selected calendar
-      if (!this.selectedCalendar || !this.selectedCalendar.href) {
+      if (!this.selectedCalendar || !this.selectedCalendar.url) {
         console.error('No calendar selected, redirecting to calendar selection');
         this.router.navigate(['/calendar-selection']);
         return;
       }
       
       // Build the URL with the selected calendar
-      const eventsUrl = `http://localhost:8000/events?calendar_url=${encodeURIComponent(this.selectedCalendar.href)}`;
+      const eventsUrl = `http://localhost:8000/events?calendar_url=${encodeURIComponent(this.selectedCalendar.url)}`;
       
       const response = await this.http.get<any>(eventsUrl, { withCredentials: true }).toPromise();
       
@@ -450,7 +449,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
         all_day: this.newEvent.all_day,
         attendees: this.newEvent.attendees,
         reminder: this.newEvent.reminder,
-        calendar_url: this.selectedCalendar?.href || this.selectedCalendar?.url  // Pass the selected calendar URL
+        calendar_url: this.selectedCalendar?.url  // Pass the selected calendar URL
       };
 
       const response = await this.http.post<any>('http://localhost:8000/events', eventData, {
@@ -500,7 +499,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
       console.log('🗑️ Event Title:', event.title);
       
       // Check if we have a selected calendar
-      if (!this.selectedCalendar || !this.selectedCalendar.href) {
+      if (!this.selectedCalendar || !this.selectedCalendar.url) {
         console.error('No calendar selected for deletion');
         alert('No calendar selected. Please select a calendar first.');
         return;
@@ -511,7 +510,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
       console.log('🗑️ Using identifier for deletion:', eventIdentifier, '(UID:', event.uid, 'ID:', event.id, ')');
       
       // Build the delete URL with calendar context
-      const deleteUrl = `http://localhost:8000/events/${eventIdentifier}?calendar_url=${encodeURIComponent(this.selectedCalendar.href)}`;
+      const deleteUrl = `http://localhost:8000/events/${eventIdentifier}?calendar_url=${encodeURIComponent(this.selectedCalendar.url)}`;
       
       console.log('🗑️ Deleting event from URL:', deleteUrl);
       
