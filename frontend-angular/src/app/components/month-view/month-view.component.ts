@@ -1,42 +1,8 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import * as dayjs from 'dayjs';
+import { CalendarEvent, Calendar } from '../../interfaces/calendar-event.interface';
 
-interface Calendar {
-  id: number;
-  name: string;
-  color: string;
-  url?: string;
-  userId: number;
-  isActive: boolean;
-  syncToken?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface Event {
-  id: string;
-  uid?: string;
-  title: string;
-  description?: string;
-  location?: string;
-  start_time: string;
-  end_time: string;
-  all_day: boolean;
-  calendar_id: number;
-  reminder?: {
-    enabled: boolean;
-    type: string;
-    time: number;
-    unit: string;
-    relativeTo: string;
-  };
-  valarm?: {
-    trigger: string;
-    action: string;
-    description: string;
-  };
-}
 
 @Component({
   selector: 'app-month-view',
@@ -47,7 +13,7 @@ interface Event {
 })
 export class MonthViewComponent {
   @Input() date!: Date;
-  @Input() events: Event[] = [];
+  @Input() events: CalendarEvent[] = [];
   @Input() calendars: Calendar[] = [];
 
   weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -82,14 +48,14 @@ export class MonthViewComponent {
     return days;
   }
 
-  getEventsForDate(date: dayjs.Dayjs): Event[] {
+  getEventsForDate(date: dayjs.Dayjs): CalendarEvent[] {
     return this.events.filter(event => {
       const eventDate = dayjs(event.start_time);
       return eventDate.isSame(date, 'day');
     });
   }
 
-  getEventStyle(event: Event): any {
+  getEventStyle(event: CalendarEvent): any {
     const calendar = this.calendars.find(c => c.id === event.calendar_id);
     return {
       backgroundColor: calendar?.color || '#4285f4',
@@ -108,7 +74,7 @@ export class MonthViewComponent {
     return day.format('YYYY-MM-DD');
   }
 
-  trackByEventId(index: number, event: Event): string {
+  trackByEventId(index: number, event: CalendarEvent): string {
     return event.id;
   }
 }

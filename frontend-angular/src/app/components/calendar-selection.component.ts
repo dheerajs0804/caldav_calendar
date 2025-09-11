@@ -10,6 +10,7 @@ interface Calendar {
   url: string;
   color: string;
   description?: string;
+  enabled?: boolean;
 }
 
 interface CalendarResponse {
@@ -45,8 +46,17 @@ interface DeleteCalendarResponse {
     <div class="calendar-selection-container">
       <div class="calendar-selection-card">
         <div class="header">
-          <h1>📅 Select Your Calendar</h1>
-          <p>Choose which calendar you'd like to view</p>
+          <h1>Calendars</h1>
+          <div class="header-actions">
+            <button class="menu-btn" title="More options">⋮</button>
+          </div>
+        </div>
+        
+        <div class="search-bar">
+          <div class="search-input">
+            <span class="search-icon">🔍</span>
+            <input type="text" placeholder="Find calendars..." [(ngModel)]="searchTerm" />
+          </div>
         </div>
         
         <div *ngIf="loading" class="loading">
@@ -57,27 +67,27 @@ interface DeleteCalendarResponse {
           ❌ {{ error }}
         </div>
         
-        <div *ngIf="!loading && !error && calendars.length > 0" class="calendar-list">
+        <div *ngIf="!loading && !error && filteredCalendars.length > 0" class="calendar-list">
           <div 
-            *ngFor="let calendar of calendars" 
+            *ngFor="let calendar of filteredCalendars" 
             class="calendar-item"
+            [class.selected]="calendar.enabled"
             [style.border-left-color]="calendar.color"
           >
-            <div class="calendar-info" (click)="selectCalendar(calendar)">
+            <div class="calendar-icon" [style.color]="calendar.color">
+              📅
+            </div>
+            <div class="calendar-info">
               <h3>{{ calendar.name }}</h3>
               <p *ngIf="calendar.description" class="description">{{ calendar.description }}</p>
-              <p class="url">{{ calendar.url }}</p>
             </div>
             <div class="calendar-actions">
-              <button 
-                class="delete-btn" 
-                (click)="deleteCalendar(calendar, $event)"
-                [disabled]="deletingCalendarId === calendar.id"
-                title="Delete calendar"
-              >
-                {{ deletingCalendarId === calendar.id ? '⏳' : '🗑️' }}
+              <div class="toggle-switch" (click)="toggleCalendar(calendar, $event)">
+                <div class="toggle-slider" [class.active]="calendar.enabled"></div>
+              </div>
+              <button class="view-btn" (click)="viewCalendar(calendar)" title="View calendar">
+                👁️
               </button>
-              <div class="select-arrow" (click)="selectCalendar(calendar)">→</div>
             </div>
           </div>
           
@@ -96,6 +106,9 @@ interface DeleteCalendarResponse {
         </div>
         
         <div class="footer">
+          <button (click)="goToCalendarView()" class="continue-btn" [disabled]="enabledCalendarsCount === 0">
+            Continue to Calendar View
+          </button>
           <button (click)="goBack()" class="back-btn">
             ← Back to Login
           </button>
@@ -165,38 +178,85 @@ interface DeleteCalendarResponse {
   styles: [`
     .calendar-selection-container {
       min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #f5f5f5;
       padding: 20px;
     }
     
     .calendar-selection-card {
       background: white;
-      border-radius: 12px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-      padding: 40px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       width: 100%;
-      max-width: 600px;
+      max-width: 800px;
+      margin: 0 auto;
     }
     
     .header {
-      text-align: center;
-      margin-bottom: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid #e1e5e9;
+      background: #f8f9fa;
     }
     
     .header h1 {
-      margin: 0 0 10px 0;
+      margin: 0;
       color: #333;
-      font-size: 28px;
+      font-size: 24px;
       font-weight: 600;
     }
     
-    .header p {
-      margin: 0;
+    .header-actions {
+      display: flex;
+      align-items: center;
+    }
+    
+    .menu-btn {
+      background: none;
+      border: none;
+      font-size: 18px;
+      color: #666;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 4px;
+    }
+    
+    .menu-btn:hover {
+      background: #e9ecef;
+    }
+    
+    .search-bar {
+      padding: 16px 24px;
+      border-bottom: 1px solid #e1e5e9;
+    }
+    
+    .search-input {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    
+    .search-icon {
+      position: absolute;
+      left: 12px;
       color: #666;
       font-size: 16px;
+    }
+    
+    .search-input input {
+      width: 100%;
+      padding: 12px 12px 12px 40px;
+      border: 1px solid #e1e5e9;
+      border-radius: 6px;
+      font-size: 16px;
+      background: white;
+    }
+    
+    .search-input input:focus {
+      outline: none;
+      border-color: #4285f4;
+      box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1);
     }
     
     .loading, .error, .no-calendars {
@@ -221,38 +281,104 @@ interface DeleteCalendarResponse {
     }
     
     .calendar-list {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin-bottom: 30px;
+      padding: 16px 24px;
     }
     
     .calendar-item {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      padding: 20px;
-      border: 2px solid #e1e5e9;
+      padding: 16px;
       border-radius: 8px;
-      border-left: 4px solid #4285f4;
+      margin-bottom: 8px;
       transition: all 0.2s ease;
+      border-left: 4px solid transparent;
     }
     
     .calendar-item:hover {
-      border-color: #667eea;
-      transform: translateY(-2px);
-      box-shadow: 0 8px 16px rgba(102, 126, 234, 0.2);
+      background: #f8f9fa;
+    }
+    
+    .calendar-item.selected {
+      background: #e3f2fd;
+      border-left-color: #4285f4;
+    }
+    
+    .calendar-icon {
+      font-size: 20px;
+      margin-right: 16px;
+      width: 24px;
+      text-align: center;
     }
     
     .calendar-info {
       flex: 1;
-      cursor: pointer;
+    }
+    
+    .calendar-info h3 {
+      margin: 0 0 4px 0;
+      color: #333;
+      font-size: 16px;
+      font-weight: 500;
+    }
+    
+    .calendar-info .description {
+      margin: 0;
+      color: #666;
+      font-size: 14px;
     }
     
     .calendar-actions {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 16px;
+    }
+    
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      background: #e1e5e9;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    
+    .toggle-switch:hover {
+      background: #d1d5db;
+    }
+    
+    .toggle-slider {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .toggle-switch.active {
+      background: #4285f4;
+    }
+    
+    .toggle-switch.active .toggle-slider {
+      transform: translateX(20px);
+    }
+    
+    .view-btn {
+      background: none;
+      border: none;
+      font-size: 16px;
+      color: #666;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 4px;
+    }
+    
+    .view-btn:hover {
+      background: #e9ecef;
     }
     
     .delete-btn {
@@ -310,8 +436,33 @@ interface DeleteCalendarResponse {
     }
     
     .footer {
-      text-align: center;
-      margin-top: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px;
+      border-top: 1px solid #e1e5e9;
+      background: #f8f9fa;
+    }
+    
+    .continue-btn {
+      padding: 12px 24px;
+      background: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .continue-btn:hover:not(:disabled) {
+      background: #3367d6;
+    }
+    
+    .continue-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
     }
     
     .back-btn {
@@ -319,7 +470,7 @@ interface DeleteCalendarResponse {
       background: #6b7280;
       color: white;
       border: none;
-      border-radius: 8px;
+      border-radius: 6px;
       font-size: 16px;
       font-weight: 500;
       cursor: pointer;
@@ -517,8 +668,10 @@ interface DeleteCalendarResponse {
 })
 export class CalendarSelectionComponent implements OnInit {
   calendars: Calendar[] = [];
+  filteredCalendars: Calendar[] = [];
   loading: boolean = true;
   error: string = '';
+  searchTerm: string = '';
   
   // Add Calendar Modal Properties
   showAddCalendarModal: boolean = false;
@@ -541,6 +694,10 @@ export class CalendarSelectionComponent implements OnInit {
     this.loadCalendars();
   }
 
+  get enabledCalendarsCount(): number {
+    return this.calendars.filter(cal => cal.enabled).length;
+  }
+
   loadCalendars(): void {
     this.loading = true;
     this.error = '';
@@ -549,7 +706,11 @@ export class CalendarSelectionComponent implements OnInit {
       next: (response) => {
         this.loading = false;
         if (response.success && response.data) {
-          this.calendars = response.data.calendars;
+          this.calendars = response.data.calendars.map(cal => ({
+            ...cal,
+            enabled: cal.enabled ?? true // Default to enabled if not specified
+          }));
+          this.filterCalendars();
         } else {
           this.error = response.message || 'Failed to load calendars';
         }
@@ -562,11 +723,57 @@ export class CalendarSelectionComponent implements OnInit {
     });
   }
 
-  selectCalendar(calendar: Calendar): void {
-    // Store the selected calendar in localStorage
-    localStorage.setItem('selectedCalendar', JSON.stringify(calendar));
+  filterCalendars(): void {
+    if (!this.searchTerm.trim()) {
+      this.filteredCalendars = [...this.calendars];
+    } else {
+      const term = this.searchTerm.toLowerCase();
+      this.filteredCalendars = this.calendars.filter(cal => 
+        cal.name.toLowerCase().includes(term) ||
+        (cal.description && cal.description.toLowerCase().includes(term))
+      );
+    }
+  }
+
+  toggleCalendar(calendar: Calendar, event: Event): void {
+    event.stopPropagation();
+    calendar.enabled = !calendar.enabled;
     
-    // Navigate to the calendar view
+    // Update the calendar state on the server
+    this.updateCalendarState(calendar);
+  }
+
+  updateCalendarState(calendar: Calendar): void {
+    this.http.put(`http://localhost:8000/calendars/${calendar.id}/toggle`, {
+      enabled: calendar.enabled
+    }, { withCredentials: true }).subscribe({
+      next: (response) => {
+        console.log('Calendar state updated:', calendar.name, calendar.enabled);
+      },
+      error: (error) => {
+        console.error('Failed to update calendar state:', error);
+        // Revert the change on error
+        calendar.enabled = !calendar.enabled;
+      }
+    });
+  }
+
+  viewCalendar(calendar: Calendar): void {
+    // Store the selected calendar and navigate to calendar view
+    localStorage.setItem('selectedCalendar', JSON.stringify(calendar));
+    this.router.navigate(['/calendar']);
+  }
+
+  goToCalendarView(): void {
+    // Store all enabled calendars and navigate to calendar view
+    const enabledCalendars = this.calendars.filter(cal => cal.enabled);
+    localStorage.setItem('enabledCalendars', JSON.stringify(enabledCalendars));
+    
+    // If only one calendar is enabled, select it as the primary calendar
+    if (enabledCalendars.length === 1) {
+      localStorage.setItem('selectedCalendar', JSON.stringify(enabledCalendars[0]));
+    }
+    
     this.router.navigate(['/calendar']);
   }
 

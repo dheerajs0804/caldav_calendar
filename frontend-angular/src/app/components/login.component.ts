@@ -205,7 +205,7 @@ export class LoginComponent {
       next: (response) => {
         this.loading = false;
         if (response.success) {
-          this.router.navigate(['/calendar-selection']);
+          this.router.navigate(['/calendar']);
         } else {
           this.error = response.message || 'Login failed';
         }

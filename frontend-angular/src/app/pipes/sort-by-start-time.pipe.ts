@@ -1,36 +1,14 @@
 import { Pipe, PipeTransform } from '@angular/core';
 import * as dayjs from 'dayjs';
+import { CalendarEvent } from '../interfaces/calendar-event.interface';
 
-interface Event {
-  id: string;
-  uid?: string;
-  title: string;
-  description?: string;
-  location?: string;
-  start_time: string;
-  end_time: string;
-  all_day: boolean;
-  calendar_id: number;
-  reminder?: {
-    enabled: boolean;
-    type: string;
-    time: number;
-    unit: string;
-    relativeTo: string;
-  };
-  valarm?: {
-    trigger: string;
-    action: string;
-    description: string;
-  };
-}
 
 @Pipe({
   name: 'sortByStartTime',
   standalone: true
 })
 export class SortByStartTimePipe implements PipeTransform {
-  transform(events: Event[]): Event[] {
+  transform(events: CalendarEvent[]): CalendarEvent[] {
     if (!events) return [];
     
     return events.sort((a, b) => {

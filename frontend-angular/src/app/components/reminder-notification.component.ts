@@ -11,6 +11,7 @@ export interface ReminderEvent {
   end_time: string;
   location?: string;
   color?: string;
+  all_day?: boolean;
 }
 
 export interface ReminderNotification {
@@ -70,7 +71,7 @@ export interface ReminderNotification {
               <div class="reminder-details">
                 <div class="reminder-title">{{ reminder.event.title }}</div>
                 <div class="reminder-time">
-                  {{ formatTimeRange(reminder.event.start_time, reminder.event.end_time) }}
+                  {{ formatTimeRange(reminder.event.start_time, reminder.event.end_time, reminder.event.all_day) }}
                 </div>
                 <div class="reminder-location" *ngIf="reminder.event.location">
                   📍 {{ reminder.event.location }}
@@ -290,7 +291,17 @@ export class ReminderNotificationComponent implements OnInit, OnDestroy {
     this.windowClosed.emit();
   }
 
-  formatTimeRange(startTime: string, endTime: string): string {
+  formatTimeRange(startTime: string, endTime: string, isAllDay?: boolean): string {
+    if (isAllDay) {
+      const start = new Date(startTime);
+      const startStr = start.toLocaleDateString('en-US', { 
+        day: '2-digit', 
+        month: 'long', 
+        year: 'numeric' 
+      });
+      return `${startStr} (All Day)`;
+    }
+    
     const start = new Date(startTime);
     const end = new Date(endTime);
     

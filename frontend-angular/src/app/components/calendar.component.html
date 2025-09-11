@@ -1,12 +1,12 @@
 <!-- Calendar Header -->
 <div class="calendar-header">
   <div class="header-left">
+    <button (click)="toggleSidebar()" class="sidebar-toggle-btn">
+      {{ showSidebar ? '◀' : '▶' }}
+    </button>
     <h1>📅 Mithi Calendar</h1>
     <div *ngIf="selectedCalendar" class="calendar-info">
       <span class="calendar-name">{{ selectedCalendar.name }}</span>
-      <button (click)="changeCalendar()" class="change-calendar-btn">
-        🔄 Change Calendar
-      </button>
     </div>
     <div class="date-navigation">
       <button (click)="previous()" class="nav-btn">◀</button>
@@ -38,55 +38,111 @@
   </div>
 </div>
 
-<!-- Calendar Content -->
-<div class="calendar-content">
-  <div *ngIf="loading" class="loading">
-    🔄 Loading calendar...
+<!-- Main Content Area -->
+<div class="main-content">
+  <!-- Sidebar -->
+  <div class="sidebar" [class.hidden]="!showSidebar">
+    <div class="sidebar-header">
+      <h3>Calendars</h3>
+      <div class="enabled-count">{{ enabledCalendarsCount }} enabled</div>
+    </div>
+    
+    <div class="search-bar">
+      <div class="search-input">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Find calendars..." [(ngModel)]="searchTerm" />
+      </div>
+    </div>
+    
+    <div class="add-calendar-section">
+      <button (click)="openAddCalendarModal()" class="add-calendar-btn">
+        ➕ Add Calendar
+      </button>
+    </div>
+    
+    <div class="calendar-list">
+      <div 
+        *ngFor="let calendar of filteredCalendars" 
+        class="calendar-item"
+        [class.selected]="calendar.enabled"
+        [style.border-left-color]="calendar.color"
+      >
+        <div class="calendar-icon" [style.color]="calendar.color">
+          📅
+        </div>
+        <div class="calendar-info">
+          <h4>{{ calendar.name }}</h4>
+          <p *ngIf="calendar.description" class="description">{{ calendar.description }}</p>
+        </div>
+        <div class="calendar-actions">
+          <div class="toggle-switch" [class.active]="calendar.enabled" (click)="toggleCalendar(calendar, $event)">
+            <div class="toggle-slider"></div>
+          </div>
+          <button 
+            (click)="deleteCalendar(calendar, $event)" 
+            class="delete-calendar-btn"
+            title="Delete calendar"
+          >
+            🗑️
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
-  
-  <div *ngIf="error" class="error">
-    ❌ {{ error }}
-  </div>
-  
-  <div *ngIf="!loading && !error" class="calendar-view">
-    <!-- Day View -->
-    <app-day-view 
-      *ngIf="currentView.type === 'day'"
-      [date]="currentDate"
-      [events]="getEventsForDay(currentDate)"
-      [calendars]="calendars"
-      (eventClick)="openEventDetailModal($event)"
-    ></app-day-view>
+
+  <!-- Calendar Content -->
+  <div class="calendar-content" [class.full-width]="!showSidebar">
+    <div *ngIf="loading" class="loading">
+      🔄 Loading calendar...
+    </div>
     
-    <!-- Week View -->
-    <app-week-view 
-      *ngIf="currentView.type === 'week'"
-      [date]="currentDate"
-      [events]="events"
-      [calendars]="calendars"
-      (eventClick)="openEventDetailModal($event)"
-    ></app-week-view>
+    <div *ngIf="error" class="error">
+      ❌ {{ error }}
+    </div>
     
-    <!-- Month View -->
-    <app-month-view 
-      *ngIf="currentView.type === 'month'"
-      [date]="currentDate"
-      [events]="events"
-      [calendars]="calendars"
-    ></app-month-view>
-    
-    <!-- Agenda View -->
-    <div *ngIf="currentView.type === 'agenda'" class="agenda-view">
-      <h2>Agenda View</h2>
-      <div class="agenda-events">
-        <div 
-          *ngFor="let event of events | sortByStartTime"
-          (click)="openEventDetailModal(event)"
-          class="agenda-event"
-        >
-          <div class="event-time">{{ formatTime(event.start_time) }}</div>
-          <div class="event-title">{{ event.title }}</div>
-          <div *ngIf="event.location" class="event-location">📍 {{ event.location }}</div>
+    <div *ngIf="!loading && !error" class="calendar-view">
+      <!-- Day View -->
+      <app-day-view 
+        *ngIf="currentView.type === 'day'"
+        [date]="currentDate"
+        [events]="getEventsForDay(currentDate)"
+        [calendars]="calendars"
+        (eventClick)="openEventDetailModal($event)"
+      ></app-day-view>
+      
+      <!-- Week View -->
+      <app-week-view 
+        *ngIf="currentView.type === 'week'"
+        [date]="currentDate"
+        [events]="events"
+        [calendars]="calendars"
+        (eventClick)="openEventDetailModal($event)"
+      ></app-week-view>
+      
+      <!-- Month View -->
+      <app-month-view 
+        *ngIf="currentView.type === 'month'"
+        [date]="currentDate"
+        [events]="events"
+        [calendars]="calendars"
+      ></app-month-view>
+      
+      <!-- Agenda View -->
+      <div *ngIf="currentView.type === 'agenda'" class="agenda-view">
+        <h2>Agenda View</h2>
+        <div class="agenda-events">
+          <div 
+            *ngFor="let event of events | sortByStartTime"
+            (click)="openEventDetailModal(event)"
+            class="agenda-event"
+          >
+            <div class="event-time">{{ formatTime(event.start_time, event.all_day) }}</div>
+            <div class="event-title">{{ event.title }}</div>
+            <div *ngIf="event.location" class="event-location">📍 {{ event.location }}</div>
+            <div *ngIf="event.calendar_name" class="event-calendar" [style.color]="event.calendar_color">
+              📅 {{ event.calendar_name }}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -131,6 +187,30 @@
           placeholder="Enter event description"
           rows="3"
         ></textarea>
+      </div>
+      
+      <div class="form-group">
+        <label for="calendar">Calendar *</label>
+        <select 
+          id="calendar" 
+          [(ngModel)]="newEvent.calendar_id" 
+          name="calendar"
+          required
+          class="calendar-select"
+          (change)="onCalendarSelectionChange($event)"
+        >
+          <option value="" disabled>Select a calendar</option>
+          <option 
+            *ngFor="let calendar of calendars" 
+            [value]="calendar.id"
+            [disabled]="!calendar.enabled"
+          >
+            {{ calendar.name }}
+          </option>
+        </select>
+        <div *ngIf="!hasEnabledCalendars" class="calendar-warning">
+          ⚠️ No enabled calendars available. Please enable at least one calendar first.
+        </div>
       </div>
       
       <div class="form-row">
@@ -216,7 +296,14 @@
     
     <div class="modal-footer">
       <button (click)="closeAddEventModal()" class="btn btn-secondary">Cancel</button>
-      <button (click)="createEvent()" class="btn btn-primary">Create Event</button>
+      <button 
+        (click)="createEvent()" 
+        class="btn btn-primary"
+        [disabled]="!hasEnabledCalendars || !newEvent.calendar_id"
+        [title]="!hasEnabledCalendars ? 'No enabled calendars available' : !newEvent.calendar_id ? 'Please select a calendar' : ''"
+      >
+        Create Event
+      </button>
     </div>
   </div>
 </div>

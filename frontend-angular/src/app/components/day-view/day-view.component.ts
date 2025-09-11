@@ -1,42 +1,8 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import * as dayjs from 'dayjs';
+import { CalendarEvent, Calendar } from '../../interfaces/calendar-event.interface';
 
-interface Calendar {
-  id: number;
-  name: string;
-  color: string;
-  url?: string;
-  userId: number;
-  isActive: boolean;
-  syncToken?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface Event {
-  id: string;
-  uid?: string;
-  title: string;
-  description?: string;
-  location?: string;
-  start_time: string;
-  end_time: string;
-  all_day: boolean;
-  calendar_id: number;
-  reminder?: {
-    enabled: boolean;
-    type: string;
-    time: number;
-    unit: string;
-    relativeTo: string;
-  };
-  valarm?: {
-    trigger: string;
-    action: string;
-    description: string;
-  };
-}
 
 @Component({
   selector: 'app-day-view',
@@ -47,10 +13,10 @@ interface Event {
 })
 export class DayViewComponent {
   @Input() date!: Date;
-  @Input() events: Event[] = [];
+  @Input() events: CalendarEvent[] = [];
   @Input() calendars: Calendar[] = [];
-  @Output() deleteEvent = new EventEmitter<Event>();
-  @Output() eventClick = new EventEmitter<Event>();
+  @Output() deleteEvent = new EventEmitter<CalendarEvent>();
+  @Output() eventClick = new EventEmitter<CalendarEvent>();
 
   hours = Array.from({ length: 24 }, (_, i) => i);
 
@@ -66,7 +32,7 @@ export class DayViewComponent {
   }
 
   // Function to find overlapping events at a specific time point
-  findOverlappingEventsAtTime(event: Event, allEvents: Event[], timePoint: dayjs.Dayjs): Event[] {
+  findOverlappingEventsAtTime(event: CalendarEvent, allEvents: CalendarEvent[], timePoint: dayjs.Dayjs): CalendarEvent[] {
     const eventStart = this.parseEventTime(event.start_time);
     const eventEnd = this.parseEventTime(event.end_time);
     
@@ -98,7 +64,7 @@ export class DayViewComponent {
     return activeEvents;
   }
 
-  getEventStyle(event: Event): any {
+  getEventStyle(event: CalendarEvent): any {
     const calendar = this.calendars.find(c => c.id === event.calendar_id);
     return {
       backgroundColor: calendar?.color || '#4285f4',
@@ -114,19 +80,19 @@ export class DayViewComponent {
     return hour === dayjs().hour();
   }
 
-  getEventsForDay(): Event[] {
+  getEventsForDay(): CalendarEvent[] {
     return this.events.filter(event => dayjs(event.start_time).isSame(dayjs(this.date), 'day'));
   }
 
-  getAllDayEvents(): Event[] {
+  getAllDayEvents(): CalendarEvent[] {
     return this.events.filter(event => event.all_day && dayjs(event.start_time).isSame(dayjs(this.date), 'day'));
   }
 
-  getOverlappingGroups(): { events: Event[], globalGroup: Set<Event>, sortedGroup: Event[] } {
+  getOverlappingGroups(): { events: CalendarEvent[], globalGroup: Set<CalendarEvent>, sortedGroup: CalendarEvent[] } {
     const eventsForDay = this.getEventsForDay();
     
     // Create a single global overlapping group for all events that overlap with each other
-    const globalOverlappingGroup = new Set<Event>();
+    const globalOverlappingGroup = new Set<CalendarEvent>();
     
     // For each event, find all events that overlap with it and add them to the global group
     eventsForDay.forEach(event => {
@@ -174,21 +140,24 @@ export class DayViewComponent {
 
 
 
-  onDeleteEvent(event: Event): void {
+  onDeleteEvent(event: CalendarEvent): void {
     this.deleteEvent.emit(event);
   }
 
-  onEventClick(event: Event): void {
+  onEventClick(event: CalendarEvent): void {
     this.eventClick.emit(event);
   }
 
-  formatTime(event: Event): string {
+  formatTime(event: CalendarEvent): string {
+    if (event.all_day) {
+      return 'All Day';
+    }
     const eventStart = this.parseEventTime(event.start_time);
     const eventEnd = this.parseEventTime(event.end_time);
     return `${eventStart.format('HH:mm')} - ${eventEnd.format('HH:mm')}`;
   }
 
-  getEventTitle(event: Event): string {
+  getEventTitle(event: CalendarEvent): string {
     const eventStart = this.parseEventTime(event.start_time);
     const eventEnd = this.parseEventTime(event.end_time);
     return `${event.title} - ${eventStart.format('HH:mm')} - ${eventEnd.format('HH:mm')}`;
@@ -198,12 +167,12 @@ export class DayViewComponent {
     return hour;
   }
 
-  trackByEventId(index: number, event: Event): string {
+  trackByEventId(index: number, event: CalendarEvent): string {
     return event.id;
   }
 
   // Full overlapping event positioning logic (same as React version)
-  getEventPosition(event: Event, globalGroup: Set<Event>, sortedGroup: Event[]): any {
+  getEventPosition(event: CalendarEvent, globalGroup: Set<CalendarEvent>, sortedGroup: CalendarEvent[]): any {
     const eventStart = this.parseEventTime(event.start_time);
     const eventEnd = this.parseEventTime(event.end_time);
     

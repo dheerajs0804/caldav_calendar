@@ -218,6 +218,8 @@ function handlePostRequest($path) {
 function handlePutRequest($path) {
     if (preg_match('/^events\/(.+)$/', $path, $matches)) {
         updateEvent($matches[1]);
+    } elseif (preg_match('/^calendars\/(\d+)\/toggle$/', $path, $matches)) {
+        toggleCalendar($matches[1]);
     } else {
         http_response_code(404);
         echo json_encode(['error' => 'Endpoint not found']);
@@ -292,15 +294,25 @@ function getUserCalendars() {
         error_log("discoverCalendars() returned: " . print_r($calendars, true));
 
         if ($calendars && is_array($calendars) && count($calendars) > 0) {
+            // Load calendar states from file
+            $calendarStatesFile = 'data/calendar_states.json';
+            $calendarStates = [];
+            
+            if (file_exists($calendarStatesFile)) {
+                $calendarStates = json_decode(file_get_contents($calendarStatesFile), true) ?? [];
+            }
+            
             // Add ID and other properties to each calendar
             $processedCalendars = [];
             foreach ($calendars as $index => $calendar) {
+                $calendarId = $index + 1;
                 $processedCalendars[] = [
-                    'id' => $index + 1, // Simple numeric ID
+                    'id' => $calendarId, // Simple numeric ID
                     'name' => $calendar['name'],
                     'url' => $calendar['href'],
                     'color' => '#4285f4', // Default color
                     'description' => '',
+                    'enabled' => isset($calendarStates[$calendarId]) ? $calendarStates[$calendarId] : true, // Default to enabled
                     'created_at' => date('c'),
                     'updated_at' => date('c')
                 ];
@@ -1123,6 +1135,59 @@ function deleteCalendar($id) {
         sendJsonResponse([
             'success' => false,
             'message' => 'Failed to delete calendar: ' . $e->getMessage()
+        ]);
+    }
+}
+
+function toggleCalendar($id) {
+    try {
+        // Validate calendar ID
+        if (!is_numeric($id)) {
+            throw new Exception('Invalid calendar ID');
+        }
+        
+        // Get the request body to get the enabled state
+        $input = json_decode(file_get_contents('php://input'), true);
+        if (!isset($input['enabled'])) {
+            throw new Exception('Missing enabled parameter');
+        }
+        
+        $enabled = (bool)$input['enabled'];
+        
+        // Store calendar state in session or file
+        $calendarStatesFile = 'data/calendar_states.json';
+        $calendarStates = [];
+        
+        if (file_exists($calendarStatesFile)) {
+            $calendarStates = json_decode(file_get_contents($calendarStatesFile), true) ?? [];
+        }
+        
+        // Update the calendar state
+        $calendarStates[$id] = $enabled;
+        
+        // Save the updated states
+        if (!file_exists('data')) {
+            mkdir('data', 0755, true);
+        }
+        
+        file_put_contents($calendarStatesFile, json_encode($calendarStates, JSON_PRETTY_PRINT));
+        
+        error_log("Calendar $id toggled to: " . ($enabled ? 'enabled' : 'disabled'));
+        
+        sendJsonResponse([
+            'success' => true,
+            'message' => 'Calendar state updated successfully',
+            'data' => [
+                'id' => intval($id),
+                'enabled' => $enabled
+            ]
+        ]);
+        
+    } catch (Exception $e) {
+        error_log("Calendar toggle error: " . $e->getMessage());
+        sendJsonResponse([
+            'success' => false,
+            'message' => 'Failed to toggle calendar: ' . $e->getMessage()
         ]);
     }
 }

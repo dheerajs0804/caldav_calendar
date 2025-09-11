@@ -1,42 +1,8 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import * as dayjs from 'dayjs';
+import { CalendarEvent, Calendar } from '../../interfaces/calendar-event.interface';
 
-interface Calendar {
-  id: number;
-  name: string;
-  color: string;
-  url?: string;
-  userId: number;
-  isActive: boolean;
-  syncToken?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface Event {
-  id: string;
-  uid?: string;
-  title: string;
-  description?: string;
-  location?: string;
-  start_time: string;
-  end_time: string;
-  all_day: boolean;
-  calendar_id: number;
-  reminder?: {
-    enabled: boolean;
-    type: string;
-    time: number;
-    unit: string;
-    relativeTo: string;
-  };
-  valarm?: {
-    trigger: string;
-    action: string;
-    description: string;
-  };
-}
 
 @Component({
   selector: 'app-week-view',
@@ -47,10 +13,10 @@ interface Event {
 })
 export class WeekViewComponent {
   @Input() date!: Date;
-  @Input() events: Event[] = [];
+  @Input() events: CalendarEvent[] = [];
   @Input() calendars: Calendar[] = [];
-  @Output() deleteEvent = new EventEmitter<Event>();
-  @Output() eventClick = new EventEmitter<Event>();
+  @Output() deleteEvent = new EventEmitter<CalendarEvent>();
+  @Output() eventClick = new EventEmitter<CalendarEvent>();
 
   hours = Array.from({ length: 24 }, (_, i) => i);
 
@@ -66,7 +32,7 @@ export class WeekViewComponent {
   }
 
   // Function to find overlapping events (same logic as DayView)
-  findOverlappingEvents(event: Event, allEvents: Event[], day: dayjs.Dayjs): Event[] {
+  findOverlappingEvents(event: CalendarEvent, allEvents: CalendarEvent[], day: dayjs.Dayjs): CalendarEvent[] {
     const eventStart = this.parseEventTime(event.start_time);
     const eventEnd = this.parseEventTime(event.end_time);
     
@@ -97,7 +63,7 @@ export class WeekViewComponent {
   }
 
   // Function to calculate event position (simple version that was working)
-  getEventPosition(event: Event, day: dayjs.Dayjs, allEvents: Event[]): any {
+  getEventPosition(event: CalendarEvent, day: dayjs.Dayjs, allEvents: CalendarEvent[]): any {
     console.log(`getEventPosition called for: ${event.title}`);
     const eventStart = this.parseEventTime(event.start_time);
     const eventEnd = this.parseEventTime(event.end_time);
@@ -125,7 +91,7 @@ export class WeekViewComponent {
     });
 
     // Find all overlapping events (simple version)
-    const globalOverlappingGroup = new Set<Event>();
+    const globalOverlappingGroup = new Set<CalendarEvent>();
     
     eventsForDay.forEach(event => {
       const eventStart = this.parseEventTime(event.start_time);
@@ -198,7 +164,7 @@ export class WeekViewComponent {
     };
   }
 
-  getEventStyle(event: Event): any {
+  getEventStyle(event: CalendarEvent): any {
     const calendar = this.calendars.find(c => c.id === event.calendar_id);
     return {
       backgroundColor: calendar?.color || '#4285f4',
@@ -219,7 +185,7 @@ export class WeekViewComponent {
     return Array.from({ length: 7 }, (_, i) => weekStart.add(i, 'day'));
   }
 
-  getEventsForDay(day: dayjs.Dayjs): Event[] {
+  getEventsForDay(day: dayjs.Dayjs): CalendarEvent[] {
     const eventsForDay = this.events.filter(event => {
       const eventStart = this.parseEventTime(event.start_time);
       return eventStart.isValid() && eventStart.isSame(day, 'day');
@@ -230,7 +196,7 @@ export class WeekViewComponent {
 
 
 
-  getAllDayEventsForDay(day: dayjs.Dayjs): Event[] {
+  getAllDayEventsForDay(day: dayjs.Dayjs): CalendarEvent[] {
     return this.events.filter(event => {
       if (!event.all_day) return false;
       const eventDate = this.parseEventTime(event.start_time);
@@ -238,21 +204,24 @@ export class WeekViewComponent {
     });
   }
 
-  onDeleteEvent(event: Event): void {
+  onDeleteEvent(event: CalendarEvent): void {
     this.deleteEvent.emit(event);
   }
 
-  onEventClick(event: Event): void {
+  onEventClick(event: CalendarEvent): void {
     this.eventClick.emit(event);
   }
 
-  formatTime(event: Event): string {
+  formatTime(event: CalendarEvent): string {
+    if (event.all_day) {
+      return 'All Day';
+    }
     const eventStart = this.parseEventTime(event.start_time);
     const eventEnd = this.parseEventTime(event.end_time);
     return `${eventStart.format('HH:mm')} - ${eventEnd.format('HH:mm')}`;
   }
 
-  getEventTitle(event: Event): string {
+  getEventTitle(event: CalendarEvent): string {
     const eventStart = this.parseEventTime(event.start_time);
     const eventEnd = this.parseEventTime(event.end_time);
     return `${event.title} - ${eventStart.format('HH:mm')} - ${eventEnd.format('HH:mm')}`;
@@ -262,7 +231,7 @@ export class WeekViewComponent {
     return hour;
   }
 
-  trackByEventId(index: number, event: Event): string {
+  trackByEventId(index: number, event: CalendarEvent): string {
     return event.id;
   }
 
