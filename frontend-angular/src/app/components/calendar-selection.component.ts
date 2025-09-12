@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
+import { ColorRegistryService } from '../services/color-registry.service';
 
 interface Calendar {
   id: number;
@@ -72,9 +73,9 @@ interface DeleteCalendarResponse {
             *ngFor="let calendar of filteredCalendars" 
             class="calendar-item"
             [class.selected]="calendar.enabled"
-            [style.border-left-color]="calendar.color"
+            [style.border-left-color]="getCalendarColor(calendar.name)"
           >
-            <div class="calendar-icon" [style.color]="calendar.color">
+            <div class="calendar-icon" [style.color]="getCalendarColor(calendar.name)">
               📅
             </div>
             <div class="calendar-info">
@@ -687,11 +688,17 @@ export class CalendarSelectionComponent implements OnInit {
 
   constructor(
     private http: HttpClient,
-    private router: Router
+    private router: Router,
+    private colorRegistry: ColorRegistryService
   ) {}
 
   ngOnInit(): void {
     this.loadCalendars();
+  }
+
+  getCalendarColor(calendarName: string): string {
+    // 🎨 Thunderbird-style: Get color from local registry
+    return this.colorRegistry.getCalendarColor(calendarName);
   }
 
   get enabledCalendarsCount(): number {
@@ -816,6 +823,10 @@ export class CalendarSelectionComponent implements OnInit {
       next: (response) => {
         this.creatingCalendar = false;
         if (response.success && response.data) {
+          // 🎨 Thunderbird-style: Store color locally in color registry
+          this.colorRegistry.setCalendarColor(response.data.name, this.newCalendar.color || '#4285f4');
+          console.log(`🎨 Thunderbird-style: Stored color for calendar '${response.data.name}': ${this.newCalendar.color || '#4285f4'}`);
+          
           // Add the new calendar to the list
           this.calendars.push(response.data);
           this.closeAddCalendarModal();

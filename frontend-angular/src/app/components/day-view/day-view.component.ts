@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import * as dayjs from 'dayjs';
 import { CalendarEvent, Calendar } from '../../interfaces/calendar-event.interface';
+import { ColorRegistryService } from '../../services/color-registry.service';
 
 
 @Component({
@@ -19,6 +20,8 @@ export class DayViewComponent {
   @Output() eventClick = new EventEmitter<CalendarEvent>();
 
   hours = Array.from({ length: 24 }, (_, i) => i);
+
+  constructor(private colorRegistry: ColorRegistryService) {}
 
   // Helper function to parse time strings and handle timezone offsets
   parseEventTime(timeString: string): dayjs.Dayjs {
@@ -65,15 +68,77 @@ export class DayViewComponent {
   }
 
   getEventStyle(event: CalendarEvent): any {
-    const calendar = this.calendars.find(c => c.id === event.calendar_id);
-    return {
-      backgroundColor: calendar?.color || '#4285f4',
-      borderLeft: `4px solid ${calendar?.color || '#4285f4'}`,
+    // 🎨 Thunderbird-style: Get color from local registry
+    const thunderbirdColor = this.colorRegistry.getCalendarColor(event.calendar_name || '');
+    
+    // Use Thunderbird-style color as primary, with fallbacks
+    const eventColor = thunderbirdColor || event.color || event.calendar_color || '#4285f4';
+    
+    // Debug logging
+    console.log('🎨 Thunderbird Day Event Style Debug:', {
+      eventTitle: event.title,
+      calendarName: event.calendar_name,
+      thunderbirdColor: thunderbirdColor,
+      eventColor: event.color,
+      calendarColor: event.calendar_color,
+      finalColor: eventColor,
+      event: event
+    });
+    
+    // Return styles with background color as fallback for custom colors
+    const styles = {
+      'background-color': eventColor,
+      'border-left': `4px solid ${eventColor}`,
+      'color': 'white'
     };
+    
+    console.log('🎨 Thunderbird Applied styles:', styles);
+    console.log('🎨 Event color for Tailwind:', eventColor);
+    
+    return styles;
+  }
+
+  getEventTailwindClasses(event: CalendarEvent): string {
+    // 🎨 Thunderbird-style: Get color from local registry
+    const thunderbirdColor = this.colorRegistry.getCalendarColor(event.calendar_name || '');
+    const eventColor = thunderbirdColor || event.color || event.calendar_color || '#4285f4';
+    
+    // Convert hex color to Tailwind color class
+    let colorClass = 'bg-blue-500'; // Default blue
+    
+    if (eventColor === '#ff0000') {
+      colorClass = 'bg-red-500';
+    } else if (eventColor === '#00ff00') {
+      colorClass = 'bg-green-500';
+    } else if (eventColor === '#0000ff') {
+      colorClass = 'bg-blue-600';
+    } else if (eventColor === '#ffa500') {
+      colorClass = 'bg-orange-500';
+    } else if (eventColor === '#800080') {
+      colorClass = 'bg-purple-500';
+    } else if (eventColor === '#ffff00') {
+      colorClass = 'bg-yellow-500';
+    } else if (eventColor === '#ffc0cb') {
+      colorClass = 'bg-pink-500';
+    } else if (eventColor === '#00ffff') {
+      colorClass = 'bg-cyan-500';
+    } else {
+      // For custom colors, use arbitrary value with proper syntax
+      colorClass = `bg-[${eventColor}]`;
+    }
+    
+    console.log('🎨 Tailwind color class:', colorClass);
+    
+    return `event-container day-event-item cursor-pointer ${colorClass}`;
   }
 
   isToday(day: Date): boolean {
     return dayjs(day).isSame(dayjs(), 'day');
+  }
+
+  getEventClass(event: CalendarEvent): string {
+    const calendarName = event.calendar_name?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'default';
+    return `event-${calendarName}`;
   }
 
   isCurrentHour(hour: number): boolean {

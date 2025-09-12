@@ -30,9 +30,12 @@ const MonthView: React.FC<MonthViewProps> = ({ date, events, calendars }) => {
   };
 
   const getEventStyle = (event: Event) => {
-    const calendar = calendars.find(c => c.id === event.calendar_id);
+    // Use event's own color if available, otherwise fallback to calendar color lookup
+    const eventColor = event.color || event.calendar_color;
+    const fallbackColor = eventColor || '#4285f4';
+    
     return {
-      backgroundColor: calendar?.color || '#4285f4',
+      backgroundColor: fallbackColor,
     };
   };
 

@@ -14,6 +14,7 @@ import { EmailService } from '../services/email.service';
 import { AuthService } from '../services/auth.service';
 import { Router } from '@angular/router';
 import { CalendarEvent, Calendar } from '../interfaces/calendar-event.interface';
+import { ColorRegistryService } from '../services/color-registry.service';
 
 
 interface View {
@@ -104,7 +105,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
     private http: HttpClient, 
     private emailService: EmailService,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private colorRegistry: ColorRegistryService
   ) {}
 
   ngOnInit(): void {
@@ -112,6 +114,11 @@ export class CalendarComponent implements OnInit, OnDestroy {
     
     // Always fetch calendars and show calendar view directly after login
     this.fetchCalendars();
+  }
+
+  getCalendarColor(calendarName: string): string {
+    // 🎨 Thunderbird-style: Get color from local registry
+    return this.colorRegistry.getCalendarColor(calendarName);
   }
 
   ngOnDestroy(): void {
@@ -276,14 +283,30 @@ export class CalendarComponent implements OnInit, OnDestroy {
       
               if (response.success && response.data) {
                 // Add calendar info to each event
-                const eventsWithCalendar = response.data.map((event: CalendarEvent) => ({
-                  ...event,
-                  calendar_name: calendar.name,
-                  calendar_color: calendar.color,
-                  calendar_id: calendar.id,
-                  calendar_url: calendar.url // Store calendar URL for proper deletion
-                }));
+                const eventsWithCalendar = response.data.map((event: CalendarEvent) => {
+                  // 🎨 Thunderbird-style: Get color from local registry
+                  const thunderbirdColor = this.colorRegistry.getCalendarColor(calendar.name);
+                  
+                  return {
+                    ...event,
+                    calendar_name: calendar.name,
+                    calendar_color: thunderbirdColor, // Use Thunderbird-style color
+                    calendar_id: calendar.id,
+                    calendar_url: calendar.url, // Store calendar URL for proper deletion
+                    color: thunderbirdColor // Set event color to Thunderbird-style color
+                  };
+                });
                 allEvents.push(...eventsWithCalendar);
+                
+                // Debug logging for calendar events
+                console.log('📅 Calendar Events Debug:', {
+                  calendarName: calendar.name,
+                  calendarColor: calendar.color,
+                  thunderbirdColor: this.colorRegistry.getCalendarColor(calendar.name),
+                  calendarUrl: calendar.url,
+                  eventsCount: eventsWithCalendar.length,
+                  sampleEvent: eventsWithCalendar[0] || null
+                });
               }
             } catch (error) {
               console.error(`Error fetching events from calendar ${calendar.name}:`, error);

@@ -18,7 +18,7 @@ body {
 
 /* Event styling classes */
 .week-event-item {
-  background: linear-gradient(180deg, #1a4a8a 0%, #2c5aa0 25%, #4285f4 50%, #5ba0ff 75%, #7bb3ff 100%) !important;
+  /* Remove all background styling - let Tailwind handle colors */
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25) !important;
   border: 1px solid rgba(255, 255, 255, 0.2) !important;
   color: white !important;
@@ -28,26 +28,34 @@ body {
   z-index: 10 !important; /* Ensure events appear above time grid */
 }
 
-.month-event,
-.absolute.left-20.right-2,
-.absolute[style*="width"] {
-  background: linear-gradient(180deg, #1a4a8a 0%, #2c5aa0 25%, #4285f4 50%, #5ba0ff 75%, #7bb3ff 100%) !important;
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  color: white !important;
-  position: relative !important;
+.day-event-item {
+  /* Day view events positioning */
+  position: absolute !important;
+  transform: none !important;
+  margin: 0 !important;
+  z-index: 10 !important;
 }
 
-/* Day view events - allow absolute positioning with subtle blue gradient */
+/* Dynamic calendar colors - inline styles will override the default blue gradient */
+
+/* Day view events - allow absolute positioning with calendar-specific colors */
 .day-view .absolute.event-container {
-  background: linear-gradient(180deg, #1a4a8a 0%, #2c5aa0 25%, #4285f4 50%, #5ba0ff 75%, #7bb3ff 100%) !important;
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  color: white !important;
   position: absolute !important; /* Ensure absolute positioning works */
   transform: none !important; /* Prevent any transforms from affecting positioning */
   margin: 0 !important; /* Remove any margins that might affect positioning */
+  color: white !important;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
 }
+
+/* Month view events - calendar-specific colors */
+.month-event {
+  color: white !important;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  position: relative !important;
+}
+
 
 /* Delete button styles */
 .delete-event-btn {

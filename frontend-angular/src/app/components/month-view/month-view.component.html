@@ -33,7 +33,7 @@
         <div class="space-y-1">
           <div
             *ngFor="let event of getEventsForDate(day).slice(0, 3); trackBy: trackByEventId"
-            class="p-1 text-xs text-white rounded overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+            [ngClass]="getEventTailwindClasses(event)"
             [ngStyle]="getEventStyle(event)"
             [title]="event.title"
           >

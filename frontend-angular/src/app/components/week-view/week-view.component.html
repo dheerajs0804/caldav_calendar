@@ -51,7 +51,8 @@
       <ng-container *ngFor="let event of getEventsForDay(day); trackBy: trackByEventId">
         <div
           *ngIf="getEventPosition(event, day, events) as position"
-          class="absolute p-2 text-sm text-white rounded overflow-hidden shadow-sm week-event-item cursor-pointer"
+          class="absolute p-2 text-sm text-white rounded overflow-hidden shadow-sm"
+          [ngClass]="getEventTailwindClasses(event)"
           [ngStyle]="getEventStyle(event)"
           style="position: absolute !important; z-index: 10; min-height: 20px;"
           [style.top]="position.top + 'px'"

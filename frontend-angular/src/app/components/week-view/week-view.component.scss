@@ -39,3 +39,15 @@
   background-color: rgba(59, 130, 246, 0.1);
   border-top: 1px solid #3b82f6;
 }
+
+// Force green color for gcal events
+.event-gcal {
+  background-color: #00ff00 !important;
+  border-left: 4px solid #00ff00 !important;
+}
+
+// Override any Tailwind background classes for gcal events
+.week-event-item.event-gcal {
+  background-color: #00ff00 !important;
+  background: #00ff00 !important;
+}

@@ -20,9 +20,12 @@ const AgendaView: React.FC<AgendaViewProps> = ({ date, events, calendars }) => {
     .sort((a, b) => dayjs(a.start_time).valueOf() - dayjs(b.start_time).valueOf());
 
   const getEventStyle = (event: Event) => {
-    const calendar = calendars.find(c => c.id === event.calendar_id);
+    // Use event's own color if available, otherwise fallback to calendar color lookup
+    const eventColor = event.color || event.calendar_color;
+    const fallbackColor = eventColor || '#4285f4';
+    
     return {
-      borderLeft: `4px solid ${calendar?.color || '#4285f4'}`,
+      borderLeft: `4px solid ${fallbackColor}`,
     };
   };
 
@@ -120,11 +123,15 @@ const AgendaView: React.FC<AgendaViewProps> = ({ date, events, calendars }) => {
                     {/* Calendar indicator */}
                     <div className="flex-shrink-0">
                       {(() => {
+                        // Use event's own color if available, otherwise fallback to calendar color lookup
+                        const eventColor = event.color || event.calendar_color;
+                        const fallbackColor = eventColor || '#4285f4';
                         const calendar = calendars.find(c => c.id === event.calendar_id);
+                        
                         return (
                           <div
                             className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: calendar?.color || '#4285f4' }}
+                            style={{ backgroundColor: fallbackColor }}
                             title={calendar?.name || 'Unknown Calendar'}
                           />
                         );

@@ -24,7 +24,8 @@
     <ng-container *ngIf="getOverlappingGroups() as groups">
       <div
         *ngFor="let event of groups.events; trackBy: trackByEventId"
-        class="absolute p-2 text-sm text-white rounded overflow-hidden shadow-sm event-container day-event-item cursor-pointer"
+        class="absolute p-2 text-sm text-white rounded overflow-hidden shadow-sm"
+        [ngClass]="getEventTailwindClasses(event)"
         [ngStyle]="getEventStyle(event)"
         [style.top.px]="getEventPosition(event, groups.globalGroup, groups.sortedGroup).top"
         [style.height.px]="getEventPosition(event, groups.globalGroup, groups.sortedGroup).height"

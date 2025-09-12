@@ -65,9 +65,9 @@
         *ngFor="let calendar of filteredCalendars" 
         class="calendar-item"
         [class.selected]="calendar.enabled"
-        [style.border-left-color]="calendar.color"
+        [style.border-left-color]="getCalendarColor(calendar.name)"
       >
-        <div class="calendar-icon" [style.color]="calendar.color">
+        <div class="calendar-icon" [style.color]="getCalendarColor(calendar.name)">
           📅
         </div>
         <div class="calendar-info">

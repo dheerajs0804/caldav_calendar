@@ -49,10 +49,13 @@ const DayView = ({ date, events, calendars, onDeleteEvent = () => {} }) => {
   };
 
   const getEventStyle = (event) => {
-    const calendar = calendars.find(c => c.id === event.calendar_id);
+    // Use event's own color if available, otherwise fallback to calendar color lookup
+    const eventColor = event.color || event.calendar_color;
+    const fallbackColor = eventColor || '#4285f4';
+    
     return {
-      backgroundColor: calendar?.color || '#4285f4',
-      borderLeft: `4px solid ${calendar?.color || '#4285f4'}`,
+      backgroundColor: fallbackColor,
+      borderLeft: `4px solid ${fallbackColor}`,
     };
   };
 

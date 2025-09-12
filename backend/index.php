@@ -302,15 +302,34 @@ function getUserCalendars() {
                 $calendarStates = json_decode(file_get_contents($calendarStatesFile), true) ?? [];
             }
             
+            // Load calendar colors from file
+            $calendarColorsFile = 'data/calendar_colors.json';
+            $calendarColors = [];
+            
+            if (file_exists($calendarColorsFile)) {
+                $calendarColors = json_decode(file_get_contents($calendarColorsFile), true) ?? [];
+                error_log("Loaded calendar colors: " . print_r($calendarColors, true));
+            }
+            
             // Add ID and other properties to each calendar
             $processedCalendars = [];
             foreach ($calendars as $index => $calendar) {
                 $calendarId = $index + 1;
+                $calendarUrl = $calendar['href'];
+                
+                // Get stored color for this calendar URL, or use CalDAV color, or default
+                $storedColor = $calendarColors[$calendarUrl] ?? null;
+                $caldavColor = $calendar['color'] ?? null;
+                $finalColor = $storedColor ?? $caldavColor ?? '#4285f4';
+                
+                error_log("Calendar: " . $calendar['name'] . ", URL: " . $calendarUrl);
+                error_log("Stored color: " . ($storedColor ?? 'null') . ", CalDAV color: " . ($caldavColor ?? 'null') . ", Final color: " . $finalColor);
+                
                 $processedCalendars[] = [
                     'id' => $calendarId, // Simple numeric ID
                     'name' => $calendar['name'],
-                    'url' => $calendar['href'],
-                    'color' => '#4285f4', // Default color
+                    'url' => $calendarUrl,
+                    'color' => $finalColor, // Use stored color or fallback
                     'description' => '',
                     'enabled' => isset($calendarStates[$calendarId]) ? $calendarStates[$calendarId] : true, // Default to enabled
                     'created_at' => date('c'),
@@ -563,6 +582,32 @@ function createCalendar() {
         $result = $caldavClient->createCalendar($calendarName, $description, $color);
         
         if ($result['success']) {
+            // Store the calendar color for future event inheritance
+            $calendarData = $result['data'];
+            if (isset($calendarData['url']) && isset($calendarData['color'])) {
+                $calendarColorsFile = 'data/calendar_colors.json';
+                $calendarColorsDir = dirname($calendarColorsFile);
+                
+                // Create directory if it doesn't exist
+                if (!is_dir($calendarColorsDir)) {
+                    mkdir($calendarColorsDir, 0755, true);
+                }
+                
+                // Read existing colors
+                $calendarColors = [];
+                if (file_exists($calendarColorsFile)) {
+                    $calendarColors = json_decode(file_get_contents($calendarColorsFile), true) ?? [];
+                }
+                
+                // Store the new calendar color
+                $calendarColors[$calendarData['url']] = $calendarData['color'];
+                
+                // Write back to file
+                file_put_contents($calendarColorsFile, json_encode($calendarColors, JSON_PRETTY_PRINT));
+                
+                error_log("Stored calendar color: " . $calendarData['color'] . " for URL: " . $calendarData['url']);
+            }
+            
             sendJsonResponse([
                 'success' => true,
                 'data' => $result['data'],
@@ -606,6 +651,21 @@ function createEvent() {
         error_log("Attendees data in input: " . json_encode($input['attendees'] ?? 'null'));
         error_log("Number of attendees: " . (isset($input['attendees']) ? count($input['attendees']) : 'not set'));
         
+        // Get calendar color for color inheritance
+        $calendarColor = '#4285f4'; // Default blue color
+        $calendarId = $input['calendar_id'] ?? 1;
+        $calendarUrl = $input['calendar_url'] ?? null;
+        
+        // Try to get calendar color from stored calendar colors
+        if ($calendarUrl) {
+            $calendarColorsFile = 'data/calendar_colors.json';
+            if (file_exists($calendarColorsFile)) {
+                $calendarColors = json_decode(file_get_contents($calendarColorsFile), true) ?? [];
+                $calendarColor = $calendarColors[$calendarUrl] ?? $calendarColor;
+                error_log("Calendar color inherited: $calendarColor for URL: $calendarUrl");
+            }
+        }
+        
         // Create event object
         $event = [
             'id' => uniqid('event_'),
@@ -615,7 +675,9 @@ function createEvent() {
             'start_time' => $input['start_time'],
             'end_time' => $input['end_time'],
             'all_day' => $input['all_day'] ?? false,
-            'calendar_id' => $input['calendar_id'] ?? 1,
+            'calendar_id' => $calendarId,
+            'calendar_url' => $calendarUrl,
+            'color' => $calendarColor, // Inherit calendar color
             'uid' => uniqid('uid_'),
             'etag' => uniqid('etag_'),
             'created_at' => date('c'),
