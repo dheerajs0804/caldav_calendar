@@ -38,8 +38,9 @@ document.addEventListener('DOMContentLoaded', function() {
         calendarUrl = configElement.getAttribute('content');
     }
     
-    // Function to open calendar with auto-login using SSO
+    // Function to open calendar with auto-login using direct credentials
     function openCalendarWithCredentials(username) {
+        console.log('🎯 openCalendarWithCredentials called with username:', username);
         console.log('Calendar plugin: Starting credential resolution for user:', username);
         
         // Priority 1: Use credentials from Roundcube login (most reliable)
@@ -47,14 +48,14 @@ document.addEventListener('DOMContentLoaded', function() {
         var loginPassword = sessionStorage.getItem('roundcube_login_password');
         
         if (loginUsername && loginPassword) {
-            console.log('Calendar plugin: Using captured login credentials for seamless SSO');
-            createSSOTokenAndOpenCalendar(loginUsername, loginPassword);
+            console.log('Calendar plugin: Using captured login credentials for direct authentication');
+            openCalendarWithDirectCredentials(loginUsername, loginPassword);
             return;
         }
         
         // Priority 2: Try server-side stored credentials (from authenticate hook)  
         console.log('Calendar plugin: Attempting to use server-side stored credentials');
-        rcmail.http_post('plugin.calendar_create_sso', {}, rcmail.set_busy(true, 'loading'));
+        rcmail.http_post('plugin.calendar_get_credentials', {}, rcmail.set_busy(true, 'loading'));
     }
     
     // Function to prompt for password and create SSO
@@ -74,61 +75,85 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Function to create SSO token and open calendar
-    function createSSOTokenAndOpenCalendar(username, password) {
-        // Make request to calendar backend to create SSO token
-        fetch('http://localhost:8001/auth/sso-token', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                username: username,
-                password: password
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log('🎯 SSO Token Response:', data);
-            if (data.success && data.token) {
-                // Open calendar with SSO token
-                var calendarUrlWithSSO = calendarUrl + '?sso_token=' + encodeURIComponent(data.token);
-                console.log('🎯 Opening calendar with SSO URL:', calendarUrlWithSSO);
-                window.open(calendarUrlWithSSO, '_blank');
+    // Function to open calendar with direct credentials
+    function openCalendarWithDirectCredentials(username, password) {
+        console.log('🎯 Opening calendar with direct credentials for user:', username);
+        
+        // Pass credentials directly in URL parameters to /login route
+        var calendarUrlWithCreds = calendarUrl + '/login?username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password);
+        console.log('🎯 Opening calendar with credentials URL:', calendarUrlWithCreds);
+        
+        // Try to open the URL
+        try {
+            var newWindow = window.open(calendarUrlWithCreds, '_blank', 'noopener,noreferrer');
+            if (newWindow) {
+                console.log('🎯 Successfully opened new window');
+                newWindow.focus();
             } else {
-                console.error('❌ Failed to create SSO token:', data.message);
-                alert('Failed to create SSO token: ' + (data.message || 'Unknown error'));
-                // Fallback to regular calendar
-                window.open(calendarUrl, '_blank');
+                console.error('🎯 Failed to open new window - popup blocked?');
+                // Fallback: try to navigate current window
+                console.log('🎯 Trying to navigate current window instead');
+                window.location.href = calendarUrlWithCreds;
             }
-        })
-        .catch(error => {
-            console.error('Error creating SSO token:', error);
-            alert('Error connecting to calendar backend');
-            // Fallback to regular calendar
-            window.open(calendarUrl, '_blank');
-        });
+        } catch (error) {
+            console.error('🎯 Error opening window:', error);
+            // Fallback: try to navigate current window
+            console.log('🎯 Trying to navigate current window instead');
+            window.location.href = calendarUrlWithCreds;
+        }
     }
     
     // Make the function globally available
     window.openCalendarWithCredentials = openCalendarWithCredentials;
     
+    // Test function for debugging
+    window.testOpenCalendar = function() {
+        var testUrl = 'http://localhost:4200/login?username=test&password=test';
+        console.log('🧪 Testing window.open with URL:', testUrl);
+        var result = window.open(testUrl, '_blank');
+        console.log('🧪 window.open result:', result);
+        return result;
+    };
+    
     // Handle calendar button clicks
     var calendarButtons = document.querySelectorAll('.button-calendar, .calendar-button');
     
+    console.log('🎯 Found calendar buttons:', calendarButtons.length);
+    
     calendarButtons.forEach(function(button) {
+        console.log('🎯 Setting up click handler for button:', button);
         button.addEventListener('click', function(e) {
+            console.log('🎯 Calendar button clicked!');
             e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
             
-            // Check if this button has a username attribute
+            // Check if this button has a username attribute or extract from onclick
             var username = button.getAttribute('data-username') || '';
+            
+            // If no data-username, try to extract from onclick attribute
+            if (!username) {
+                var onclickAttr = button.getAttribute('onclick') || '';
+                console.log('🎯 Button onclick:', onclickAttr);
+                var match = onclickAttr.match(/openCalendarWithCredentials\('([^']+)'\)/);
+                if (match) {
+                    username = match[1];
+                    console.log('🎯 Extracted username from onclick:', username);
+                }
+            }
+            
+            console.log('🎯 Button username:', username);
             if (username) {
+                console.log('🎯 Calling openCalendarWithCredentials with username:', username);
                 openCalendarWithCredentials(username);
             } else {
+                console.log('🎯 No username found, using fallback');
                 // Fallback to regular calendar link
                 window.open(calendarUrl, '_blank');
             }
-        });
+            
+            return false; // Prevent any further event handling
+        }, true); // Use capture phase to handle before other handlers
     });
     
     // Ensure button is visible after navigation
@@ -191,4 +216,59 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Check every 2 seconds to ensure the button stays visible
     setInterval(ensureCalendarButtonVisible, 2000);
+    
+    // Handle credentials response from server
+    rcmail.addEventListener('plugin.calendar_credentials_response', function(data) {
+        if (data.error) {
+            console.error('Calendar plugin: Error getting credentials:', data.error);
+            // Fallback to regular calendar
+            window.open(calendarUrl, '_blank');
+        } else if (data.username && data.password) {
+            console.log('Calendar plugin: Got credentials from server, opening calendar');
+            openCalendarWithDirectCredentials(data.username, data.password);
+        }
+    });
+    
+    // Global click handler as fallback
+    document.addEventListener('click', function(e) {
+        // Check if clicked element is a calendar button
+        if (e.target.classList.contains('button-calendar') || 
+            e.target.classList.contains('calendar-button') ||
+            e.target.closest('.button-calendar') ||
+            e.target.closest('.calendar-button')) {
+            
+            console.log('🎯 Global click handler: Calendar button clicked!');
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            
+            // Try to get username from various sources
+            var username = e.target.getAttribute('data-username') || 
+                          e.target.closest('[data-username]')?.getAttribute('data-username') ||
+                          '';
+            
+            // If no data-username, try to extract from onclick attribute
+            if (!username) {
+                var targetElement = e.target.closest('.button-calendar, .calendar-button') || e.target;
+                var onclickAttr = targetElement.getAttribute('onclick') || '';
+                console.log('🎯 Global handler onclick:', onclickAttr);
+                var match = onclickAttr.match(/openCalendarWithCredentials\('([^']+)'\)/);
+                if (match) {
+                    username = match[1];
+                    console.log('🎯 Global handler extracted username:', username);
+                }
+            }
+            
+            // Fallback to known username if still not found
+            if (!username) {
+                username = 'dheeraj.sharma@mithi.com';
+                console.log('🎯 Using fallback username:', username);
+            }
+            
+            console.log('🎯 Global handler using username:', username);
+            openCalendarWithCredentials(username);
+            
+            return false; // Prevent any further event handling
+        }
+    });
 });

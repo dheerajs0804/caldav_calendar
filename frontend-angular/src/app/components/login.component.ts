@@ -13,10 +13,11 @@ import { AuthService } from '../services/auth.service';
       <div class="login-card">
         <div class="login-header">
           <h1>📅 Mithi Calendar</h1>
-          <p>Enter your username and password to access your calendar</p>
+          <p *ngIf="!ssoProcessing">Enter your username and password to access your calendar</p>
+          <p *ngIf="ssoProcessing" class="sso-message">🔄 Authenticating automatically...</p>
         </div>
         
-        <form (ngSubmit)="onLogin()" #loginForm="ngForm" class="login-form">
+        <form *ngIf="!ssoProcessing" (ngSubmit)="onLogin()" #loginForm="ngForm" class="login-form">
           <div class="form-group">
             <label for="username">Username</label>
             <input 
@@ -184,6 +185,11 @@ import { AuthService } from '../services/auth.service';
       color: #666;
       font-size: 12px;
     }
+    
+    .sso-message {
+      color: #667eea !important;
+      font-weight: 500;
+    }
   `]
 })
 export class LoginComponent {
@@ -191,11 +197,70 @@ export class LoginComponent {
   password: string = '';
   loading: boolean = false;
   error: string = '';
+  ssoProcessing: boolean = false;
 
   constructor(
     private authService: AuthService,
     private router: Router
-  ) {}
+  ) {
+    // Check for credentials when component loads
+    this.checkForCredentials();
+  }
+
+  /**
+   * Check for credentials in URL and automatically authenticate
+   */
+  private checkForCredentials(): void {
+    const urlParams = new URLSearchParams(window.location.search);
+    const username = urlParams.get('username');
+    const password = urlParams.get('password');
+    
+    console.log('🎯 LoginComponent: Checking for credentials in URL...');
+    console.log('🎯 Current URL:', window.location.href);
+    console.log('🎯 Username from URL:', username);
+    console.log('🎯 Password from URL:', password ? '***present***' : 'missing');
+    
+    if (username && password) {
+      console.log('🎯 LoginComponent: Credentials found in URL, processing automatic login...');
+      this.ssoProcessing = true;
+      this.loading = true;
+      
+      this.authService.login(username, password).subscribe({
+        next: (response) => {
+          this.loading = false;
+          this.ssoProcessing = false;
+          
+          if (response.success) {
+            console.log('🎯 LoginComponent: Automatic login successful, redirecting to calendar');
+            this.router.navigate(['/calendar']);
+            // Clear credentials from URL for security
+            this.clearCredentialsFromURL();
+          } else {
+            console.error('❌ LoginComponent: Automatic login failed:', response.message);
+            this.error = response.message || 'Authentication failed';
+          }
+        },
+        error: (error) => {
+          this.loading = false;
+          this.ssoProcessing = false;
+          console.error('❌ LoginComponent: Automatic login error:', error);
+          this.error = 'Authentication error. Please try manual login.';
+        }
+      });
+    } else {
+      console.log('🎯 LoginComponent: No credentials found in URL, showing login form');
+    }
+  }
+
+  /**
+   * Clear credentials from URL for security
+   */
+  private clearCredentialsFromURL(): void {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('username');
+    url.searchParams.delete('password');
+    window.history.replaceState({}, document.title, url.toString());
+  }
 
   onLogin(): void {
     this.loading = true;

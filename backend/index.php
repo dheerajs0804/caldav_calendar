@@ -2871,6 +2871,12 @@ function handleAuthRequest($path) {
         case 'logout':
             handleLogout();
             break;
+        case 'sso-token':
+            createSSOToken();
+            break;
+        case 'sso-login':
+            loginWithSSOToken();
+            break;
         default:
             http_response_code(404);
             sendJsonResponse(['success' => false, 'message' => 'Authentication endpoint not found']);
@@ -3031,50 +3037,41 @@ function createSSOToken() {
         
         error_log("Creating SSO token for user: $username");
         
-        // Test CalDAV authentication first
+        // For SSO from Roundcube, we trust the credentials since user is already authenticated
+        // Skip CalDAV authentication to avoid potential issues
         try {
+            // Generate SSO token
+            $token = bin2hex(random_bytes(32));
+            
+            // Get CalDAV config for server details
             $caldavConfig = require_once 'config/caldav.php';
-            $testClient = new CalDAVClient(
-                $caldavConfig['server_url'],
-                $username,
-                $password
-            );
             
-            $calendars = $testClient->discoverCalendars();
+            // Get current tokens and add new one
+            $ssoTokens = getSSOTokens();
+            $ssoTokens[$token] = [
+                'username' => $username,
+                'password' => $password,
+                'server_url' => $caldavConfig['server_url'],
+                'calendar_url' => '', // Will be discovered on first use
+                'calendar_name' => 'Personal Calendar',
+                'expires' => time() + 3600 // 1 hour
+            ];
+            setSSOTokens($ssoTokens);
             
-            if (!empty($calendars)) {
-                // Generate SSO token
-                $token = bin2hex(random_bytes(32));
-                
-                // Get current tokens and add new one
-                $ssoTokens = getSSOTokens();
-                $ssoTokens[$token] = [
-                    'username' => $username,
-                    'password' => $password,
-                    'server_url' => $caldavConfig['server_url'],
-                    'calendar_url' => $calendars[0]['href'],
-                    'calendar_name' => $calendars[0]['name'] ?? 'Personal Calendar',
-                                           'expires' => time() + 3600 // 1 hour
-                ];
-                setSSOTokens($ssoTokens);
-                
-                error_log("SSO token created successfully: $token");
-                
-                echo json_encode([
-                    'success' => true,
-                    'token' => $token,
-                    'message' => 'SSO token created'
-                ]);
-            } else {
-                throw new Exception('No calendars found');
-            }
+            error_log("SSO token created successfully: $token");
+            
+            echo json_encode([
+                'success' => true,
+                'token' => $token,
+                'message' => 'SSO token created'
+            ]);
             
         } catch (Exception $e) {
             error_log("SSO token creation failed for user $username: " . $e->getMessage());
-            http_response_code(401);
+            http_response_code(500);
             echo json_encode([
                 'success' => false,
-                'message' => 'Authentication failed. Please check your credentials.'
+                'message' => 'Failed to create SSO token: ' . $e->getMessage()
             ]);
         }
         

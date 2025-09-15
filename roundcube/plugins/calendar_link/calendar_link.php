@@ -31,7 +31,7 @@ class calendar_link extends rcube_plugin
         
         // Register AJAX actions with proper naming convention
         $this->register_action('plugin.calendar_get_password', array($this, 'get_stored_password'));
-        $this->register_action('plugin.calendar_create_sso', array($this, 'create_sso_token'));
+        $this->register_action('plugin.calendar_get_credentials', array($this, 'get_stored_credentials'));
         $this->register_action('plugin.calendar_store_credentials', array($this, 'ajax_store_credentials'));
         
         // Add security hooks
@@ -46,9 +46,26 @@ class calendar_link extends rcube_plugin
         $calendar_url = $rcmail->config->get('calendar_app_url', 'http://localhost:4200');
         $calendar_text = $rcmail->config->get('calendar_link_text', '📅 Calendar App');
         
-        // Get current user credentials for auto-login
-        $username = $rcmail->user->data['username'] ?? '';
-        $password = $rcmail->user->data['password'] ?? ''; // Note: This might not be available for security reasons
+        // Get current user credentials from Roundcube session (same as IMAP uses)
+        $username = isset($_SESSION['username']) ? $_SESSION['username'] : '';
+        $password = '';
+        if (isset($_SESSION['password']) && method_exists($rcmail, 'decrypt')) {
+            $password = $rcmail->decrypt($_SESSION['password']);
+        }
+        $host = isset($_SESSION['storage_host']) ? $_SESSION['storage_host'] : '';
+        $port = isset($_SESSION['storage_port']) ? $_SESSION['storage_port'] : '';
+        $ssl = isset($_SESSION['storage_ssl']) ? $_SESSION['storage_ssl'] : '';
+        
+        // Store credentials in session for calendar access
+        if ($username && $password) {
+            $_SESSION['calendar_username'] = $username;
+            $_SESSION['calendar_password'] = $password;
+            $_SESSION['calendar_host'] = $host;
+            $_SESSION['calendar_port'] = $port;
+            $_SESSION['calendar_ssl'] = $ssl;
+            
+            error_log("Calendar plugin: Stored Roundcube session credentials for user: " . $username);
+        }
         
         // Always add the calendar button, regardless of framing
         $this->add_button([
@@ -59,7 +76,7 @@ class calendar_link extends rcube_plugin
             'label'      => $calendar_text,
             'type'       => 'link',
             'target'     => '_blank',
-            'href'       => $calendar_url,
+            'href'       => '#',
             'onclick'    => 'openCalendarWithCredentials(\'' . $username . '\'); return false;'
         ], 'taskbar');
         
@@ -71,7 +88,7 @@ class calendar_link extends rcube_plugin
     {
         $rcmail = rcmail::get_instance();
         
-        if (!$rcmail->output->framed) {
+        if (!$rcmail->output->framed && method_exists($rcmail->output, 'add_header')) {
             // Add meta tag with calendar URL for JavaScript
             $calendar_url = $rcmail->config->get('calendar_app_url', 'http://localhost:4200');
             $rcmail->output->add_header('<meta name="calendar-app-url" content="' . htmlspecialchars($calendar_url) . '">');
@@ -79,10 +96,10 @@ class calendar_link extends rcube_plugin
             // Check if we have stored password for auto-login
             $has_stored_password = isset($_SESSION['calendar_auto_login_password']) ? 'true' : 'false';
             $rcmail->output->add_header('<meta name="calendar-has-password" content="' . $has_stored_password . '">');
-            
-            // Add JavaScript to handle the calendar button click
-            $this->include_script('calendar_link.js');
         }
+        
+        // Always include the JavaScript file
+        $this->include_script('calendar_link.js');
     }
     
     function add_calendar_link($args)
@@ -96,7 +113,7 @@ class calendar_link extends rcube_plugin
             $username = $rcmail->user->data['username'] ?? '';
             
             // Create a completely clean calendar button without any icons
-            $args['content'] .= '<li class="calendar-link"><a href="' . $calendar_url . '" target="_blank" class="calendar-button" data-username="' . htmlspecialchars($username) . '" onclick="openCalendarWithCredentials(\'' . htmlspecialchars($username) . '\'); return false;" style="background: none; background-image: none;">' . $calendar_text . '</a></li>';
+            $args['content'] .= '<li class="calendar-link"><a href="#" target="_blank" class="calendar-button" data-username="' . htmlspecialchars($username) . '" onclick="openCalendarWithCredentials(\'' . htmlspecialchars($username) . '\'); return false;" style="background: none; background-image: none;">' . $calendar_text . '</a></li>';
         }
         return $args;
     }
@@ -129,52 +146,28 @@ class calendar_link extends rcube_plugin
         }
     }
     
-    function create_sso_token()
+    function get_stored_credentials()
     {
         $rcmail = rcmail::get_instance();
         
-        // Try multiple sources for credentials (following Roundcube best practices)
-        $username = $rcmail->user->data['username'] ?? '';
-        
-        // Priority order: authenticate hook > sessionStorage > session fallback
-        $password = $_SESSION['calendar_auth_pass'] ?? 
-                   $_SESSION['calendar_auto_login_password'] ?? '';
+        // Use stored Roundcube session credentials (most reliable)
+        $username = $_SESSION['calendar_username'] ?? '';
+        $password = $_SESSION['calendar_password'] ?? '';
         
         if (!$username || !$password) {
-            error_log("Calendar plugin: No credentials available - username: " . ($username ? 'present' : 'missing') . 
+            error_log("Calendar plugin: No Roundcube session credentials available - username: " . ($username ? 'present' : 'missing') . 
                      ", password: " . ($password ? 'present' : 'missing'));
-            $rcmail->output->command('plugin.calendar_sso_response', array('error' => 'No credentials available'));
+            $rcmail->output->command('plugin.calendar_credentials_response', array('error' => 'No Roundcube session credentials available'));
             return;
         }
         
-        // Make request to calendar backend to create SSO token
-        $calendar_backend_url = 'http://localhost:8001/auth/sso-token';
+        error_log("Calendar plugin: Providing stored credentials for user: " . $username);
         
-        $postData = json_encode([
+        // Return credentials to JavaScript
+        $rcmail->output->command('plugin.calendar_credentials_response', array(
             'username' => $username,
             'password' => $password
-        ]);
-        
-        $context = stream_context_create([
-            'http' => [
-                'method' => 'POST',
-                'header' => "Content-Type: application/json\r\n",
-                'content' => $postData
-            ]
-        ]);
-        
-        $response = @file_get_contents($calendar_backend_url, false, $context);
-        
-        if ($response) {
-            $data = json_decode($response, true);
-            if ($data && $data['success']) {
-                $rcmail->output->command('plugin.calendar_sso_response', array('token' => $data['token']));
-            } else {
-                $rcmail->output->command('plugin.calendar_sso_response', array('error' => 'Failed to create SSO token'));
-            }
-        } else {
-            $rcmail->output->command('plugin.calendar_sso_response', array('error' => 'Cannot connect to calendar backend'));
-        }
+        ));
     }
     
     function inject_login_capture($args)
