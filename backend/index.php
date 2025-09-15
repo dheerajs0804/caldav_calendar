@@ -192,7 +192,7 @@ function handlePostRequest($path) {
             case 'caldav/discover':
                 discoverCalDAVCalendars();
                 break;
-        case 'calendars/sync':
+            case 'calendars/sync':
             syncCalendar();
             break;
         case 'email':

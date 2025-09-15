@@ -64,8 +64,12 @@ export class ColorRegistryService {
    */
   setCalendarColor(calendarId: string, color: string): void {
     console.log(`🎨 Setting color for calendar '${calendarId}': ${color}`);
+    
+    // Store locally for immediate use
     this.colorRegistry.set(calendarId, color);
     this.saveToStorage();
+    
+    console.log(`🎨 Color stored locally for '${calendarId}': ${color}`);
   }
 
   /**

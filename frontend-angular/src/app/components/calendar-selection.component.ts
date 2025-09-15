@@ -823,9 +823,9 @@ export class CalendarSelectionComponent implements OnInit {
       next: (response) => {
         this.creatingCalendar = false;
         if (response.success && response.data) {
-          // 🎨 Thunderbird-style: Store color locally in color registry
+          // 🎨 Store color locally in color registry
           this.colorRegistry.setCalendarColor(response.data.name, this.newCalendar.color || '#4285f4');
-          console.log(`🎨 Thunderbird-style: Stored color for calendar '${response.data.name}': ${this.newCalendar.color || '#4285f4'}`);
+          console.log(`🎨 Stored color for calendar '${response.data.name}': ${this.newCalendar.color || '#4285f4'}`);
           
           // Add the new calendar to the list
           this.calendars.push(response.data);

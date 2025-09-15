@@ -16,5 +16,17 @@
         "title": "Event marked for deletion",
         "deleted_at": "2025-09-09T13:15:32+02:00",
         "deleted_by": "user"
+    },
+    {
+        "uid": "2378C8594ADD3A4366794498F2ADDFEC-9F332BE70AC5257A",
+        "title": "Event marked for deletion",
+        "deleted_at": "2025-09-15T11:37:09+02:00",
+        "deleted_by": "user"
+    },
+    {
+        "uid": "C13F3C6044542253FEEAB95130E27465-9F332BE70AC5257A",
+        "title": "Event marked for deletion",
+        "deleted_at": "2025-09-15T11:37:15+02:00",
+        "deleted_by": "user"
     }
 ]

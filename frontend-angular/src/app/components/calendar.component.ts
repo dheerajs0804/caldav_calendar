@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -106,7 +106,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
     private emailService: EmailService,
     private authService: AuthService,
     private router: Router,
-    private colorRegistry: ColorRegistryService
+    private colorRegistry: ColorRegistryService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -114,11 +115,55 @@ export class CalendarComponent implements OnInit, OnDestroy {
     
     // Always fetch calendars and show calendar view directly after login
     this.fetchCalendars();
+    
+    // 🎨 Thunderbird-style: Expose color management methods to window for testing
+    (window as any).calendarColorManager = {
+      setColor: (calendarName: string, color: string) => this.setCalendarColor(calendarName, color),
+      getColor: (calendarName: string) => this.getCalendarColor(calendarName),
+      getAllColors: () => this.getAllCalendarColors(),
+      getStats: () => this.colorRegistry.getRegistryStats(),
+      testColors: () => {
+        console.log('🎨 Testing Thunderbird-style color management...');
+        this.setCalendarColor('Red Calendar', '#ff0000');
+        this.setCalendarColor('Green Calendar', '#00ff00');
+        this.setCalendarColor('Blue Calendar', '#0000ff');
+        this.setCalendarColor('Orange Calendar', '#ffa500');
+        console.log('🎨 Test colors set! Check the calendar view.');
+      },
+      colorActualCalendars: () => {
+        console.log('🎨 Setting colors for actual calendars...');
+        // Set colors for the actual calendars that exist in your system
+        this.setCalendarColor('rdcal', '#ff0000');
+        this.setCalendarColor('calendar2', '#00ff00');
+        console.log('🎨 Actual calendar colors set! Events should now show different colors.');
+      },
+      autoColorCalendars: () => {
+        console.log('🎨 Auto-coloring all calendars with random colors...');
+        const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffa500', '#800080', '#ffc0cb', '#00ffff', '#ffff00'];
+        this.calendars.forEach((calendar, index) => {
+          const color = colors[index % colors.length];
+          this.setCalendarColor(calendar.name, color);
+          console.log(`🎨 Set ${calendar.name} to ${color}`);
+        });
+        console.log('🎨 All calendars auto-colored!');
+      }
+    };
   }
 
   getCalendarColor(calendarName: string): string {
     // 🎨 Thunderbird-style: Get color from local registry
     return this.colorRegistry.getCalendarColor(calendarName);
+  }
+
+  setCalendarColor(calendarName: string, color: string): void {
+    this.colorRegistry.setCalendarColor(calendarName, color);
+    console.log(`🎨 Manually set color for calendar '${calendarName}': ${color}`);
+    this.fetchEvents(); // Refresh events to apply new colors
+    this.cdr.detectChanges(); // Force change detection to re-render child components
+  }
+
+  getAllCalendarColors(): Map<string, string> {
+    return this.colorRegistry.getAllCalendarColors();
   }
 
   ngOnDestroy(): void {
@@ -249,6 +294,26 @@ export class CalendarComponent implements OnInit, OnDestroy {
         }));
         console.log('📅 Calendars loaded from backend:', this.calendars);
         console.log('📅 Calendar IDs:', this.calendars.map(cal => ({ name: cal.name, id: cal.id, type: typeof cal.id })));
+        
+        // 🎨 Register calendar colors in ColorRegistryService (preserve user colors)
+        this.calendars.forEach(calendar => {
+          if (calendar.color) {
+            // Only set color if it's not already stored (preserve user's custom colors)
+            const existingColor = this.colorRegistry.getCalendarColor(calendar.name);
+            if (existingColor === '#4285f4') { // Only override default blue
+              this.colorRegistry.setCalendarColor(calendar.name, calendar.color);
+              console.log(`🎨 Registered color for calendar '${calendar.name}': ${calendar.color}`);
+            } else {
+              console.log(`🎨 Preserving existing color for calendar '${calendar.name}': ${existingColor}`);
+            }
+          } else {
+            console.log(`⚠️ Calendar '${calendar.name}' has no color property:`, calendar);
+          }
+        });
+        
+        // Debug: Show all registered colors
+        console.log('🎨 All registered colors:', this.colorRegistry.getAllCalendarColors());
+        console.log('🎨 Color registry stats:', this.colorRegistry.getRegistryStats());
         
         // Set the first enabled calendar as selected if none is selected
         if (!this.selectedCalendar && this.calendars.length > 0) {
