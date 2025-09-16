@@ -3350,5 +3350,80 @@
         "attendees": [],
         "reminder": null,
         "valarm": null
+    },
+    {
+        "id": "event_68c93c95101e0",
+        "title": "june1event",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T10:00:00",
+        "end_time": "2025-09-16T11:00:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68c93c95101e9",
+        "etag": "etag_68c93c95101ea",
+        "created_at": "2025-09-16T12:31:49+02:00",
+        "updated_at": "2025-09-16T12:31:49+02:00",
+        "attendees": [],
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68c93d003fa7d",
+        "title": "june1event1",
+        "description": "",
+        "location": "",
+        "start_time": "2025-06-01T16:03:00",
+        "end_time": "2025-06-01T17:03:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68c93d003fa85",
+        "etag": "etag_68c93d003fa86",
+        "created_at": "2025-09-16T12:33:36+02:00",
+        "updated_at": "2025-09-16T12:33:36+02:00",
+        "attendees": [],
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68c94d9c0b8b4",
+        "title": "sep16",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T17:14:00",
+        "end_time": "2025-09-16T18:14:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/A7595227-BB7A-90A6-F0B1-AB941E2CA801\/",
+        "color": "#4285f4",
+        "uid": "uid_68c94d9c0b8bd",
+        "etag": "etag_68c94d9c0b8be",
+        "created_at": "2025-09-16T13:44:28+02:00",
+        "updated_at": "2025-09-16T13:44:28+02:00",
+        "attendees": [],
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
     }
 ]
