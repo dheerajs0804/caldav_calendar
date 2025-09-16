@@ -2624,8 +2624,8 @@
         "title": "yellowevent",
         "description": "",
         "location": "",
-        "start_time": "2025-09-16T13:02:00",
-        "end_time": "2025-09-16T14:02:00",
+        "start_time": "2025-09-16T13:02:00+05:30",
+        "end_time": "2025-09-16T14:02:00+05:30",
         "all_day": false,
         "calendar_id": 1,
         "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/A7595227-BB7A-90A6-F0B1-AB941E2CA801\/",
@@ -2633,7 +2633,657 @@
         "uid": "uid_68c912ae3d89b",
         "etag": "etag_68c912ae3d89c",
         "created_at": "2025-09-16T09:33:02+02:00",
-        "updated_at": "2025-09-16T09:33:02+02:00",
+        "updated_at": "2025-09-16T09:50:08+02:00",
+        "attendees": [
+            {
+                "email": "dheeraj.sharma@gmail.com",
+                "name": "",
+                "response": "pending",
+                "role": "required"
+            }
+        ],
+        "reminder": null,
+        "valarm": null
+    },
+    {
+        "id": "event_68c917216e67b",
+        "title": "emailtest",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T14:21:00",
+        "end_time": "2025-09-16T15:21:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68c917216e746",
+        "etag": "etag_68c917216e748",
+        "created_at": "2025-09-16T09:52:01+02:00",
+        "updated_at": "2025-09-16T09:52:01+02:00",
+        "attendees": [
+            {
+                "email": "dheeraj.sharma@mithi.com",
+                "name": "1",
+                "response": "pending",
+                "role": "required"
+            }
+        ],
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68c9172870a39",
+        "title": "emailtest",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T14:21:00",
+        "end_time": "2025-09-16T15:21:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68c9172870a40",
+        "etag": "etag_68c9172870a41",
+        "created_at": "2025-09-16T09:52:08+02:00",
+        "updated_at": "2025-09-16T09:52:08+02:00",
+        "attendees": [
+            {
+                "email": "dheeraj.sharma@mithi.com",
+                "name": "1",
+                "response": "pending",
+                "role": "required"
+            }
+        ],
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68c9172aee5eb",
+        "title": "emailtest",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T14:21:00",
+        "end_time": "2025-09-16T15:21:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68c9172aee5f2",
+        "etag": "etag_68c9172aee5f3",
+        "created_at": "2025-09-16T09:52:10+02:00",
+        "updated_at": "2025-09-16T09:52:10+02:00",
+        "attendees": [
+            {
+                "email": "dheeraj.sharma@mithi.com",
+                "name": "1",
+                "response": "pending",
+                "role": "required"
+            }
+        ],
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68c9172d6c63d",
+        "title": "emailtest",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T14:21:00",
+        "end_time": "2025-09-16T15:21:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68c9172d6c644",
+        "etag": "etag_68c9172d6c645",
+        "created_at": "2025-09-16T09:52:13+02:00",
+        "updated_at": "2025-09-16T09:52:13+02:00",
+        "attendees": [
+            {
+                "email": "dheeraj.sharma@mithi.com",
+                "name": "1",
+                "response": "pending",
+                "role": "required"
+            }
+        ],
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68c9172fc5d3d",
+        "title": "emailtest",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T14:21:00",
+        "end_time": "2025-09-16T15:21:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68c9172fc5d46",
+        "etag": "etag_68c9172fc5d47",
+        "created_at": "2025-09-16T09:52:15+02:00",
+        "updated_at": "2025-09-16T09:52:15+02:00",
+        "attendees": [
+            {
+                "email": "dheeraj.sharma@mithi.com",
+                "name": "1",
+                "response": "pending",
+                "role": "required"
+            }
+        ],
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68c9173230ee2",
+        "title": "emailtest",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T14:21:00",
+        "end_time": "2025-09-16T15:21:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68c9173230ee8",
+        "etag": "etag_68c9173230ee9",
+        "created_at": "2025-09-16T09:52:18+02:00",
+        "updated_at": "2025-09-16T09:52:18+02:00",
+        "attendees": [
+            {
+                "email": "dheeraj.sharma@mithi.com",
+                "name": "1",
+                "response": "pending",
+                "role": "required"
+            }
+        ],
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68c9173460921",
+        "title": "emailtest",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T14:21:00",
+        "end_time": "2025-09-16T15:21:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68c917346092b",
+        "etag": "etag_68c917346092c",
+        "created_at": "2025-09-16T09:52:20+02:00",
+        "updated_at": "2025-09-16T09:52:20+02:00",
+        "attendees": [
+            {
+                "email": "dheeraj.sharma@mithi.com",
+                "name": "1",
+                "response": "pending",
+                "role": "required"
+            }
+        ],
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68c9173760b5d",
+        "title": "emailtest",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T14:21:00",
+        "end_time": "2025-09-16T15:21:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68c9173760b64",
+        "etag": "etag_68c9173760b65",
+        "created_at": "2025-09-16T09:52:23+02:00",
+        "updated_at": "2025-09-16T09:52:23+02:00",
+        "attendees": [
+            {
+                "email": "dheeraj.sharma@mithi.com",
+                "name": "1",
+                "response": "pending",
+                "role": "required"
+            }
+        ],
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68c9173b29f5a",
+        "title": "emailtest",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T14:21:00",
+        "end_time": "2025-09-16T15:21:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68c9173b29f62",
+        "etag": "etag_68c9173b29f63",
+        "created_at": "2025-09-16T09:52:27+02:00",
+        "updated_at": "2025-09-16T09:52:27+02:00",
+        "attendees": [
+            {
+                "email": "dheeraj.sharma@mithi.com",
+                "name": "1",
+                "response": "pending",
+                "role": "required"
+            }
+        ],
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68c917410f14d",
+        "title": "emailtest",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T14:21:00",
+        "end_time": "2025-09-16T15:21:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68c917410f156",
+        "etag": "etag_68c917410f157",
+        "created_at": "2025-09-16T09:52:33+02:00",
+        "updated_at": "2025-09-16T09:52:33+02:00",
+        "attendees": [
+            {
+                "email": "dheeraj.sharma@mithi.com",
+                "name": "1",
+                "response": "pending",
+                "role": "required"
+            }
+        ],
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68c91743e2379",
+        "title": "emailtest",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T14:21:00",
+        "end_time": "2025-09-16T15:21:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68c91743e2380",
+        "etag": "etag_68c91743e2381",
+        "created_at": "2025-09-16T09:52:35+02:00",
+        "updated_at": "2025-09-16T09:52:35+02:00",
+        "attendees": [
+            {
+                "email": "dheeraj.sharma@mithi.com",
+                "name": "1",
+                "response": "pending",
+                "role": "required"
+            }
+        ],
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68c91746eba89",
+        "title": "emailtest",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T14:21:00",
+        "end_time": "2025-09-16T15:21:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68c91746eba8e",
+        "etag": "etag_68c91746eba8f",
+        "created_at": "2025-09-16T09:52:38+02:00",
+        "updated_at": "2025-09-16T09:52:38+02:00",
+        "attendees": [
+            {
+                "email": "dheeraj.sharma@mithi.com",
+                "name": "1",
+                "response": "pending",
+                "role": "required"
+            }
+        ],
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68c91749c4996",
+        "title": "emailtest",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T14:21:00",
+        "end_time": "2025-09-16T15:21:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68c91749c499c",
+        "etag": "etag_68c91749c499d",
+        "created_at": "2025-09-16T09:52:41+02:00",
+        "updated_at": "2025-09-16T09:52:41+02:00",
+        "attendees": [
+            {
+                "email": "dheeraj.sharma@mithi.com",
+                "name": "1",
+                "response": "pending",
+                "role": "required"
+            }
+        ],
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68c9174c47118",
+        "title": "emailtest",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T14:21:00",
+        "end_time": "2025-09-16T15:21:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68c9174c4711f",
+        "etag": "etag_68c9174c47120",
+        "created_at": "2025-09-16T09:52:44+02:00",
+        "updated_at": "2025-09-16T09:52:44+02:00",
+        "attendees": [],
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68c91750ce9d2",
+        "title": "emailtest",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T14:21:00",
+        "end_time": "2025-09-16T15:21:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68c91750ce9d7",
+        "etag": "etag_68c91750ce9d8",
+        "created_at": "2025-09-16T09:52:48+02:00",
+        "updated_at": "2025-09-16T09:52:48+02:00",
+        "attendees": [],
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68c91751b4215",
+        "title": "emailtest",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T14:21:00",
+        "end_time": "2025-09-16T15:21:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68c91751b421a",
+        "etag": "etag_68c91751b421b",
+        "created_at": "2025-09-16T09:52:49+02:00",
+        "updated_at": "2025-09-16T09:52:49+02:00",
+        "attendees": [],
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68c917528ba87",
+        "title": "emailtest",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T14:21:00",
+        "end_time": "2025-09-16T15:21:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68c917528ba8d",
+        "etag": "etag_68c917528ba8e",
+        "created_at": "2025-09-16T09:52:50+02:00",
+        "updated_at": "2025-09-16T09:52:50+02:00",
+        "attendees": [],
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68c917536d763",
+        "title": "emailtest",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T14:21:00",
+        "end_time": "2025-09-16T15:21:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68c917536d770",
+        "etag": "etag_68c917536d771",
+        "created_at": "2025-09-16T09:52:51+02:00",
+        "updated_at": "2025-09-16T09:52:51+02:00",
+        "attendees": [],
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68c91754b09a6",
+        "title": "emailtest",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T14:21:00",
+        "end_time": "2025-09-16T15:21:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68c91754b09ab",
+        "etag": "etag_68c91754b09ac",
+        "created_at": "2025-09-16T09:52:52+02:00",
+        "updated_at": "2025-09-16T09:52:52+02:00",
+        "attendees": [],
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68c91811d3ac3",
+        "title": "emailtest2",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T13:25:00",
+        "end_time": "2025-09-16T11:04:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68c91811d3ae1",
+        "etag": "etag_68c91811d3ae2",
+        "created_at": "2025-09-16T09:56:01+02:00",
+        "updated_at": "2025-09-16T09:56:01+02:00",
+        "attendees": [
+            {
+                "email": "dheeraj.sharma@mithi.com",
+                "name": "1",
+                "response": "pending",
+                "role": "required"
+            }
+        ],
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68c9214587d5a",
+        "title": "event creation bug",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T14:40:00+05:30",
+        "end_time": "2025-09-16T15:40:00+05:30",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68c9214587d63",
+        "etag": "etag_68c9214587d64",
+        "created_at": "2025-09-16T10:35:17+02:00",
+        "updated_at": "2025-09-16T11:02:19+02:00",
+        "attendees": [
+            {
+                "email": "dheeraj.sharma@mithi.com",
+                "name": "1",
+                "response": "pending",
+                "role": "required"
+            }
+        ],
+        "reminder": null,
+        "valarm": null
+    },
+    {
+        "id": "event_68c922a39d4f8",
+        "title": "bug fix",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T15:00:00",
+        "end_time": "2025-09-16T16:00:00",
+        "all_day": false,
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68c922a39d4fe",
+        "etag": "etag_68c922a39d4ff",
+        "created_at": "2025-09-16T10:41:07+02:00",
+        "updated_at": "2025-09-16T10:41:07+02:00",
         "attendees": [],
         "reminder": {
             "enabled": false,

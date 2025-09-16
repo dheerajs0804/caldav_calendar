@@ -598,8 +598,10 @@ export class CalendarComponent implements OnInit, OnDestroy {
   }
 
   closeAddEventModal(): void {
+    console.log('🔄 Closing add event modal...');
     this.showAddEventModal = false;
     this.resetNewEvent();
+    console.log('✅ Add event modal closed, showAddEventModal:', this.showAddEventModal);
   }
 
   openEventDetailModal(event: CalendarEvent): void {
@@ -633,6 +635,20 @@ export class CalendarComponent implements OnInit, OnDestroy {
       const matches = Number(cal.id) === selectedCalendarId;
       console.log(`  - Calendar "${cal.name}" (ID: ${cal.id}, type: ${typeof cal.id}) === ${selectedCalendarId} (type: ${typeof selectedCalendarId}): ${matches}`);
     });
+  }
+
+  // Attendee management methods
+  addAttendee(): void {
+    this.newEvent.attendees.push({
+      email: '',
+      name: '',
+      response: 'pending',
+      role: 'required'
+    });
+  }
+
+  removeAttendee(index: number): void {
+    this.newEvent.attendees.splice(index, 1);
   }
 
   // Event creation
@@ -705,23 +721,33 @@ export class CalendarComponent implements OnInit, OnDestroy {
         calendar_url: targetCalendar.url  // Pass the target calendar URL
       };
 
-      console.log('Creating event in calendar:', targetCalendar.name, 'with URL:', targetCalendar.url);
-      console.log('Event data being sent:', eventData);
+      console.log('📤 Sending event data to backend:', eventData);
       
       const response = await this.http.post<any>('http://localhost:8000/events', eventData, {
         withCredentials: true
       }).toPromise();
       
+      console.log('📥 Backend response:', response);
+      
       if (response.success) {
         console.log('✅ Event created successfully in calendar:', targetCalendar.name);
         console.log('Event response:', response.data);
+        
+        // Close the modal (this also resets the form)
         this.closeAddEventModal();
-        await this.fetchEvents(); // Refresh events
+        
+        // Refresh events
+        await this.fetchEvents();
+        
+        // Show success message
+        alert('Event created successfully!');
       } else {
         console.error('❌ Failed to create event:', response.message);
+        alert('Failed to create event: ' + (response.message || 'Unknown error'));
       }
     } catch (error) {
-      console.error('Error creating event:', error);
+      console.error('❌ Error creating event:', error);
+      alert('Error creating event. Please try again.');
     }
   }
 
@@ -801,6 +827,57 @@ export class CalendarComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.error('❌ Error deleting event:', error);
       alert('Error deleting event. Please try again.');
+    }
+  }
+
+  async onEditEvent(event: CalendarEvent): Promise<void> {
+    try {
+      console.log('✏️ Edit event requested:', event);
+      console.log('🕐 Event start_time:', event.start_time);
+      console.log('🕐 Event end_time:', event.end_time);
+      
+      if (!event.calendar_url) {
+        console.error('❌ No calendar URL found for event');
+        alert('Cannot edit event: No calendar information available.');
+        return;
+      }
+
+      const eventIdentifier = event.uid || event.id;
+      console.log('✏️ Using identifier for edit:', eventIdentifier);
+      
+      const editData = {
+        title: event.title,
+        description: event.description,
+        location: event.location,
+        start_time: event.start_time,
+        end_time: event.end_time,
+        all_day: event.all_day,
+        attendees: event.attendees,
+        calendar_url: event.calendar_url
+      };
+      
+      console.log('✏️ Edit data being sent to backend:', editData);
+      
+      const editUrl = `http://localhost:8000/events/${eventIdentifier}?calendar_url=${encodeURIComponent(event.calendar_url)}`;
+      
+      const response = await this.http.put<any>(editUrl, editData, {
+        withCredentials: true
+      }).toPromise();
+      
+      console.log('📥 Backend edit response:', response);
+      
+      if (response.success) {
+        console.log('✅ Event updated successfully');
+        this.closeEventDetailModal();
+        await this.fetchEvents(); // Refresh events
+        alert('Event updated successfully!');
+      } else {
+        console.error('❌ Failed to update event:', response.message);
+        alert('Failed to update event: ' + (response.message || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('❌ Error updating event:', error);
+      alert('Error updating event. Please try again.');
     }
   }
 

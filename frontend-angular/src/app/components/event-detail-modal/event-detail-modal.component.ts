@@ -93,6 +93,9 @@ export class EventDetailModalComponent {
 
   onSave(): void {
     if (this.editedEvent) {
+      console.log('💾 Saving edited event:', this.editedEvent);
+      console.log('🕐 Start time:', this.editedEvent.start_time);
+      console.log('🕐 End time:', this.editedEvent.end_time);
       this.editEvent.emit(this.editedEvent);
       this.isEditMode = false;
     }
@@ -117,14 +120,20 @@ export class EventDetailModalComponent {
   onStartTimeChange(event: any): void {
     const target = event.target as HTMLInputElement;
     if (this.editedEvent && target.value) {
+      // Convert datetime-local format (YYYY-MM-DDTHH:MM) to full datetime format
       this.editedEvent.start_time = target.value + ':00';
+      console.log('🕐 Start time updated to:', this.editedEvent.start_time);
+      console.log('🕐 Original start time was:', this.event?.start_time);
     }
   }
 
   onEndTimeChange(event: any): void {
     const target = event.target as HTMLInputElement;
     if (this.editedEvent && target.value) {
+      // Convert datetime-local format (YYYY-MM-DDTHH:MM) to full datetime format
       this.editedEvent.end_time = target.value + ':00';
+      console.log('🕐 End time updated to:', this.editedEvent.end_time);
+      console.log('🕐 Original end time was:', this.event?.end_time);
     }
   }
 

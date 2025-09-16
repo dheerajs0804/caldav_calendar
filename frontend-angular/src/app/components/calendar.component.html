@@ -303,6 +303,46 @@
           <span>before event</span>
         </div>
       </div>
+      
+      <!-- Attendees Section -->
+      <div class="form-group">
+        <label>Attendees</label>
+        <div class="attendees-section">
+          <div *ngFor="let attendee of newEvent.attendees; let i = index" class="attendee-row">
+            <input 
+              type="email" 
+              [(ngModel)]="attendee.email" 
+              placeholder="Email address"
+              class="attendee-email"
+            />
+            <input 
+              type="text" 
+              [(ngModel)]="attendee.name" 
+              placeholder="Name (optional)"
+              class="attendee-name"
+            />
+            <select [(ngModel)]="attendee.role" class="attendee-role">
+              <option value="required">Required</option>
+              <option value="optional">Optional</option>
+            </select>
+            <button 
+              type="button" 
+              (click)="removeAttendee(i)" 
+              class="remove-attendee-btn"
+              title="Remove attendee"
+            >
+              ✕
+            </button>
+          </div>
+          <button 
+            type="button" 
+            (click)="addAttendee()" 
+            class="add-attendee-btn"
+          >
+            + Add Attendee
+          </button>
+        </div>
+      </div>
     </div>
     
     <div class="modal-footer">
@@ -326,6 +366,7 @@
   [calendars]="calendars"
   [isVisible]="showEventDetailModal"
   (closeModal)="closeEventDetailModal()"
+  (editEvent)="onEditEvent($event)"
   (deleteEvent)="onDeleteEvent($event)"
 ></app-event-detail-modal>
 

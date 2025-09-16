@@ -655,6 +655,78 @@
   border-top: 1px solid #e1e5e9;
 }
 
+/* Attendees Section Styles */
+.attendees-section {
+  margin-top: 10px;
+}
+
+.attendee-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+.attendee-email {
+  flex: 2;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.attendee-name {
+  flex: 1.5;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.attendee-role {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+  background: white;
+}
+
+.remove-attendee-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s ease;
+}
+
+.remove-attendee-btn:hover {
+  background: #c82333;
+}
+
+.add-attendee-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 15px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s ease;
+  width: 100%;
+}
+
+.add-attendee-btn:hover {
+  background: #0056b3;
+}
+
 .btn {
   padding: 12px 24px;
   border: none;
