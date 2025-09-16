@@ -13,7 +13,7 @@ import { ColorRegistryService } from '../../services/color-registry.service';
   styleUrls: ['./day-view.component.scss']
 })
 export class DayViewComponent {
-  @Input() date!: Date;
+  @Input() date!: dayjs.Dayjs;
   @Input() events: CalendarEvent[] = [];
   @Input() calendars: Calendar[] = [];
   @Output() deleteEvent = new EventEmitter<CalendarEvent>();
@@ -46,7 +46,7 @@ export class DayViewComponent {
     // Get all events for the current day first
     const eventsForDay = allEvents.filter(e => {
       const eStart = this.parseEventTime(e.start_time);
-      return eStart.isValid() && eStart.isSame(dayjs(this.date), 'day');
+      return eStart.isValid() && eStart.isSame(this.date, 'day');
     });
     
     // Find events that are active at the given time point
@@ -132,8 +132,8 @@ export class DayViewComponent {
     return `event-container day-event-item cursor-pointer ${colorClass}`;
   }
 
-  isToday(day: Date): boolean {
-    return dayjs(day).isSame(dayjs(), 'day');
+  isToday(day: dayjs.Dayjs): boolean {
+    return day.isSame(dayjs(), 'day');
   }
 
   getEventClass(event: CalendarEvent): string {
@@ -146,11 +146,11 @@ export class DayViewComponent {
   }
 
   getEventsForDay(): CalendarEvent[] {
-    return this.events.filter(event => dayjs(event.start_time).isSame(dayjs(this.date), 'day'));
+    return this.events.filter(event => dayjs(event.start_time).isSame(this.date, 'day'));
   }
 
   getAllDayEvents(): CalendarEvent[] {
-    return this.events.filter(event => event.all_day && dayjs(event.start_time).isSame(dayjs(this.date), 'day'));
+    return this.events.filter(event => event.all_day && dayjs(event.start_time).isSame(this.date, 'day'));
   }
 
   getOverlappingGroups(): { events: CalendarEvent[], globalGroup: Set<CalendarEvent>, sortedGroup: CalendarEvent[] } {

@@ -42,51 +42,62 @@
 <div class="main-content">
   <!-- Sidebar -->
   <div class="sidebar" [class.hidden]="!showSidebar">
-    <div class="sidebar-header">
-      <h3>Calendars</h3>
-      <div class="enabled-count">{{ enabledCalendarsCount }} enabled</div>
-    </div>
-    
-    <div class="search-bar">
-      <div class="search-input">
-        <span class="search-icon">🔍</span>
-        <input type="text" placeholder="Find calendars..." [(ngModel)]="searchTerm" />
+    <!-- Calendar Management Section (Top) -->
+    <div class="calendar-section">
+      <div class="sidebar-header">
+        <h3>Calendars</h3>
+        <div class="enabled-count">{{ enabledCalendarsCount }} enabled</div>
       </div>
-    </div>
-    
-    <div class="add-calendar-section">
-      <button (click)="openAddCalendarModal()" class="add-calendar-btn">
-        ➕ Add Calendar
-      </button>
-    </div>
-    
-    <div class="calendar-list">
-      <div 
-        *ngFor="let calendar of filteredCalendars" 
-        class="calendar-item"
-        [class.selected]="calendar.enabled"
-        [style.border-left-color]="getCalendarColor(calendar.name)"
-      >
-        <div class="calendar-icon" [style.color]="getCalendarColor(calendar.name)">
-          📅
+      
+      <div class="search-bar">
+        <div class="search-input">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="Find calendars..." [(ngModel)]="searchTerm" />
         </div>
-        <div class="calendar-info">
-          <h4>{{ calendar.name }}</h4>
-          <p *ngIf="calendar.description" class="description">{{ calendar.description }}</p>
-        </div>
-        <div class="calendar-actions">
-          <div class="toggle-switch" [class.active]="calendar.enabled" (click)="toggleCalendar(calendar, $event)">
-            <div class="toggle-slider"></div>
+      </div>
+      
+      <div class="add-calendar-section">
+        <button (click)="openAddCalendarModal()" class="add-calendar-btn">
+          ➕ Add Calendar
+        </button>
+      </div>
+      
+      <div class="calendar-list">
+        <div 
+          *ngFor="let calendar of filteredCalendars" 
+          class="calendar-item"
+          [class.selected]="calendar.enabled"
+          [style.border-left-color]="getCalendarColor(calendar.name)"
+        >
+          <div class="calendar-icon" [style.color]="getCalendarColor(calendar.name)">
+            📅
           </div>
-          <button 
-            (click)="deleteCalendar(calendar, $event)" 
-            class="delete-calendar-btn"
-            title="Delete calendar"
-          >
-            🗑️
-          </button>
+          <div class="calendar-info">
+            <h4>{{ calendar.name }}</h4>
+            <p *ngIf="calendar.description" class="description">{{ calendar.description }}</p>
+          </div>
+          <div class="calendar-actions">
+            <div class="toggle-switch" [class.active]="calendar.enabled" (click)="toggleCalendar(calendar, $event)">
+              <div class="toggle-slider"></div>
+            </div>
+            <button 
+              (click)="deleteCalendar(calendar, $event)" 
+              class="delete-calendar-btn"
+              title="Delete calendar"
+            >
+              🗑️
+            </button>
+          </div>
         </div>
       </div>
+    </div>
+    
+    <!-- Date Navigation Section (Bottom) -->
+    <div class="date-navigation-section">
+      <app-date-navigation 
+        [currentDate]="currentDate"
+        (dateChange)="onDateNavigationChange($event)"
+      ></app-date-navigation>
     </div>
   </div>
 

@@ -9,6 +9,7 @@ import { WeekViewComponent } from './week-view/week-view.component';
 import { MonthViewComponent } from './month-view/month-view.component';
 import { EventDetailModalComponent } from './event-detail-modal/event-detail-modal.component';
 import { ReminderNotificationComponent, ReminderNotification, ReminderEvent } from './reminder-notification.component';
+import { DateNavigationComponent } from './date-navigation.component';
 import { SortByStartTimePipe } from '../pipes/sort-by-start-time.pipe';
 import { EmailService } from '../services/email.service';
 import { AuthService } from '../services/auth.service';
@@ -51,7 +52,7 @@ interface NewEvent {
 @Component({
   selector: 'app-calendar',
   standalone: true,
-  imports: [CommonModule, FormsModule, DayViewComponent, WeekViewComponent, MonthViewComponent, EventDetailModalComponent, ReminderNotificationComponent, SortByStartTimePipe],
+  imports: [CommonModule, FormsModule, DayViewComponent, WeekViewComponent, MonthViewComponent, EventDetailModalComponent, ReminderNotificationComponent, DateNavigationComponent, SortByStartTimePipe],
   templateUrl: './calendar.component.html',
   styleUrls: ['./calendar.component.scss']
 })
@@ -64,7 +65,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   ];
 
   currentView: View = this.views[1]; // Start with week view
-  currentDate: Date = new Date();
+  currentDate: dayjs.Dayjs = dayjs();
   calendars: Calendar[] = [];
   events: CalendarEvent[] = [];
   loading: boolean = true;
@@ -187,6 +188,12 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.showSidebar = !this.showSidebar;
   }
 
+  onDateNavigationChange(newDate: dayjs.Dayjs): void {
+    console.log('📅 Date navigation changed to:', newDate.format('YYYY-MM-DD'));
+    this.currentDate = newDate;
+    this.fetchEvents(); // Refresh events for the new date
+  }
+
   toggleCalendar(calendar: Calendar, event: MouseEvent): void {
     event.stopPropagation();
     calendar.enabled = !calendar.enabled;
@@ -276,7 +283,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   }
 
   getWeekDateRange(): string {
-    const weekStart = dayjs(this.currentDate).startOf('week');
+    const weekStart = this.currentDate.startOf('week');
     const weekEnd = weekStart.add(6, 'day');
     return `${weekStart.format('MMM D')} - ${weekEnd.format('MMM D, YYYY')}`;
   }
@@ -556,26 +563,29 @@ export class CalendarComponent implements OnInit, OnDestroy {
   // Navigation methods
   previous(): void {
     if (this.currentView.type === 'day') {
-      this.currentDate = dayjs(this.currentDate).subtract(1, 'day').toDate();
+      this.currentDate = this.currentDate.subtract(1, 'day');
     } else if (this.currentView.type === 'week') {
-      this.currentDate = dayjs(this.currentDate).subtract(1, 'week').toDate();
+      this.currentDate = this.currentDate.subtract(1, 'week');
     } else if (this.currentView.type === 'month') {
-      this.currentDate = dayjs(this.currentDate).subtract(1, 'month').toDate();
+      this.currentDate = this.currentDate.subtract(1, 'month');
     }
+    this.fetchEvents();
   }
 
   next(): void {
     if (this.currentView.type === 'day') {
-      this.currentDate = dayjs(this.currentDate).add(1, 'day').toDate();
+      this.currentDate = this.currentDate.add(1, 'day');
     } else if (this.currentView.type === 'week') {
-      this.currentDate = dayjs(this.currentDate).add(1, 'week').toDate();
+      this.currentDate = this.currentDate.add(1, 'week');
     } else if (this.currentView.type === 'month') {
-      this.currentDate = dayjs(this.currentDate).add(1, 'month').toDate();
+      this.currentDate = this.currentDate.add(1, 'month');
     }
+    this.fetchEvents();
   }
 
   today(): void {
-    this.currentDate = new Date();
+    this.currentDate = dayjs();
+    this.fetchEvents();
   }
 
   changeView(view: View): void {
@@ -795,11 +805,10 @@ export class CalendarComponent implements OnInit, OnDestroy {
   }
 
   // Get events for a specific day
-  getEventsForDay(date: Date): CalendarEvent[] {
+  getEventsForDay(date: dayjs.Dayjs): CalendarEvent[] {
     return this.events.filter(event => {
       const eventDate = dayjs(event.start_time);
-      const targetDate = dayjs(date);
-      return eventDate.isSame(targetDate, 'day');
+      return eventDate.isSame(date, 'day');
     });
   }
 

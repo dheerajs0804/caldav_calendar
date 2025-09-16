@@ -13,7 +13,7 @@ import { ColorRegistryService } from '../../services/color-registry.service';
   styleUrls: ['./week-view.component.scss']
 })
 export class WeekViewComponent {
-  @Input() date!: Date;
+  @Input() date!: dayjs.Dayjs;
   @Input() events: CalendarEvent[] = [];
   @Input() calendars: Calendar[] = [];
   @Output() deleteEvent = new EventEmitter<CalendarEvent>();
@@ -241,7 +241,7 @@ export class WeekViewComponent {
   }
 
   getWeekDays(): dayjs.Dayjs[] {
-    const weekStart = dayjs(this.date).startOf('week');
+    const weekStart = this.date.startOf('week');
     return Array.from({ length: 7 }, (_, i) => weekStart.add(i, 'day'));
   }
 

@@ -13,7 +13,7 @@ import { ColorRegistryService } from '../../services/color-registry.service';
   styleUrls: ['./month-view.component.scss']
 })
 export class MonthViewComponent {
-  @Input() date!: Date;
+  @Input() date!: dayjs.Dayjs;
   @Input() events: CalendarEvent[] = [];
   @Input() calendars: Calendar[] = [];
 
@@ -22,11 +22,11 @@ export class MonthViewComponent {
   constructor(private colorRegistry: ColorRegistryService) {}
 
   getMonthStart(): Date {
-    return dayjs(this.date).startOf('month').toDate();
+    return this.date.startOf('month').toDate();
   }
 
   getMonthEnd(): dayjs.Dayjs {
-    return dayjs(this.date).endOf('month');
+    return this.date.endOf('month');
   }
 
   getStartDate(): dayjs.Dayjs {
