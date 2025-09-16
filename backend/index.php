@@ -192,7 +192,7 @@ function handlePostRequest($path) {
             case 'caldav/discover':
                 discoverCalDAVCalendars();
                 break;
-            case 'calendars/sync':
+        case 'calendars/sync':
             syncCalendar();
             break;
         case 'email':
@@ -3040,31 +3040,31 @@ function createSSOToken() {
         // For SSO from Roundcube, we trust the credentials since user is already authenticated
         // Skip CalDAV authentication to avoid potential issues
         try {
-            // Generate SSO token
-            $token = bin2hex(random_bytes(32));
+                // Generate SSO token
+                $token = bin2hex(random_bytes(32));
             
             // Get CalDAV config for server details
             $caldavConfig = require_once 'config/caldav.php';
-            
-            // Get current tokens and add new one
-            $ssoTokens = getSSOTokens();
-            $ssoTokens[$token] = [
-                'username' => $username,
-                'password' => $password,
-                'server_url' => $caldavConfig['server_url'],
+                
+                // Get current tokens and add new one
+                $ssoTokens = getSSOTokens();
+                $ssoTokens[$token] = [
+                    'username' => $username,
+                    'password' => $password,
+                    'server_url' => $caldavConfig['server_url'],
                 'calendar_url' => '', // Will be discovered on first use
                 'calendar_name' => 'Personal Calendar',
-                'expires' => time() + 3600 // 1 hour
-            ];
-            setSSOTokens($ssoTokens);
-            
-            error_log("SSO token created successfully: $token");
-            
-            echo json_encode([
-                'success' => true,
-                'token' => $token,
-                'message' => 'SSO token created'
-            ]);
+                                           'expires' => time() + 3600 // 1 hour
+                ];
+                setSSOTokens($ssoTokens);
+                
+                error_log("SSO token created successfully: $token");
+                
+                echo json_encode([
+                    'success' => true,
+                    'token' => $token,
+                    'message' => 'SSO token created'
+                ]);
             
         } catch (Exception $e) {
             error_log("SSO token creation failed for user $username: " . $e->getMessage());

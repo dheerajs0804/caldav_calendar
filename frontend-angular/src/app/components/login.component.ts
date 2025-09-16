@@ -213,12 +213,26 @@ export class LoginComponent {
   private checkForCredentials(): void {
     const urlParams = new URLSearchParams(window.location.search);
     const username = urlParams.get('username');
-    const password = urlParams.get('password');
+    const encryptedPassword = urlParams.get('encrypted_password');
+    const plainPassword = urlParams.get('password'); // Fallback for backward compatibility
     
     console.log('🎯 LoginComponent: Checking for credentials in URL...');
     console.log('🎯 Current URL:', window.location.href);
     console.log('🎯 Username from URL:', username);
-    console.log('🎯 Password from URL:', password ? '***present***' : 'missing');
+    console.log('🎯 Encrypted password from URL:', encryptedPassword ? '***present***' : 'missing');
+    console.log('🎯 Plain password from URL:', plainPassword ? '***present***' : 'missing');
+    
+    let password = '';
+    
+    if (username && encryptedPassword) {
+      // Decrypt the password
+      password = this.decryptPassword(encryptedPassword);
+      console.log('🔓 Password decrypted successfully');
+    } else if (username && plainPassword) {
+      // Fallback to plain password for backward compatibility
+      password = plainPassword;
+      console.log('⚠️ Using plain password (backward compatibility)');
+    }
     
     if (username && password) {
       console.log('🎯 LoginComponent: Credentials found in URL, processing automatic login...');
@@ -253,12 +267,34 @@ export class LoginComponent {
   }
 
   /**
+   * Decrypt password using the same algorithm as Roundcube
+   */
+  private decryptPassword(encryptedPassword: string): string {
+    try {
+      // Decode base64
+      const decoded = atob(encryptedPassword);
+      
+      // Remove salt and reverse the string
+      const salt = 'caldev2024';
+      const withoutSalt = decoded.replace(salt, '');
+      const originalPassword = withoutSalt.split('').reverse().join('');
+      
+      console.log('🔓 Password decrypted successfully');
+      return originalPassword;
+    } catch (error) {
+      console.error('❌ Password decryption failed:', error);
+      return '';
+    }
+  }
+
+  /**
    * Clear credentials from URL for security
    */
   private clearCredentialsFromURL(): void {
     const url = new URL(window.location.href);
     url.searchParams.delete('username');
     url.searchParams.delete('password');
+    url.searchParams.delete('encrypted_password');
     window.history.replaceState({}, document.title, url.toString());
   }
 

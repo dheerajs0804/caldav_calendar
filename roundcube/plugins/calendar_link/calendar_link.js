@@ -75,13 +75,26 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // Simple encryption function using base64 and simple obfuscation
+    function encryptPassword(password) {
+        // Simple encryption: reverse string + base64 + add salt
+        var salt = 'caldev2024';
+        var reversed = password.split('').reverse().join('');
+        var salted = reversed + salt;
+        return btoa(salted);
+    }
+    
     // Function to open calendar with direct credentials
     function openCalendarWithDirectCredentials(username, password) {
         console.log('🎯 Opening calendar with direct credentials for user:', username);
         
-        // Pass credentials directly in URL parameters to /login route
-        var calendarUrlWithCreds = calendarUrl + '/login?username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password);
-        console.log('🎯 Opening calendar with credentials URL:', calendarUrlWithCreds);
+        // Encrypt the password before passing in URL
+        var encryptedPassword = encryptPassword(password);
+        console.log('🔒 Password encrypted for URL transmission');
+        
+        // Pass credentials with encrypted password in URL parameters to /login route
+        var calendarUrlWithCreds = calendarUrl + '/login?username=' + encodeURIComponent(username) + '&encrypted_password=' + encodeURIComponent(encryptedPassword);
+        console.log('🎯 Opening calendar with encrypted credentials URL:', calendarUrlWithCreds);
         
         // Try to open the URL in a new tab
         try {
