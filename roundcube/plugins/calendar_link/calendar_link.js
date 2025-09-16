@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var calendarUrlWithCreds = calendarUrl + '/login?username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password);
         console.log('🎯 Opening calendar with credentials URL:', calendarUrlWithCreds);
         
-        // Try to open the URL
+        // Try to open the URL in a new tab
         try {
             var newWindow = window.open(calendarUrlWithCreds, '_blank', 'noopener,noreferrer');
             if (newWindow) {
@@ -91,15 +91,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 newWindow.focus();
             } else {
                 console.error('🎯 Failed to open new window - popup blocked?');
-                // Fallback: try to navigate current window
-                console.log('🎯 Trying to navigate current window instead');
-                window.location.href = calendarUrlWithCreds;
+                // Show user-friendly message instead of navigating current tab
+                alert('Please allow popups for this site to open the calendar in a new tab, or manually copy this URL:\n\n' + calendarUrlWithCreds);
             }
         } catch (error) {
             console.error('🎯 Error opening window:', error);
-            // Fallback: try to navigate current window
-            console.log('🎯 Trying to navigate current window instead');
-            window.location.href = calendarUrlWithCreds;
+            // Show user-friendly message instead of navigating current tab
+            alert('Please allow popups for this site to open the calendar in a new tab, or manually copy this URL:\n\n' + calendarUrlWithCreds);
         }
     }
     
@@ -148,8 +146,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 openCalendarWithCredentials(username);
             } else {
                 console.log('🎯 No username found, using fallback');
-                // Fallback to regular calendar link
-                window.open(calendarUrl, '_blank');
+                // Fallback to regular calendar link in new tab only
+                window.open(calendarUrl, '_blank', 'noopener,noreferrer');
             }
             
             return false; // Prevent any further event handling
@@ -176,7 +174,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         button.setAttribute('data-calendar-handler', 'true');
                         button.addEventListener('click', function(e) {
                             e.preventDefault();
-                            window.open(calendarUrl, '_blank');
+                            e.stopPropagation();
+                            e.stopImmediatePropagation();
+                            window.open(calendarUrl, '_blank', 'noopener,noreferrer');
+                            return false;
                         });
                     }
                 });

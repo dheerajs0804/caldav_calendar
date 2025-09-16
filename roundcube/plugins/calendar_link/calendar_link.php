@@ -77,7 +77,7 @@ class calendar_link extends rcube_plugin
             'type'       => 'link',
             'target'     => '_blank',
             'href'       => '#',
-            'onclick'    => 'openCalendarWithCredentials(\'' . $username . '\'); return false;'
+            'onclick'    => 'openCalendarWithCredentials(\'' . $username . '\'); return false; event.preventDefault(); event.stopPropagation();'
         ], 'taskbar');
         
         // Add stylesheet for the button
@@ -113,7 +113,7 @@ class calendar_link extends rcube_plugin
             $username = $rcmail->user->data['username'] ?? '';
             
             // Create a completely clean calendar button without any icons
-            $args['content'] .= '<li class="calendar-link"><a href="#" target="_blank" class="calendar-button" data-username="' . htmlspecialchars($username) . '" onclick="openCalendarWithCredentials(\'' . htmlspecialchars($username) . '\'); return false;" style="background: none; background-image: none;">' . $calendar_text . '</a></li>';
+            $args['content'] .= '<li class="calendar-link"><a href="#" target="_blank" class="calendar-button" data-username="' . htmlspecialchars($username) . '" onclick="openCalendarWithCredentials(\'' . htmlspecialchars($username) . '\'); return false; event.preventDefault(); event.stopPropagation();" style="background: none; background-image: none;">' . $calendar_text . '</a></li>';
         }
         return $args;
     }
