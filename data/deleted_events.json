@@ -460,5 +460,23 @@
         "title": "Event marked for deletion",
         "deleted_at": "2025-09-16T10:41:18+02:00",
         "deleted_by": "user"
+    },
+    {
+        "uid": "977A980697217003894ABF0BA8BE216F-9F332BE70AC5257A",
+        "title": "Event marked for deletion",
+        "deleted_at": "2025-09-16T12:16:50+02:00",
+        "deleted_by": "user"
+    },
+    {
+        "uid": "uid_68c7feac41de5",
+        "title": "Event marked for deletion",
+        "deleted_at": "2025-09-16T12:17:25+02:00",
+        "deleted_by": "user"
+    },
+    {
+        "uid": "uid_68c7feac41de5@calendar-app.com",
+        "title": "Event marked for deletion",
+        "deleted_at": "2025-09-16T12:18:51+02:00",
+        "deleted_by": "user"
     }
 ]

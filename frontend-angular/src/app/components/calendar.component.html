@@ -28,19 +28,35 @@
       </button>
     </div>
     
-    <div class="action-buttons">
-      <button 
-        (click)="printCalendar()" 
-        class="print-btn"
-        title="Print Calendar"
-      >
-        🖨️ Print
-      </button>
-      
-      <button (click)="openAddEventModal()" class="add-event-btn">
-        ➕ Add Event
-      </button>
-    </div>
+        <div class="action-buttons">
+          <button 
+            (click)="printCalendar()" 
+            class="print-btn"
+            title="Print Calendar"
+          >
+            🖨️ Print
+          </button>
+          
+          <button 
+            (click)="openExportModal()" 
+            class="export-btn"
+            title="Export to iCalendar"
+          >
+            📤 Export
+          </button>
+          
+          <button 
+            (click)="openImportModal()" 
+            class="import-btn"
+            title="Import Events"
+          >
+            📥 Import
+          </button>
+          
+          <button (click)="openAddEventModal()" class="add-event-btn">
+            ➕ Add Event
+          </button>
+        </div>
     
     <button (click)="logout()" class="logout-btn">
       🚪 Logout
@@ -389,3 +405,21 @@
   (reminderDetails)="onReminderDetails($event)"
   (windowClosed)="onReminderWindowClosed()"
 ></app-reminder-notification>
+
+<!-- Export Modal -->
+<app-export-modal
+  *ngIf="showExportModal"
+  [calendars]="calendars"
+  [show]="showExportModal"
+  (close)="closeExportModal()"
+  (export)="onExport($event)"
+></app-export-modal>
+
+<!-- Import Modal -->
+<app-import-modal
+  *ngIf="showImportModal"
+  [calendars]="calendars"
+  [show]="showImportModal"
+  (close)="closeImportModal()"
+  (import)="onImport($event)"
+></app-import-modal>

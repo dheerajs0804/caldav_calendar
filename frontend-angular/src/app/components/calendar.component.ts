@@ -10,6 +10,8 @@ import { MonthViewComponent } from './month-view/month-view.component';
 import { EventDetailModalComponent } from './event-detail-modal/event-detail-modal.component';
 import { ReminderNotificationComponent, ReminderNotification, ReminderEvent } from './reminder-notification.component';
 import { DateNavigationComponent } from './date-navigation.component';
+import { ExportModalComponent, ExportOptions } from './export-modal/export-modal.component';
+import { ImportModalComponent, ImportOptions } from './import-modal/import-modal.component';
 import { SortByStartTimePipe } from '../pipes/sort-by-start-time.pipe';
 import { EmailService } from '../services/email.service';
 import { AuthService } from '../services/auth.service';
@@ -52,7 +54,7 @@ interface NewEvent {
 @Component({
   selector: 'app-calendar',
   standalone: true,
-  imports: [CommonModule, FormsModule, DayViewComponent, WeekViewComponent, MonthViewComponent, EventDetailModalComponent, ReminderNotificationComponent, DateNavigationComponent, SortByStartTimePipe],
+  imports: [CommonModule, FormsModule, DayViewComponent, WeekViewComponent, MonthViewComponent, EventDetailModalComponent, ReminderNotificationComponent, DateNavigationComponent, ExportModalComponent, ImportModalComponent, SortByStartTimePipe],
   templateUrl: './calendar.component.html',
   styleUrls: ['./calendar.component.scss']
 })
@@ -98,6 +100,12 @@ export class CalendarComponent implements OnInit, OnDestroy {
   public notifiedEvents: Set<string> = new Set();
   private reminderInterval?: Subscription;
   private dismissedEventsKey = 'calendar_dismissed_events';
+  
+  // Export modal
+  showExportModal = false;
+  
+  // Import modal
+  showImportModal = false;
   
   // New reminder notification properties
   activeReminders: ReminderNotification[] = [];
@@ -1257,5 +1265,361 @@ export class CalendarComponent implements OnInit, OnDestroy {
       return 'All Day';
     }
     return dayjs(time).format('h:mm A');
+  }
+  
+  // Export functionality
+  openExportModal(): void {
+    console.log('📤 Opening export modal');
+    console.log('📤 Available calendars:', this.calendars);
+    this.showExportModal = true;
+  }
+  
+  closeExportModal(): void {
+    console.log('📤 Closing export modal');
+    this.showExportModal = false;
+  }
+  
+  async onExport(options: ExportOptions): Promise<void> {
+    try {
+      console.log('📤 Export options:', options);
+      
+      // Get events based on options
+      let eventsToExport = this.events;
+      
+      // Filter by calendar if not "all"
+      if (options.calendar && options.calendar !== 'all') {
+        eventsToExport = eventsToExport.filter(event => {
+          // Try both calendar_url and calendar_id for matching
+          return event.calendar_url === options.calendar || 
+                 event.calendar_id?.toString() === options.calendar;
+        });
+      }
+      
+      // Filter by date range
+      if (options.dateRange !== 'all') {
+        const now = dayjs();
+        let startDate: dayjs.Dayjs;
+        let endDate: dayjs.Dayjs;
+        
+        if (options.dateRange === 'custom') {
+          startDate = dayjs(options.customStartDate);
+          endDate = dayjs(options.customEndDate);
+        } else {
+          const monthsBack = parseInt(options.dateRange.replace('months', '').replace('month', ''));
+          startDate = now.subtract(monthsBack, 'month');
+          endDate = now;
+        }
+        
+        eventsToExport = eventsToExport.filter(event => {
+          const eventDate = dayjs(event.start_time);
+          return eventDate.isAfter(startDate) && eventDate.isBefore(endDate);
+        });
+      }
+      
+      console.log('📤 Events to export:', eventsToExport.length);
+      
+      // Generate iCalendar content
+      const icalContent = this.generateICalendarContent(eventsToExport);
+      
+      // Create and download file
+      this.downloadICalendarFile(icalContent, 'calendar-export.ics');
+      
+      this.closeExportModal();
+      alert(`Successfully exported ${eventsToExport.length} events to iCalendar format!`);
+      
+    } catch (error) {
+      console.error('❌ Export error:', error);
+      alert('Error exporting calendar. Please try again.');
+    }
+  }
+  
+  private generateICalendarContent(events: CalendarEvent[]): string {
+    const now = dayjs().format('YYYYMMDDTHHmmss[Z]');
+    
+    let ical = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Calendar App//Calendar Export//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH'
+    ];
+    
+    events.forEach(event => {
+      const startTime = dayjs(event.start_time).format('YYYYMMDDTHHmmss[Z]');
+      const endTime = dayjs(event.end_time).format('YYYYMMDDTHHmmss[Z]');
+      const created = dayjs().format('YYYYMMDDTHHmmss[Z]');
+      
+      ical.push(
+        'BEGIN:VEVENT',
+        `UID:${event.uid || event.id}@calendar-app.com`,
+        `DTSTART:${startTime}`,
+        `DTEND:${endTime}`,
+        `DTSTAMP:${created}`,
+        `SUMMARY:${event.title}`,
+        `DESCRIPTION:${event.description || ''}`,
+        `LOCATION:${event.location || ''}`,
+        `STATUS:CONFIRMED`,
+        `TRANSP:OPAQUE`,
+        'END:VEVENT'
+      );
+    });
+    
+    ical.push('END:VCALENDAR');
+    
+    return ical.join('\r\n');
+  }
+  
+  private downloadICalendarFile(content: string, filename: string): void {
+    const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  }
+  
+  // Import functionality
+  openImportModal(): void {
+    console.log('📥 Opening import modal');
+    console.log('📥 Available calendars:', this.calendars);
+    this.showImportModal = true;
+  }
+  
+  closeImportModal(): void {
+    console.log('📥 Closing import modal');
+    this.showImportModal = false;
+  }
+  
+  async onImport(options: ImportOptions): Promise<void> {
+    try {
+      console.log('📥 Import options:', options);
+      
+      if (!options.file) {
+        alert('Please select a file to import.');
+        return;
+      }
+      
+      // Parse the file based on its type
+      const events = await this.parseImportFile(options.file);
+      console.log('📥 Parsed events:', events.length);
+      
+      if (events.length === 0) {
+        alert('No events found in the selected file.');
+        return;
+      }
+      
+      // Filter events by date range if specified
+      let eventsToImport = events;
+      if (options.dateRange !== 'all') {
+        const now = dayjs();
+        let startDate: dayjs.Dayjs;
+        let endDate: dayjs.Dayjs;
+        
+        if (options.dateRange === 'custom') {
+          startDate = dayjs(options.customStartDate);
+          endDate = dayjs(options.customEndDate);
+        } else {
+          const monthsBack = parseInt(options.dateRange.replace('months', '').replace('month', ''));
+          startDate = now.subtract(monthsBack, 'month');
+          endDate = now;
+        }
+        
+        eventsToImport = events.filter(event => {
+          const eventDate = dayjs(event.start_time);
+          return eventDate.isAfter(startDate) && eventDate.isBefore(endDate);
+        });
+      }
+      
+      console.log('📥 Events to import after filtering:', eventsToImport.length);
+      
+      // Import events to the selected calendar
+      let successCount = 0;
+      let errorCount = 0;
+      
+      for (const event of eventsToImport) {
+        try {
+          const eventData = {
+            title: event.title,
+            description: event.description || '',
+            location: event.location || '',
+            start_time: event.start_time,
+            end_time: event.end_time,
+            all_day: event.all_day || false,
+            attendees: event.attendees || [],
+            calendar_url: options.calendar
+          };
+          
+          const response = await this.http.post<any>('http://localhost:8000/events', eventData, {
+            withCredentials: true
+          }).toPromise();
+          
+          if (response.success) {
+            successCount++;
+          } else {
+            errorCount++;
+            console.error('❌ Failed to import event:', event.title, response.message);
+          }
+        } catch (error) {
+          errorCount++;
+          console.error('❌ Error importing event:', event.title, error);
+        }
+      }
+      
+      this.closeImportModal();
+      
+      if (successCount > 0) {
+        await this.fetchEvents(); // Refresh events
+        alert(`Successfully imported ${successCount} events!${errorCount > 0 ? ` ${errorCount} events failed to import.` : ''}`);
+      } else {
+        alert('No events were successfully imported. Please check the file format and try again.');
+      }
+      
+    } catch (error) {
+      console.error('❌ Import error:', error);
+      alert('Error importing events. Please check the file format and try again.');
+    }
+  }
+  
+  private async parseImportFile(file: File): Promise<any[]> {
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+    const fileContent = await this.readFileContent(file);
+    
+    switch (fileExtension) {
+      case 'ics':
+        return this.parseICalendarFile(fileContent);
+      case 'csv':
+        return this.parseCSVFile(fileContent);
+      case 'json':
+        return this.parseJSONFile(fileContent);
+      default:
+        throw new Error(`Unsupported file format: ${fileExtension}`);
+    }
+  }
+  
+  private readFileContent(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target?.result as string || '');
+      reader.onerror = (e) => reject(e);
+      reader.readAsText(file);
+    });
+  }
+  
+  private parseICalendarFile(content: string): any[] {
+    const events: any[] = [];
+    const lines = content.split('\n');
+    let currentEvent: any = {};
+    let inEvent = false;
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      
+      if (trimmedLine === 'BEGIN:VEVENT') {
+        inEvent = true;
+        currentEvent = {};
+      } else if (trimmedLine === 'END:VEVENT') {
+        if (inEvent && currentEvent.title) {
+          events.push(currentEvent);
+        }
+        inEvent = false;
+      } else if (inEvent) {
+        const [key, ...valueParts] = trimmedLine.split(':');
+        const value = valueParts.join(':');
+        
+        switch (key) {
+          case 'SUMMARY':
+            currentEvent.title = value;
+            break;
+          case 'DESCRIPTION':
+            currentEvent.description = value;
+            break;
+          case 'LOCATION':
+            currentEvent.location = value;
+            break;
+          case 'DTSTART':
+            currentEvent.start_time = this.parseICalendarDate(value);
+            break;
+          case 'DTEND':
+            currentEvent.end_time = this.parseICalendarDate(value);
+            break;
+        }
+      }
+    }
+    
+    return events;
+  }
+  
+  private parseICalendarDate(dateStr: string): string {
+    // Parse iCalendar date format (YYYYMMDDTHHMMSSZ or YYYYMMDD)
+    if (dateStr.length === 15 && dateStr.endsWith('Z')) {
+      // Format: YYYYMMDDTHHMMSSZ
+      const year = dateStr.substring(0, 4);
+      const month = dateStr.substring(4, 6);
+      const day = dateStr.substring(6, 8);
+      const hour = dateStr.substring(9, 11);
+      const minute = dateStr.substring(11, 13);
+      const second = dateStr.substring(13, 15);
+      return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+    } else if (dateStr.length === 8) {
+      // Format: YYYYMMDD (all-day event)
+      const year = dateStr.substring(0, 4);
+      const month = dateStr.substring(4, 6);
+      const day = dateStr.substring(6, 8);
+      return `${year}-${month}-${day}T00:00:00`;
+    }
+    return dateStr;
+  }
+  
+  private parseCSVFile(content: string): any[] {
+    const events: any[] = [];
+    const lines = content.split('\n');
+    const headers = lines[0].split(',').map(h => h.trim());
+    
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map(v => v.trim());
+      if (values.length >= headers.length) {
+        const event: any = {};
+        headers.forEach((header, index) => {
+          event[header.toLowerCase()] = values[index];
+        });
+        
+        // Map common CSV fields to our event structure
+        if (event.title || event.summary) {
+          events.push({
+            title: event.title || event.summary,
+            description: event.description || '',
+            location: event.location || '',
+            start_time: event.start_time || event.start || event.startdate,
+            end_time: event.end_time || event.end || event.enddate,
+            all_day: event.all_day === 'true' || event.allday === 'true'
+          });
+        }
+      }
+    }
+    
+    return events;
+  }
+  
+  private parseJSONFile(content: string): any[] {
+    try {
+      const data = JSON.parse(content);
+      
+      // Handle different JSON structures
+      if (Array.isArray(data)) {
+        return data;
+      } else if (data.events && Array.isArray(data.events)) {
+        return data.events;
+      } else if (data.calendar && data.calendar.events) {
+        return data.calendar.events;
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('❌ Error parsing JSON file:', error);
+      throw new Error('Invalid JSON format');
+    }
   }
 }
