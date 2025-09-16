@@ -105,6 +105,29 @@
   gap: 16px;
 }
 
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.print-btn {
+  padding: 8px 16px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.print-btn:hover {
+  background: #0056b3;
+}
+
 .view-selector {
   display: flex;
   gap: 4px;

@@ -97,6 +97,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   public notifiedEvents: Set<string> = new Set();
   private reminderInterval?: Subscription;
+  private dismissedEventsKey = 'calendar_dismissed_events';
   
   // New reminder notification properties
   activeReminders: ReminderNotification[] = [];
@@ -113,6 +114,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     console.log('Calendar component is loading...');
+    
+    // Load dismissed events from localStorage
+    this.loadDismissedEvents();
     
     // Always fetch calendars and show calendar view directly after login
     this.fetchCalendars();
@@ -148,6 +152,13 @@ export class CalendarComponent implements OnInit, OnDestroy {
         });
         console.log('🎨 All calendars auto-colored!');
       }
+    };
+    
+    // 🔕 Expose reminder management methods to window for testing
+    (window as any).reminderManager = {
+      clearDismissedEvents: () => this.clearDismissedEvents(),
+      getDismissedEvents: () => Array.from(this.notifiedEvents),
+      getDismissedCount: () => this.notifiedEvents.size
     };
   }
 
@@ -505,13 +516,69 @@ export class CalendarComponent implements OnInit, OnDestroy {
     console.log('Active reminders array:', this.activeReminders);
   }
 
+  // Load dismissed events from localStorage
+  private loadDismissedEvents(): void {
+    try {
+      const dismissedEventsJson = localStorage.getItem(this.dismissedEventsKey);
+      if (dismissedEventsJson) {
+        const dismissedEvents = JSON.parse(dismissedEventsJson);
+        this.notifiedEvents = new Set(dismissedEvents);
+        console.log('🔕 Loaded dismissed events from localStorage:', this.notifiedEvents.size, 'events');
+      } else {
+        console.log('🔕 No dismissed events found in localStorage');
+      }
+    } catch (error) {
+      console.error('🔕 Error loading dismissed events from localStorage:', error);
+      this.notifiedEvents = new Set();
+    }
+  }
+
+  // Save dismissed events to localStorage
+  private saveDismissedEvents(): void {
+    try {
+      const dismissedEventsArray = Array.from(this.notifiedEvents);
+      localStorage.setItem(this.dismissedEventsKey, JSON.stringify(dismissedEventsArray));
+      console.log('🔕 Saved dismissed events to localStorage:', dismissedEventsArray.length, 'events');
+    } catch (error) {
+      console.error('🔕 Error saving dismissed events to localStorage:', error);
+    }
+  }
+
+  // Clear all dismissed events (for testing/debugging)
+  public clearDismissedEvents(): void {
+    this.notifiedEvents.clear();
+    localStorage.removeItem(this.dismissedEventsKey);
+    console.log('🔕 Cleared all dismissed events');
+  }
+
   // Handle reminder dismissal
   onReminderDismissed(reminderId: string): void {
-    console.log('Reminder dismissed:', reminderId);
-    // Remove the reminder from active reminders
-    this.activeReminders = this.activeReminders.filter(r => r.id !== reminderId);
-    if (this.activeReminders.length === 0) {
-      this.showReminderWindow = false;
+    console.log('🔕 Reminder dismissed:', reminderId);
+    
+    // Find the reminder to get the event ID
+    const dismissedReminder = this.activeReminders.find(r => r.id === reminderId);
+    if (dismissedReminder) {
+      console.log('🔕 Dismissed reminder for event:', dismissedReminder.event.title);
+      
+      // Remove from active reminders
+      this.activeReminders = this.activeReminders.filter(r => r.id !== reminderId);
+      
+      // Mark the event as permanently dismissed (don't show again)
+      this.notifiedEvents.add(dismissedReminder.event.id);
+      
+      // Save dismissed events to localStorage for persistence
+      this.saveDismissedEvents();
+      
+      console.log('🔕 Active reminders remaining:', this.activeReminders.length);
+      console.log('🔕 Notified events count:', this.notifiedEvents.size);
+      
+      // Close reminder window if no more active reminders
+      if (this.activeReminders.length === 0) {
+        this.showReminderWindow = false;
+        console.log('🔕 Reminder window closed - no more active reminders');
+      }
+    } else {
+      console.warn('🔕 Could not find reminder with ID:', reminderId);
     }
   }
 
@@ -543,8 +610,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   // Handle reminder window close
   onReminderWindowClosed(): void {
-    console.log('Reminder window closed');
+    console.log('🔕 Reminder window closed event received');
     this.showReminderWindow = false;
+    console.log('🔕 showReminderWindow set to:', this.showReminderWindow);
   }
 
   // Remove duplicate events
@@ -878,6 +946,291 @@ export class CalendarComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.error('❌ Error updating event:', error);
       alert('Error updating event. Please try again.');
+    }
+  }
+
+  // Print functionality
+  printCalendar(): void {
+    console.log('🖨️ Printing calendar view:', this.currentView.type);
+    
+    // Hide sidebar and other UI elements for printing
+    const originalSidebarState = this.showSidebar;
+    this.showSidebar = false;
+    
+    // Create print styles
+    const printStyles = this.createPrintStyles();
+    
+    // Add print styles to document
+    const styleElement = document.createElement('style');
+    styleElement.id = 'print-styles';
+    styleElement.textContent = printStyles;
+    document.head.appendChild(styleElement);
+    
+    // Wait for DOM to update, then print
+    setTimeout(() => {
+      window.print();
+      
+      // Clean up after printing
+      setTimeout(() => {
+        // Remove print styles
+        const printStyleElement = document.getElementById('print-styles');
+        if (printStyleElement) {
+          printStyleElement.remove();
+        }
+        
+        // Restore sidebar state
+        this.showSidebar = originalSidebarState;
+        
+        console.log('🖨️ Print completed, UI restored');
+      }, 1000);
+    }, 100);
+  }
+
+  private createPrintStyles(): string {
+    const currentDate = this.currentDate.format('MMMM YYYY');
+    const viewTitle = this.getViewTitle();
+    
+    return `
+      @media print {
+        /* Hide non-essential elements */
+        .sidebar,
+        .calendar-header,
+        .modal-overlay,
+        .reminder-overlay,
+        .action-buttons,
+        .print-btn,
+        .add-event-btn,
+        .logout-btn,
+        .sidebar-toggle-btn {
+          display: none !important;
+        }
+        
+        /* Print header - ultra compact */
+        body::before {
+          content: "${viewTitle} - ${currentDate}";
+          display: block;
+          font-size: 12px;
+          font-weight: bold;
+          text-align: center;
+          margin-bottom: 5px;
+          padding: 2px;
+          border-bottom: 1px solid #333;
+        }
+        
+        /* Main content adjustments - ultra compact */
+        .main-content {
+          margin: 0 !important;
+          padding: 0 !important;
+          width: 100% !important;
+          height: auto !important;
+          overflow: visible !important;
+        }
+        
+        .calendar-content {
+          overflow: visible !important;
+          height: auto !important;
+          padding: 0 !important;
+        }
+        
+        /* Calendar view specific styles - ultra compact */
+        .day-view,
+        .week-view,
+        .month-view,
+        .agenda-view {
+          width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          font-size: 8px !important;
+        }
+        
+        /* Event styling for print - ultra compact */
+        .event-item {
+          border: 1px solid #333 !important;
+          background: white !important;
+          color: black !important;
+          margin: 0 !important;
+          padding: 1px 2px !important;
+          font-size: 7px !important;
+          page-break-inside: avoid;
+          line-height: 1.1 !important;
+        }
+        
+        /* Calendar grid styling - ultra compact */
+        .calendar-grid {
+          border: 1px solid #333 !important;
+        }
+        
+        .calendar-day {
+          border: 1px solid #ccc !important;
+          min-height: 30px !important;
+          padding: 1px !important;
+        }
+        
+        /* Time slots - ultra compact */
+        .time-slot {
+          border-bottom: 1px solid #eee !important;
+          height: 15px !important;
+          font-size: 7px !important;
+        }
+        
+        /* Week view specific - ultra compact */
+        .week-view {
+          font-size: 7px !important;
+        }
+        
+        .week-day {
+          min-height: 25px !important;
+          padding: 1px !important;
+        }
+        
+        /* Month view specific - ultra compact */
+        .month-view {
+          font-size: 7px !important;
+        }
+        
+        .month-day {
+          min-height: 20px !important;
+          padding: 0 !important;
+        }
+        
+        /* Agenda view specific - ultra compact */
+        .agenda-item {
+          border-bottom: 1px solid #eee !important;
+          padding: 1px 0 !important;
+          page-break-inside: avoid;
+          font-size: 7px !important;
+        }
+        
+        /* Day view timeline - ultra compact */
+        .day-timeline {
+          font-size: 7px !important;
+        }
+        
+        .timeline-hour {
+          height: 15px !important;
+          font-size: 6px !important;
+        }
+        
+        /* Ensure proper page breaks */
+        .calendar-week,
+        .calendar-month {
+          page-break-inside: avoid;
+        }
+        
+        /* Print margins - minimal for maximum space */
+        @page {
+          margin: 0.1in;
+          size: A4;
+        }
+        
+        /* Hide scrollbars */
+        * {
+          overflow: visible !important;
+        }
+        
+        /* General text sizing - ultra compact */
+        body {
+          font-size: 7px !important;
+          line-height: 1.1 !important;
+        }
+        
+        /* Compact headers */
+        h1, h2, h3 {
+          font-size: 9px !important;
+          margin: 2px 0 !important;
+        }
+        
+        /* Compact labels */
+        .event-title {
+          font-size: 7px !important;
+          font-weight: bold !important;
+        }
+        
+        .event-time {
+          font-size: 6px !important;
+        }
+        
+        .event-location {
+          font-size: 5px !important;
+        }
+        
+        /* Additional ultra-compact styles */
+        .calendar-header,
+        .view-selector,
+        .date-navigation {
+          font-size: 6px !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        
+        /* Remove all unnecessary spacing */
+        * {
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        
+        /* Restore minimal padding only where needed */
+        .event-item {
+          padding: 1px 2px !important;
+        }
+        
+        .calendar-day {
+          padding: 1px !important;
+        }
+        
+        .week-day {
+          padding: 1px !important;
+        }
+        
+        /* Ultra-compact table cells */
+        td, th {
+          padding: 0 !important;
+          margin: 0 !important;
+          font-size: 7px !important;
+        }
+        
+        /* Ultra-compact divs */
+        div {
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        
+        /* Restore essential padding */
+        .event-item {
+          padding: 1px 2px !important;
+        }
+        
+        .calendar-day {
+          padding: 1px !important;
+        }
+        
+        .week-day {
+          padding: 1px !important;
+        }
+        
+        .month-day {
+          padding: 0 !important;
+        }
+        
+        .agenda-item {
+          padding: 1px 0 !important;
+        }
+      }
+    `;
+  }
+
+  private getViewTitle(): string {
+    switch (this.currentView.type) {
+      case 'day':
+        return `Day View - ${this.currentDate.format('dddd, MMMM D, YYYY')}`;
+      case 'week':
+        return `Week View - ${this.getWeekDateRange()}`;
+      case 'month':
+        return `Month View - ${this.currentDate.format('MMMM YYYY')}`;
+      case 'agenda':
+        return `Agenda View - ${this.currentDate.format('MMMM YYYY')}`;
+      default:
+        return 'Calendar View';
     }
   }
 

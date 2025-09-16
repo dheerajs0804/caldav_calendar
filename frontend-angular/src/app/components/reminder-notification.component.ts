@@ -246,11 +246,14 @@ export class ReminderNotificationComponent implements OnInit, OnDestroy {
   }
 
   dismissReminder(reminderId: string) {
+    console.log('🔕 Dismissing reminder:', reminderId);
     this.reminderDismissed.emit(reminderId);
   }
 
   dismissAllReminders() {
+    console.log('🔕 Dismissing all reminders:', this.activeReminders.length);
     this.activeReminders.forEach(reminder => {
+      console.log('🔕 Dismissing reminder:', reminder.id, 'for event:', reminder.event.title);
       this.reminderDismissed.emit(reminder.id);
     });
   }
@@ -287,6 +290,7 @@ export class ReminderNotificationComponent implements OnInit, OnDestroy {
   }
 
   close() {
+    console.log('🔕 Closing reminder window');
     this.isVisible = false;
     this.windowClosed.emit();
   }
