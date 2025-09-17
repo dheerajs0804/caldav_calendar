@@ -786,6 +786,167 @@
   background: #0056b3;
 }
 
+/* Recurrence Section Styles */
+.recurrence-options {
+  margin-top: 15px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.recurrence-option {
+  margin-bottom: 15px;
+}
+
+.recurrence-option:last-child {
+  margin-bottom: 0;
+}
+
+.recurrence-option label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #333;
+}
+
+.interval-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.interval-input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.recurrence-interval {
+  width: 60px;
+  text-align: center;
+}
+
+.interval-text {
+  font-weight: 500;
+  color: #666;
+  min-width: 40px;
+}
+
+.end-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: normal;
+  cursor: pointer;
+}
+
+.radio-option input[type="radio"] {
+  margin: 0;
+}
+
+.recurrence-count,
+.recurrence-until {
+  width: 120px;
+  margin: 0 8px;
+}
+
+.day-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.day-btn {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.day-btn:hover {
+  background: #f8f9fa;
+}
+
+.day-btn.selected {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.month-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.month-day,
+.position-select,
+.day-select {
+  width: 100px;
+  margin: 0 8px;
+}
+
+.specific-dates {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.date-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.date-input {
+  flex: 1;
+}
+
+.remove-date-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s ease;
+}
+
+.remove-date-btn:hover {
+  background: #c82333;
+}
+
+.add-date-btn {
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 15px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s ease;
+  align-self: flex-start;
+}
+
+.add-date-btn:hover {
+  background: #218838;
+}
+
 .btn {
   padding: 12px 24px;
   border: none;

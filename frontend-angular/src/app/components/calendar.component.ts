@@ -18,6 +18,7 @@ import { AuthService } from '../services/auth.service';
 import { Router } from '@angular/router';
 import { CalendarEvent, Calendar } from '../interfaces/calendar-event.interface';
 import { ColorRegistryService } from '../services/color-registry.service';
+import { RecurrenceExpansionService } from '../services/recurrence-expansion.service';
 
 
 interface View {
@@ -36,6 +37,19 @@ interface NewEvent {
   end_time: string;
   all_day: boolean;
   calendar_id?: number;
+  availability: 'free' | 'busy' | 'tentative';
+  status: 'confirmed' | 'tentative' | 'cancelled';
+  recurrence: {
+    frequency: 'never' | 'daily' | 'weekly' | 'monthly' | 'annually' | 'ondates';
+    interval?: number;
+    count?: number;
+    until?: string;
+    byDay?: string[];
+    byMonth?: number[];
+    byMonthDay?: number[];
+    bySetPos?: number;
+    specificDates?: string[];
+  };
   reminder: {
     enabled: boolean;
     type: string;
@@ -87,6 +101,12 @@ export class CalendarComponent implements OnInit, OnDestroy {
     end_date: '',
     end_time: '',
     all_day: false,
+    availability: 'busy',
+    status: 'confirmed',
+    recurrence: {
+      frequency: 'never',
+      interval: 1
+    },
     reminder: {
       enabled: false,
       type: 'message',
@@ -107,6 +127,20 @@ export class CalendarComponent implements OnInit, OnDestroy {
   // Import modal
   showImportModal = false;
   
+  // Recurrence properties
+  endType: string = 'never';
+  monthType: string = 'day';
+  selectedDayOfWeek: string = 'MO';
+  weekDays = [
+    { value: 'MO', label: 'Mon' },
+    { value: 'TU', label: 'Tue' },
+    { value: 'WE', label: 'Wed' },
+    { value: 'TH', label: 'Thu' },
+    { value: 'FR', label: 'Fri' },
+    { value: 'SA', label: 'Sat' },
+    { value: 'SU', label: 'Sun' }
+  ];
+  
   // New reminder notification properties
   activeReminders: ReminderNotification[] = [];
   showReminderWindow = false;
@@ -117,7 +151,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private router: Router,
     private colorRegistry: ColorRegistryService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private recurrenceExpansion: RecurrenceExpansionService
   ) {}
 
   ngOnInit(): void {
@@ -398,6 +433,16 @@ export class CalendarComponent implements OnInit, OnDestroy {
                   eventsCount: eventsWithCalendar.length,
                   sampleEvent: eventsWithCalendar[0] || null
                 });
+                
+                // Debug recurrence data specifically
+                eventsWithCalendar.forEach((event: CalendarEvent, index: number) => {
+                  console.log(`🔄 Event ${index + 1} recurrence data:`, {
+                    title: event.title,
+                    recurrence: event.recurrence,
+                    hasRecurrence: !!event.recurrence,
+                    recurrenceType: event.recurrence?.frequency || 'none'
+                  });
+                });
               }
             } catch (error) {
               console.error(`Error fetching events from calendar ${calendar.name}:`, error);
@@ -413,7 +458,15 @@ export class CalendarComponent implements OnInit, OnDestroy {
         console.log('🔍 EVENTS DEBUG - After deduplication:', uniqueEvents);
         console.log('🔍 EVENTS DEBUG - Duplicates found:', allEvents.length - uniqueEvents.length);
         
-        this.events = uniqueEvents;
+        // 🔄 Expand recurring events
+        const expandedEvents = this.expandRecurringEvents(uniqueEvents);
+        console.log('🔄 Recurrence expansion:', {
+          originalCount: uniqueEvents.length,
+          expandedCount: expandedEvents.length,
+          expansionRatio: expandedEvents.length / uniqueEvents.length
+        });
+        
+        this.events = expandedEvents;
         console.log('Events loaded from all calendars:', uniqueEvents);
         
         // Start reminder checking if events exist
@@ -427,7 +480,15 @@ export class CalendarComponent implements OnInit, OnDestroy {
         
         if (response.success) {
           const uniqueEvents = this.removeDuplicateEvents(response.data);
-          this.events = uniqueEvents;
+          
+          // 🔄 Expand recurring events
+          const expandedEvents = this.expandRecurringEvents(uniqueEvents);
+          console.log('🔄 Single calendar recurrence expansion:', {
+            originalCount: uniqueEvents.length,
+            expandedCount: expandedEvents.length
+          });
+          
+          this.events = expandedEvents;
           console.log('Events loaded from selected calendar:', uniqueEvents);
           
           if (this.events.length > 0) {
@@ -636,6 +697,75 @@ export class CalendarComponent implements OnInit, OnDestroy {
     });
   }
 
+  // Expand recurring events into individual instances
+  private expandRecurringEvents(events: CalendarEvent[]): CalendarEvent[] {
+    const expandedEvents: CalendarEvent[] = [];
+    
+    // Calculate date range for expansion (current view + some buffer)
+    const startDate = this.getExpansionStartDate();
+    const endDate = this.getExpansionEndDate();
+    
+    console.log('🔄 Expanding events for date range:', {
+      startDate: startDate.toISOString().split('T')[0],
+      endDate: endDate.toISOString().split('T')[0],
+      viewType: this.currentView.type
+    });
+    
+    for (const event of events) {
+      if (event.recurrence && event.recurrence.frequency !== 'never') {
+        // Expand recurring event
+        const expanded = this.recurrenceExpansion.expandRecurringEvent(event, startDate, endDate);
+        expandedEvents.push(...expanded);
+        
+        console.log(`🔄 Expanded "${event.title}":`, {
+          original: 1,
+          expanded: expanded.length,
+          frequency: event.recurrence.frequency,
+          count: event.recurrence.count
+        });
+      } else {
+        // Non-recurring event, add as-is
+        expandedEvents.push(event);
+      }
+    }
+    
+    return expandedEvents;
+  }
+
+  // Get start date for recurrence expansion
+  private getExpansionStartDate(): Date {
+    const viewType = this.currentView.type;
+    const currentDate = this.currentDate.toDate();
+    
+    switch (viewType) {
+      case 'day':
+        return new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - 7);
+      case 'week':
+        return new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - 14);
+      case 'month':
+        return new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, currentDate.getDate());
+      default:
+        return new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - 30);
+    }
+  }
+
+  // Get end date for recurrence expansion
+  private getExpansionEndDate(): Date {
+    const viewType = this.currentView.type;
+    const currentDate = this.currentDate.toDate();
+    
+    switch (viewType) {
+      case 'day':
+        return new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 7);
+      case 'week':
+        return new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 14);
+      case 'month':
+        return new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, currentDate.getDate());
+      default:
+        return new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 30);
+    }
+  }
+
   // Navigation methods
   previous(): void {
     if (this.currentView.type === 'day') {
@@ -727,6 +857,132 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.newEvent.attendees.splice(index, 1);
   }
 
+  // Recurrence management methods
+  onRecurrenceFrequencyChange(): void {
+    // Reset recurrence options when frequency changes
+    this.newEvent.recurrence.interval = 1;
+    this.newEvent.recurrence.count = undefined;
+    this.newEvent.recurrence.until = undefined;
+    this.newEvent.recurrence.byDay = undefined;
+    this.newEvent.recurrence.byMonth = undefined;
+    this.newEvent.recurrence.byMonthDay = undefined;
+    this.newEvent.recurrence.bySetPos = undefined;
+    this.newEvent.recurrence.specificDates = undefined;
+  }
+
+  addSpecificDate(): void {
+    if (!this.newEvent.recurrence.specificDates) {
+      this.newEvent.recurrence.specificDates = [];
+    }
+    this.newEvent.recurrence.specificDates.push('');
+  }
+
+  removeSpecificDate(index: number): void {
+    if (this.newEvent.recurrence.specificDates) {
+      this.newEvent.recurrence.specificDates.splice(index, 1);
+    }
+  }
+
+  addDayOfWeek(day: string): void {
+    if (!this.newEvent.recurrence.byDay) {
+      this.newEvent.recurrence.byDay = [];
+    }
+    if (!this.newEvent.recurrence.byDay.includes(day)) {
+      this.newEvent.recurrence.byDay.push(day);
+    }
+  }
+
+  removeDayOfWeek(day: string): void {
+    if (this.newEvent.recurrence.byDay) {
+      const index = this.newEvent.recurrence.byDay.indexOf(day);
+      if (index > -1) {
+        this.newEvent.recurrence.byDay.splice(index, 1);
+      }
+    }
+  }
+
+  addMonthOfYear(month: number): void {
+    if (!this.newEvent.recurrence.byMonth) {
+      this.newEvent.recurrence.byMonth = [];
+    }
+    if (!this.newEvent.recurrence.byMonth.includes(month)) {
+      this.newEvent.recurrence.byMonth.push(month);
+    }
+  }
+
+  removeMonthOfYear(month: number): void {
+    if (this.newEvent.recurrence.byMonth) {
+      const index = this.newEvent.recurrence.byMonth.indexOf(month);
+      if (index > -1) {
+        this.newEvent.recurrence.byMonth.splice(index, 1);
+      }
+    }
+  }
+
+  addDayOfMonth(day: number): void {
+    if (!this.newEvent.recurrence.byMonthDay) {
+      this.newEvent.recurrence.byMonthDay = [];
+    }
+    if (!this.newEvent.recurrence.byMonthDay.includes(day)) {
+      this.newEvent.recurrence.byMonthDay.push(day);
+    }
+  }
+
+  removeDayOfMonth(day: number): void {
+    if (this.newEvent.recurrence.byMonthDay) {
+      const index = this.newEvent.recurrence.byMonthDay.indexOf(day);
+      if (index > -1) {
+        this.newEvent.recurrence.byMonthDay.splice(index, 1);
+      }
+    }
+  }
+
+  // Additional recurrence helper methods
+  getRecurrenceIntervalText(): string {
+    switch (this.newEvent.recurrence.frequency) {
+      case 'daily':
+        return this.newEvent.recurrence.interval === 1 ? 'day' : 'days';
+      case 'weekly':
+        return this.newEvent.recurrence.interval === 1 ? 'week' : 'weeks';
+      case 'monthly':
+        return this.newEvent.recurrence.interval === 1 ? 'month' : 'months';
+      case 'annually':
+        return this.newEvent.recurrence.interval === 1 ? 'year' : 'years';
+      default:
+        return '';
+    }
+  }
+
+  isDaySelected(day: string): boolean {
+    return this.newEvent.recurrence.byDay?.includes(day) || false;
+  }
+
+  toggleDayOfWeek(day: string): void {
+    if (!this.newEvent.recurrence.byDay) {
+      this.newEvent.recurrence.byDay = [];
+    }
+    
+    if (this.newEvent.recurrence.byDay.includes(day)) {
+      this.removeDayOfWeek(day);
+    } else {
+      this.addDayOfWeek(day);
+    }
+  }
+
+  updateMonthDay(value: string): void {
+    if (!this.newEvent.recurrence.byMonthDay) {
+      this.newEvent.recurrence.byMonthDay = [];
+    }
+    this.newEvent.recurrence.byMonthDay[0] = parseInt(value) || 1;
+  }
+
+  updateSpecificDate(index: number, value: string): void {
+    if (!this.newEvent.recurrence.specificDates) {
+      this.newEvent.recurrence.specificDates = [];
+    }
+    this.newEvent.recurrence.specificDates[index] = value;
+  }
+
   // Event creation
   async createEvent(): Promise<void> {
     try {
@@ -792,16 +1048,22 @@ export class CalendarComponent implements OnInit, OnDestroy {
           ? dayjs(this.newEvent.end_date).format('YYYY-MM-DD') + 'T23:59:59'
           : dayjs(`${this.newEvent.end_date}T${this.newEvent.end_time}`).format('YYYY-MM-DDTHH:mm:ss'),
         all_day: this.newEvent.all_day,
+        availability: this.newEvent.availability,
+        status: this.newEvent.status,
         attendees: this.newEvent.attendees,
         reminder: this.newEvent.reminder,
+        recurrence: this.newEvent.recurrence,
         calendar_url: targetCalendar.url  // Pass the target calendar URL
       };
 
       console.log('📤 Sending event data to backend:', eventData);
+      console.log('🔍 About to make POST request to:', 'http://localhost:8000/events');
       
       const response = await this.http.post<any>('http://localhost:8000/events', eventData, {
         withCredentials: true
       }).toPromise();
+      
+      console.log('🔍 POST request completed successfully');
       
       console.log('📥 Backend response:', response);
       
@@ -821,8 +1083,15 @@ export class CalendarComponent implements OnInit, OnDestroy {
         console.error('❌ Failed to create event:', response.message);
         alert('Failed to create event: ' + (response.message || 'Unknown error'));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error creating event:', error);
+      console.error('🔍 Error details:', {
+        message: error?.message,
+        status: error?.status,
+        statusText: error?.statusText,
+        url: error?.url,
+        error: error?.error
+      });
       alert('Error creating event. Please try again.');
     }
   }
@@ -841,7 +1110,13 @@ export class CalendarComponent implements OnInit, OnDestroy {
       end_date: '',
       end_time: '',
       all_day: false,
+      availability: 'busy',
+      status: 'confirmed',
       calendar_id: defaultCalendar ? defaultCalendar.id : undefined, // Set default but allow user to change
+      recurrence: {
+        frequency: 'never',
+        interval: 1
+      },
       reminder: {
         enabled: false,
         type: 'message',
@@ -911,6 +1186,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
       console.log('✏️ Edit event requested:', event);
       console.log('🕐 Event start_time:', event.start_time);
       console.log('🕐 Event end_time:', event.end_time);
+      console.log('📅 Original calendar_id:', event.calendar_id);
       
       if (!event.calendar_url) {
         console.error('❌ No calendar URL found for event');
@@ -928,11 +1204,18 @@ export class CalendarComponent implements OnInit, OnDestroy {
         start_time: event.start_time,
         end_time: event.end_time,
         all_day: event.all_day,
+        availability: event.availability || 'busy',
+        status: event.status || 'confirmed',
+        calendar_id: event.calendar_id, // This now contains the UPDATED calendar_id from the form
         attendees: event.attendees,
+        recurrence: event.recurrence,
+        reminder: event.reminder,
         calendar_url: event.calendar_url
       };
       
       console.log('✏️ Edit data being sent to backend:', editData);
+      console.log('📅 Calendar ID in edit data:', editData.calendar_id);
+      console.log('📅 Calendar ID type:', typeof editData.calendar_id);
       
       const editUrl = `http://localhost:8000/events/${eventIdentifier}?calendar_url=${encodeURIComponent(event.calendar_url)}`;
       

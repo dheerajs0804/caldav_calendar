@@ -26,6 +26,19 @@ interface Event {
   end_time: string;
   all_day: boolean;
   calendar_id: number;
+  availability?: 'free' | 'busy' | 'tentative';
+  status?: 'confirmed' | 'tentative' | 'cancelled';
+  recurrence?: {
+    frequency: 'never' | 'daily' | 'weekly' | 'monthly' | 'annually' | 'ondates';
+    interval?: number;
+    count?: number;
+    until?: string;
+    byDay?: string[];
+    byMonth?: number[];
+    byMonthDay?: number[];
+    bySetPos?: number;
+    specificDates?: string[];
+  };
   reminder?: {
     enabled: boolean;
     type: string;
@@ -69,8 +82,32 @@ export class EventDetailModalComponent {
 
   ngOnChanges(): void {
     if (this.event) {
-      // Create a copy of the event for editing
-      this.editedEvent = { ...this.event };
+      // Create a copy of the event for editing with default values for new fields
+      this.editedEvent = { 
+        ...this.event,
+        availability: this.event.availability || 'busy',
+        status: this.event.status || 'confirmed',
+        recurrence: this.event.recurrence || {
+          frequency: 'never',
+          interval: 1
+        },
+        reminder: this.event.reminder || {
+          enabled: false,
+          type: 'message',
+          time: 15,
+          unit: 'minutes',
+          relativeTo: 'start'
+        }
+      };
+      console.log('🔄 Event detail modal initialized with event:', this.event);
+      console.log('🔄 Edited event created:', this.editedEvent);
+      console.log('🔄 Event recurrence data:', {
+        originalRecurrence: this.event.recurrence,
+        editedRecurrence: this.editedEvent.recurrence,
+        hasOriginalRecurrence: !!this.event.recurrence,
+        hasEditedRecurrence: !!this.editedEvent.recurrence
+      });
+      console.log('📅 Initial calendar_id:', this.editedEvent.calendar_id);
     }
   }
 
@@ -96,6 +133,8 @@ export class EventDetailModalComponent {
       console.log('💾 Saving edited event:', this.editedEvent);
       console.log('🕐 Start time:', this.editedEvent.start_time);
       console.log('🕐 End time:', this.editedEvent.end_time);
+      console.log('📅 Calendar ID being saved:', this.editedEvent.calendar_id);
+      console.log('📅 Calendar ID type:', typeof this.editedEvent.calendar_id);
       this.editEvent.emit(this.editedEvent);
       this.isEditMode = false;
     }
@@ -106,6 +145,45 @@ export class EventDetailModalComponent {
     // Reset edited event to original
     if (this.event) {
       this.editedEvent = { ...this.event };
+    }
+  }
+
+  onRecurrenceFrequencyChange(value: string): void {
+    if (this.editedEvent) {
+      if (!this.editedEvent.recurrence) {
+        this.editedEvent.recurrence = {
+          frequency: 'never',
+          interval: 1
+        };
+      }
+      this.editedEvent.recurrence.frequency = value as any;
+    }
+  }
+
+  onReminderEnabledChange(enabled: boolean): void {
+    if (this.editedEvent) {
+      if (!this.editedEvent.reminder) {
+        this.editedEvent.reminder = {
+          enabled: false,
+          type: 'message',
+          time: 15,
+          unit: 'minutes',
+          relativeTo: 'start'
+        };
+      }
+      this.editedEvent.reminder.enabled = enabled;
+    }
+  }
+
+  onReminderTimeChange(time: number): void {
+    if (this.editedEvent && this.editedEvent.reminder) {
+      this.editedEvent.reminder.time = time;
+    }
+  }
+
+  onReminderUnitChange(unit: string): void {
+    if (this.editedEvent && this.editedEvent.reminder) {
+      this.editedEvent.reminder.unit = unit;
     }
   }
 
@@ -193,5 +271,36 @@ export class EventDetailModalComponent {
     } else {
       alert('No attendees found for this event.');
     }
+  }
+
+  // Helper methods for formatting recurrence data
+  formatDate(dateString: string): string {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch (error) {
+      return dateString;
+    }
+  }
+
+  formatDaysOfWeek(days: string[]): string {
+    if (!days || days.length === 0) return '';
+    
+    const dayMap: { [key: string]: string } = {
+      'MO': 'Monday',
+      'TU': 'Tuesday', 
+      'WE': 'Wednesday',
+      'TH': 'Thursday',
+      'FR': 'Friday',
+      'SA': 'Saturday',
+      'SU': 'Sunday'
+    };
+    
+    return days.map(day => dayMap[day] || day).join(', ');
   }
 }

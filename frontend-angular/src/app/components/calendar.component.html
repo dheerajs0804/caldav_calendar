@@ -303,6 +303,34 @@
       </div>
       
       <div class="form-group">
+        <label for="availability">Show me as</label>
+        <select 
+          id="availability" 
+          [(ngModel)]="newEvent.availability" 
+          name="availability"
+          class="availability-select"
+        >
+          <option value="free">Free</option>
+          <option value="busy">Busy</option>
+          <option value="tentative">Tentative</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label for="status">Status</label>
+        <select 
+          id="status" 
+          [(ngModel)]="newEvent.status" 
+          name="status"
+          class="status-select"
+        >
+          <option value="confirmed">Confirmed</option>
+          <option value="tentative">Tentative</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
         <label class="checkbox-label">
           <input 
             type="checkbox" 
@@ -367,6 +395,180 @@
           >
             + Add Attendee
           </button>
+        </div>
+      </div>
+      
+      <!-- Recurrence Section -->
+      <div class="form-group">
+        <label>Repeat</label>
+        <select [(ngModel)]="newEvent.recurrence.frequency" (change)="onRecurrenceFrequencyChange()" class="form-control">
+          <option value="never">Does not repeat</option>
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+          <option value="annually">Annually</option>
+          <option value="ondates">On specific dates</option>
+        </select>
+        
+        <!-- Recurrence Options -->
+        <div *ngIf="newEvent.recurrence.frequency !== 'never'" class="recurrence-options">
+          
+          <!-- Interval -->
+          <div *ngIf="newEvent.recurrence.frequency !== 'ondates'" class="recurrence-option">
+            <div class="interval-section">
+              <label>Every</label>
+              <div class="interval-input-group">
+                <input 
+                  type="number" 
+                  [(ngModel)]="newEvent.recurrence.interval" 
+                  min="1" 
+                  max="99"
+                  class="form-control recurrence-interval"
+                />
+                <span class="interval-text">{{ getRecurrenceIntervalText() }}</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- End Options -->
+          <div *ngIf="newEvent.recurrence.frequency !== 'ondates'" class="recurrence-option">
+            <label>End</label>
+            <div class="end-options">
+              <label class="radio-option">
+                <input 
+                  type="radio" 
+                  name="endType" 
+                  value="never" 
+                  [(ngModel)]="endType"
+                />
+                Never
+              </label>
+              <label class="radio-option">
+                <input 
+                  type="radio" 
+                  name="endType" 
+                  value="count" 
+                  [(ngModel)]="endType"
+                />
+                After
+                <input 
+                  type="number" 
+                  [(ngModel)]="newEvent.recurrence.count" 
+                  min="1" 
+                  max="999"
+                  class="form-control recurrence-count"
+                />
+                occurrences
+              </label>
+              <label class="radio-option">
+                <input 
+                  type="radio" 
+                  name="endType" 
+                  value="until" 
+                  [(ngModel)]="endType"
+                />
+                On
+                <input 
+                  type="date" 
+                  [(ngModel)]="newEvent.recurrence.until" 
+                  class="form-control recurrence-until"
+                />
+              </label>
+            </div>
+          </div>
+          
+          <!-- Weekly Options -->
+          <div *ngIf="newEvent.recurrence.frequency === 'weekly'" class="recurrence-option">
+            <label>Days of week</label>
+            <div class="day-buttons">
+              <button 
+                *ngFor="let day of weekDays" 
+                type="button"
+                [class.selected]="isDaySelected(day.value)"
+                (click)="toggleDayOfWeek(day.value)"
+                class="day-btn"
+              >
+                {{ day.label }}
+              </button>
+            </div>
+          </div>
+          
+          <!-- Monthly Options -->
+          <div *ngIf="newEvent.recurrence.frequency === 'monthly'" class="recurrence-option">
+            <label>Day of month</label>
+            <div class="month-options">
+              <label class="radio-option">
+                <input 
+                  type="radio" 
+                  name="monthType" 
+                  value="day" 
+                  [(ngModel)]="monthType"
+                />
+                Day
+                <input 
+                  type="number" 
+                  [ngModel]="newEvent.recurrence.byMonthDay?.[0] || ''" 
+                  (ngModelChange)="updateMonthDay($event)"
+                  min="1" 
+                  max="31"
+                  class="form-control month-day"
+                />
+              </label>
+              <label class="radio-option">
+                <input 
+                  type="radio" 
+                  name="monthType" 
+                  value="position" 
+                  [(ngModel)]="monthType"
+                />
+                <select [(ngModel)]="newEvent.recurrence.bySetPos" class="form-control position-select">
+                  <option value="1">First</option>
+                  <option value="2">Second</option>
+                  <option value="3">Third</option>
+                  <option value="4">Fourth</option>
+                  <option value="-1">Last</option>
+                </select>
+                <select [(ngModel)]="selectedDayOfWeek" class="form-control day-select">
+                  <option value="MO">Monday</option>
+                  <option value="TU">Tuesday</option>
+                  <option value="WE">Wednesday</option>
+                  <option value="TH">Thursday</option>
+                  <option value="FR">Friday</option>
+                  <option value="SA">Saturday</option>
+                  <option value="SU">Sunday</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          
+          <!-- Specific Dates -->
+          <div *ngIf="newEvent.recurrence.frequency === 'ondates'" class="recurrence-option">
+            <label>Specific dates</label>
+            <div class="specific-dates">
+              <div *ngFor="let date of newEvent.recurrence.specificDates; let i = index" class="date-row">
+                <input 
+                  type="date" 
+                  [ngModel]="newEvent.recurrence.specificDates?.[i] || ''" 
+                  (ngModelChange)="updateSpecificDate(i, $event)"
+                  class="form-control date-input"
+                />
+                <button 
+                  type="button" 
+                  (click)="removeSpecificDate(i)" 
+                  class="remove-date-btn"
+                >
+                  ✕
+                </button>
+              </div>
+              <button 
+                type="button" 
+                (click)="addSpecificDate()" 
+                class="add-date-btn"
+              >
+                + Add Date
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

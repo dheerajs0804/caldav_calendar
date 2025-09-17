@@ -1,4 +1,18 @@
 <?php
+// Enable error reporting and logging to terminal
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('log_errors', 1);
+ini_set('error_log', 'php://stderr'); // Send errors to stderr so they appear in terminal
+
+// Debug: Log all incoming requests
+error_log("=== INCOMING REQUEST ===");
+error_log("Method: " . ($_SERVER['REQUEST_METHOD'] ?? 'unknown'));
+error_log("URI: " . ($_SERVER['REQUEST_URI'] ?? 'unknown'));
+error_log("Path Info: " . ($_SERVER['PATH_INFO'] ?? 'none'));
+error_log("Request Time: " . date('Y-m-d H:i:s'));
+error_log("========================");
+
 // Enable CORS for cross-origin requests with credentials
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 $allowedOrigins = ['http://localhost:4200', 'http://localhost:8000', 'null']; // Allow Angular, Roundcube, and file:// origins
@@ -15,6 +29,7 @@ header('Access-Control-Max-Age: 86400'); // 24 hours
 
 // Handle preflight OPTIONS request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    error_log("🔍 OPTIONS preflight request received");
     http_response_code(200);
     exit();
 }
@@ -51,6 +66,50 @@ function sendJsonResponse($data) {
     // Send the JSON response
     echo json_encode($data, JSON_PRETTY_PRINT);
     exit();
+}
+
+function getCalendarById($calendarId) {
+    try {
+        // Get calendars from CalDAV server using authenticated client
+        $caldavClient = getCalDAVClient();
+        if (!$caldavClient) {
+            return null;
+        }
+        
+        $calendars = $caldavClient->discoverCalendars();
+        
+        if ($calendars && is_array($calendars) && count($calendars) > 0) {
+            // Load calendar colors from file
+            $calendarColorsFile = 'data/calendar_colors.json';
+            $calendarColors = [];
+            
+            if (file_exists($calendarColorsFile)) {
+                $calendarColors = json_decode(file_get_contents($calendarColorsFile), true) ?? [];
+            }
+            
+            // Find calendar by ID (calendars are indexed starting from 1)
+            $calendarIndex = intval($calendarId) - 1;
+            if (isset($calendars[$calendarIndex])) {
+                $calendar = $calendars[$calendarIndex];
+                $calendarUrl = $calendar['href'];
+                $storedColor = $calendarColors[$calendarUrl] ?? null;
+                $caldavColor = $calendar['color'] ?? null;
+                $finalColor = $storedColor ?? $caldavColor ?? '#4285f4';
+                
+                return [
+                    'id' => $calendarId,
+                    'name' => $calendar['name'],
+                    'url' => $calendarUrl,
+                    'color' => $finalColor
+                ];
+            }
+        }
+        
+        return null;
+    } catch (Exception $e) {
+        error_log("Error getting calendar by ID: " . $e->getMessage());
+        return null;
+    }
 }
 
 // Helper function to get CalDAV client with session credentials
@@ -97,9 +156,12 @@ try {
             handleGetRequest($path);
             break;
         case 'POST':
+            error_log("🔍 POST REQUEST RECEIVED - Path: " . $path);
             if (strpos($path, 'auth/') === 0) {
+                error_log("🔍 Routing to handleAuthRequest");
                 handleAuthRequest($path);
             } else {
+                error_log("🔍 Routing to handlePostRequest");
                 handlePostRequest($path);
             }
             break;
@@ -409,6 +471,19 @@ function getEvents() {
         $events = $caldavClient->getEvents($selectedCalendarUrl, $startDateCalDAV, $endDateCalDAV);
         
         if ($events && is_array($events)) {
+            // Debug: Log event data before sending response
+            error_log("=== Events being sent to frontend ===");
+            foreach ($events as $index => $event) {
+                error_log("Event " . ($index + 1) . ": " . json_encode([
+                    'title' => $event['title'] ?? 'N/A',
+                    'uid' => $event['uid'] ?? 'N/A',
+                    'recurrence' => $event['recurrence'] ?? null,
+                    'hasRecurrence' => !empty($event['recurrence']),
+                    'status' => $event['status'] ?? 'N/A',
+                    'availability' => $event['availability'] ?? 'N/A'
+                ]));
+            }
+            
             sendJsonResponse([
                 'success' => true,
                 'data' => $events,
@@ -650,6 +725,8 @@ function createEvent() {
         
         error_log("Attendees data in input: " . json_encode($input['attendees'] ?? 'null'));
         error_log("Number of attendees: " . (isset($input['attendees']) ? count($input['attendees']) : 'not set'));
+        error_log("Recurrence data in input: " . json_encode($input['recurrence'] ?? 'null'));
+        error_log("Reminder data in input: " . json_encode($input['reminder'] ?? 'null'));
         
         // Get calendar color for color inheritance
         $calendarColor = '#4285f4'; // Default blue color
@@ -675,6 +752,8 @@ function createEvent() {
             'start_time' => $input['start_time'],
             'end_time' => $input['end_time'],
             'all_day' => $input['all_day'] ?? false,
+            'availability' => $input['availability'] ?? 'busy',
+            'status' => $input['status'] ?? 'confirmed',
             'calendar_id' => $calendarId,
             'calendar_url' => $calendarUrl,
             'color' => $calendarColor, // Inherit calendar color
@@ -683,9 +762,17 @@ function createEvent() {
             'created_at' => date('c'),
             'updated_at' => date('c'),
             'attendees' => $input['attendees'] ?? [],
+            'recurrence' => $input['recurrence'] ?? null,
             'reminder' => $input['reminder'] ?? null,
             'valarm' => null
         ];
+        
+        // Debug: Log event creation data
+        error_log("🔍 CREATE EVENT DEBUG:");
+        error_log("🔍 Raw input: " . json_encode($input));
+        error_log("🔍 Recurrence data in input: " . json_encode($input['recurrence'] ?? 'null'));
+        error_log("🔍 Event recurrence field: " . json_encode($event['recurrence']));
+        error_log("🔍 Reminder data in input: " . json_encode($input['reminder'] ?? 'null'));
         
         // Handle reminder data - convert VALARM to reminder format for frontend compatibility
         if (!empty($input['valarm'])) {
@@ -773,7 +860,12 @@ function createEvent() {
                 $icalContent = generateICalEvent($event);
                 
                 // POST to CalDAV server
+                error_log("🔍 About to call CalDAV client createEvent");
+                error_log("🔍 Calendar URL: " . $calendarUrl);
+                error_log("🔍 Event UID: " . $event['uid']);
+                error_log("🔍 iCal Content Length: " . strlen($icalContent));
                 $response = $caldavClient->createEvent($calendarUrl, $icalContent, $event['uid']);
+                error_log("🔍 CalDAV client createEvent completed");
                 
                 if ($response['status'] >= 200 && $response['status'] < 300) {
                     // Event created successfully, now send invitations if attendees exist
@@ -846,6 +938,72 @@ function createEvent() {
     }
 }
 
+function generateRRULE($recurrence) {
+    if (!$recurrence || $recurrence['frequency'] === 'never') {
+        return '';
+    }
+    
+    error_log("🔄 Generating RRULE for recurrence: " . json_encode($recurrence));
+    
+    // Convert to Roundcube-style format
+    $params = [];
+    
+    // Frequency
+    $freq = strtoupper($recurrence['frequency']);
+    $params['FREQ'] = $freq;
+    
+    // Interval
+    if (!empty($recurrence['interval']) && $recurrence['interval'] > 1) {
+        $params['INTERVAL'] = $recurrence['interval'];
+    }
+    
+    // Count (number of occurrences)
+    if (!empty($recurrence['count']) && $recurrence['count'] > 0) {
+        $params['COUNT'] = $recurrence['count'];
+    }
+    
+    // Until date - convert to UTC format like Roundcube
+    if (!empty($recurrence['until'])) {
+        $untilDate = new DateTime($recurrence['until']);
+        $untilDate->setTimezone(new DateTimeZone('UTC'));
+        $params['UNTIL'] = $untilDate->format('Ymd\THis\Z');
+    }
+    
+    // By day (for weekly recurrence)
+    if ($freq === 'WEEKLY' && !empty($recurrence['byDay']) && is_array($recurrence['byDay'])) {
+        $params['BYDAY'] = implode(',', $recurrence['byDay']);
+    }
+    
+    // By month day (for monthly recurrence)
+    if ($freq === 'MONTHLY' && !empty($recurrence['byMonthDay']) && is_array($recurrence['byMonthDay'])) {
+        $params['BYMONTHDAY'] = implode(',', $recurrence['byMonthDay']);
+    }
+    
+    // By month (for yearly recurrence)
+    if ($freq === 'YEARLY' && !empty($recurrence['byMonth']) && is_array($recurrence['byMonth'])) {
+        $params['BYMONTH'] = implode(',', $recurrence['byMonth']);
+    }
+    
+    // By set position (for monthly/yearly recurrence)
+    if (!empty($recurrence['bySetPos'])) {
+        $params['BYSETPOS'] = $recurrence['bySetPos'];
+    }
+    
+    // Build RRULE string like Roundcube does
+    $rrule = 'RRULE:';
+    $parts = [];
+    foreach ($params as $k => $val) {
+        if (strlen($val)) {
+            $parts[] = $k . '=' . $val;
+        }
+    }
+    
+    $result = $rrule . implode(';', $parts);
+    error_log("🔄 Generated RRULE: " . $result);
+    
+    return $result;
+}
+
 function generateICalEvent($event) {
     $uid = $event['uid'];
     $dtstamp = date('Ymd\THis\Z');
@@ -877,6 +1035,45 @@ function generateICalEvent($event) {
         $ical .= "LOCATION:" . str_replace(["\r\n", "\n", "\r"], "\\n", $event['location']) . "\r\n";
     }
     
+    // Add status
+    if (!empty($event['status'])) {
+        $status = strtoupper($event['status']);
+        $ical .= "STATUS:{$status}\r\n";
+    }
+    
+    // Add transparency (availability)
+    if (!empty($event['availability'])) {
+        $transp = $event['availability'] === 'free' ? 'TRANSPARENT' : 'OPAQUE';
+        $ical .= "TRANSP:{$transp}\r\n";
+    }
+    
+    // Add recurrence rule
+    if (!empty($event['recurrence'])) {
+        $rrule = generateRRULE($event['recurrence']);
+        if (!empty($rrule)) {
+            // Add RRULE property
+            $ical .= $rrule . "\r\n";
+            error_log("📅 Added RRULE to iCalendar: " . $rrule);
+            
+            // Add additional properties for recurring events (like Roundcube)
+            $ical .= "SEQUENCE:0\r\n";
+            $ical .= "CREATED:{$dtstamp}\r\n";
+            $ical .= "LAST-MODIFIED:{$dtstamp}\r\n";
+            $ical .= "CLASS:PUBLIC\r\n";
+            $ical .= "PRIORITY:5\r\n";
+            
+            error_log("📅 Added recurring event properties: SEQUENCE, CREATED, LAST-MODIFIED, CLASS, PRIORITY");
+        } else {
+            error_log("📅 No RRULE generated for recurrence: " . json_encode($event['recurrence']));
+        }
+    } else {
+        error_log("📅 No recurrence data in event");
+    }
+    
+    // Debug: Log the complete iCalendar content
+    error_log("🔍 Generated iCalendar content:");
+    error_log($ical);
+    
     // Add VALARM component if reminder is enabled
     if (!empty($event['valarm']) && !empty($event['valarm']['trigger'])) {
         $ical .= "BEGIN:VALARM\r\n";
@@ -907,6 +1104,10 @@ function updateEvent($id) {
         $input = json_decode(file_get_contents('php://input'), true);
         error_log("Raw input received: " . file_get_contents('php://input'));
         error_log("Parsed input: " . json_encode($input));
+        error_log("Calendar ID in input: " . ($input['calendar_id'] ?? 'not set'));
+        error_log("Calendar ID type: " . gettype($input['calendar_id'] ?? null));
+        error_log("Recurrence data in input: " . json_encode($input['recurrence'] ?? 'null'));
+        error_log("Reminder data in input: " . json_encode($input['reminder'] ?? 'null'));
         
         if (!$input) {
             throw new Exception('Invalid JSON input');
@@ -1012,6 +1213,8 @@ function updateEvent($id) {
             error_log("Captured original event for comparison: " . json_encode($originalEvent));
             error_log("Original event attendees: " . json_encode($originalEvent['attendees'] ?? 'null'));
             error_log("Input attendees: " . json_encode($input['attendees'] ?? 'null'));
+            error_log("Original event calendar_id: " . ($originalEvent['calendar_id'] ?? 'not set'));
+            error_log("Input calendar_id: " . ($input['calendar_id'] ?? 'not set'));
             
             // Update event properties
             $eventToUpdate['title'] = $input['title'];
@@ -1020,7 +1223,43 @@ function updateEvent($id) {
             $eventToUpdate['start_time'] = $input['start_time'];
             $eventToUpdate['end_time'] = $input['end_time'];
             $eventToUpdate['all_day'] = $input['all_day'] ?? $eventToUpdate['all_day'];
+            $eventToUpdate['availability'] = $input['availability'] ?? $eventToUpdate['availability'] ?? 'busy';
+            $eventToUpdate['status'] = $input['status'] ?? $eventToUpdate['status'] ?? 'confirmed';
+            $eventToUpdate['calendar_id'] = $input['calendar_id'] ?? $eventToUpdate['calendar_id'];
             $eventToUpdate['attendees'] = $input['attendees'] ?? $eventToUpdate['attendees'];
+            $eventToUpdate['recurrence'] = $input['recurrence'] ?? $eventToUpdate['recurrence'];
+            
+            error_log("Updated recurrence: " . json_encode($eventToUpdate['recurrence']));
+            
+            // Update calendar information if calendar_id changed
+            if (isset($input['calendar_id']) && $input['calendar_id'] != $eventToUpdate['calendar_id']) {
+                error_log("Calendar ID changed from " . $eventToUpdate['calendar_id'] . " to " . $input['calendar_id']);
+                
+                // Get calendar information by ID
+                $calendarInfo = getCalendarById($input['calendar_id']);
+                
+                if ($calendarInfo) {
+                    // Store original calendar info for deletion
+                    $originalCalendarUrl = $eventToUpdate['calendar_url'];
+                    $originalCalendarName = $eventToUpdate['calendar_name'];
+                    
+                    // Update calendar-related fields
+                    $eventToUpdate['calendar_id'] = $input['calendar_id'];
+                    $eventToUpdate['calendar_url'] = $calendarInfo['url'];
+                    $eventToUpdate['calendar_name'] = $calendarInfo['name'];
+                    $eventToUpdate['calendar_color'] = $calendarInfo['color'];
+                    $eventToUpdate['color'] = $calendarInfo['color']; // Update event color too
+                    
+                    error_log("Updated calendar info: Name=" . $calendarInfo['name'] . ", URL=" . $calendarInfo['url'] . ", Color=" . $calendarInfo['color']);
+                    error_log("Original calendar: " . $originalCalendarName . " (" . $originalCalendarUrl . ")");
+                    
+                    // Mark this event for calendar move (we'll handle it after the main update)
+                    $eventToUpdate['_move_to_calendar'] = $calendarInfo['url'];
+                    $eventToUpdate['_delete_from_calendar'] = $originalCalendarUrl;
+                } else {
+                    error_log("Warning: Could not find calendar info for ID " . $input['calendar_id']);
+                }
+            }
             
             // Handle reminder data - convert frontend reminder format to VALARM
             if (!empty($input['reminder'])) {
@@ -1101,6 +1340,49 @@ function updateEvent($id) {
             } catch (Exception $caldavError) {
                 error_log("CalDAV update error: " . $caldavError->getMessage());
                 // Don't fail the update if CalDAV sync fails
+            }
+            
+            // Handle calendar move if needed
+            if (isset($eventToUpdate['_move_to_calendar']) && isset($eventToUpdate['_delete_from_calendar'])) {
+                try {
+                    error_log("🔄 Moving event between calendars...");
+                    error_log("Move from: " . $eventToUpdate['_delete_from_calendar']);
+                    error_log("Move to: " . $eventToUpdate['_move_to_calendar']);
+                    
+                    // Generate updated iCalendar content for the new calendar
+                    $movedICal = generateICalEvent($eventToUpdate);
+                    
+                    // Create event in new calendar
+                    $createResponse = $caldavClient->createEvent($eventToUpdate['_move_to_calendar'], $movedICal, $eventToUpdate['uid']);
+                    error_log("Create in new calendar response: " . json_encode($createResponse));
+                    
+                    if ($createResponse['status'] >= 200 && $createResponse['status'] < 300) {
+                        error_log("✅ Event created in new calendar successfully");
+                        
+                        // Delete event from old calendar
+                        $eventUrl = rtrim($eventToUpdate['_delete_from_calendar'], '/') . '/' . $eventToUpdate['uid'] . '.ics';
+                        $deleteResponse = $caldavClient->deleteEvent($eventUrl, $caldavClient->getAuthToken());
+                        
+                        if ($deleteResponse) {
+                            error_log("✅ Event deleted from old calendar successfully");
+                            error_log("🎉 Event moved between calendars successfully!");
+                        } else {
+                            error_log("⚠️ Event created in new calendar but failed to delete from old calendar");
+                        }
+                    } else {
+                        error_log("❌ Failed to create event in new calendar: " . $createResponse['body']);
+                    }
+                    
+                    // Clean up temporary fields
+                    unset($eventToUpdate['_move_to_calendar']);
+                    unset($eventToUpdate['_delete_from_calendar']);
+                    
+                } catch (Exception $moveError) {
+                    error_log("❌ Error moving event between calendars: " . $moveError->getMessage());
+                    // Clean up temporary fields even on error
+                    unset($eventToUpdate['_move_to_calendar']);
+                    unset($eventToUpdate['_delete_from_calendar']);
+                }
             }
             
             // Update the stored events array with the updated event

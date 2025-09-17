@@ -58,6 +58,209 @@ class CalDAVClient {
             }
         }
     }
+    
+    private function checkServerCapabilities() {
+        error_log("=== Checking CalDAV Server Capabilities ===");
+        
+        try {
+            // Make an OPTIONS request to check server capabilities
+            $ch = curl_init();
+            curl_setopt_array($ch, array(
+                CURLOPT_URL => $this->serverUrl,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_CUSTOMREQUEST => 'OPTIONS',
+                CURLOPT_HTTPHEADER => array(
+                    'User-Agent: Mithi Calendar Client',
+                    'Accept: */*'
+                ),
+                CURLOPT_HEADER => true,
+                CURLOPT_NOBODY => true,
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => false
+            ));
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+            $headers = substr($response, 0, $headerSize);
+            
+            error_log("OPTIONS Response Code: " . $httpCode);
+            error_log("OPTIONS Response Headers:");
+            error_log($headers);
+            
+            // Check for CalDAV-specific headers
+            $capabilities = [];
+            if (preg_match('/Allow:\s*(.+)/i', $headers, $matches)) {
+                $capabilities['allowed_methods'] = $matches[1];
+            }
+            if (preg_match('/DAV:\s*(.+)/i', $headers, $matches)) {
+                $capabilities['dav_features'] = $matches[1];
+            }
+            if (preg_match('/MS-Author-Via:\s*(.+)/i', $headers, $matches)) {
+                $capabilities['ms_author_via'] = $matches[1];
+            }
+            
+            error_log("Server Capabilities: " . json_encode($capabilities));
+            
+            curl_close($ch);
+            
+        } catch (Exception $e) {
+            error_log("Error checking server capabilities: " . $e->getMessage());
+        }
+    }
+    
+    private function testRRULESupport() {
+        error_log("=== Testing RRULE Support ===");
+        
+        try {
+            // Create a test event with RRULE to see if it gets stored
+            $testUID = 'test_rrule_' . time();
+            $testEvent = "BEGIN:VCALENDAR\r\n";
+            $testEvent .= "VERSION:2.0\r\n";
+            $testEvent .= "PRODID:-//Mithi Calendar//EN\r\n";
+            $testEvent .= "BEGIN:VEVENT\r\n";
+            $testEvent .= "UID:{$testUID}\r\n";
+            $testEvent .= "DTSTAMP:" . date('Ymd\THis\Z') . "\r\n";
+            $testEvent .= "DTSTART:" . date('Ymd\THis') . "\r\n";
+            $testEvent .= "DTEND:" . date('Ymd\THis', strtotime('+1 hour')) . "\r\n";
+            $testEvent .= "SUMMARY:RRULE Test Event\r\n";
+            $testEvent .= "RRULE:FREQ=DAILY;COUNT=2\r\n";
+            $testEvent .= "END:VEVENT\r\n";
+            $testEvent .= "END:VCALENDAR\r\n";
+            
+            // Try to create the test event
+            $calendarUrl = $this->serverUrl . '/calendars/__uids__/80b5d808-0553-1040-8d6f-0f1266787052/E1FA2845-7582-7ECF-5B86-EBD96D48E88E/';
+            $eventUrl = $calendarUrl . $testUID . '.ics';
+            
+            $ch = curl_init();
+            curl_setopt_array($ch, array(
+                CURLOPT_URL => $eventUrl,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_CUSTOMREQUEST => 'PUT',
+                CURLOPT_POSTFIELDS => $testEvent,
+                CURLOPT_HTTPHEADER => array(
+                    'Content-Type: text/calendar; charset=utf-8',
+                    'Content-Length: ' . strlen($testEvent),
+                    'User-Agent: Mithi Calendar Client'
+                ),
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => false
+            ));
+            
+            // Add authentication if available
+            if ($this->username && $this->password) {
+                curl_setopt($ch, CURLOPT_USERPWD, $this->username . ':' . $this->password);
+            }
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $responseBody = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+            
+            error_log("RRULE Test - PUT Response Code: " . $httpCode);
+            error_log("RRULE Test - Response Body: " . $response);
+            
+            if ($httpCode == 201) {
+                error_log("✅ RRULE Test Event Created Successfully");
+                
+                // Now try to fetch it back to see if RRULE is preserved
+                curl_setopt_array($ch, array(
+                    CURLOPT_URL => $eventUrl,
+                    CURLOPT_CUSTOMREQUEST => 'GET',
+                    CURLOPT_POSTFIELDS => null,
+                    CURLOPT_HTTPHEADER => array(
+                        'Accept: text/calendar'
+                    )
+                ));
+                
+                $fetchResponse = curl_exec($ch);
+                $fetchCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                
+                error_log("RRULE Test - GET Response Code: " . $fetchCode);
+                error_log("RRULE Test - Fetched Content:");
+                error_log($fetchResponse);
+                
+                if (strpos($fetchResponse, 'RRULE:') !== false) {
+                    error_log("✅ RRULE is PRESERVED by the server!");
+                } else {
+                    error_log("❌ RRULE is STRIPPED by the server!");
+                }
+                
+                // Clean up - delete the test event
+                curl_setopt_array($ch, array(
+                    CURLOPT_CUSTOMREQUEST => 'DELETE',
+                    CURLOPT_POSTFIELDS => null
+                ));
+                curl_exec($ch);
+                error_log("🧹 Cleaned up test event");
+                
+            } else {
+                error_log("❌ RRULE Test Event Creation Failed");
+            }
+            
+            curl_close($ch);
+            
+        } catch (Exception $e) {
+            error_log("Error testing RRULE support: " . $e->getMessage());
+        }
+    }
+    
+    private function checkCalendarProperties() {
+        error_log("=== Checking Calendar Properties ===");
+        
+        try {
+            $calendarUrl = $this->serverUrl . '/calendars/__uids__/80b5d808-0553-1040-8d6f-0f1266787052/E1FA2845-7582-7ECF-5B86-EBD96D48E88E/';
+            
+            $ch = curl_init();
+            curl_setopt_array($ch, array(
+                CURLOPT_URL => $calendarUrl,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_CUSTOMREQUEST => 'PROPFIND',
+                CURLOPT_POSTFIELDS => '<?xml version="1.0" encoding="utf-8" ?>
+<D:propfind xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+  <D:prop>
+    <D:displayname/>
+    <D:resourcetype/>
+    <C:calendar-description/>
+    <C:calendar-timezone/>
+    <C:supported-calendar-component-set/>
+    <C:supported-calendar-data/>
+    <C:max-resource-size/>
+    <C:min-date-time/>
+    <C:max-date-time/>
+    <C:max-instances/>
+    <C:max-attendees-per-instance/>
+  </D:prop>
+</D:propfind>',
+                CURLOPT_HTTPHEADER => array(
+                    'Content-Type: application/xml',
+                    'Depth: 0',
+                    'User-Agent: Mithi Calendar Client'
+                ),
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => false
+            ));
+            
+            // Add authentication if available
+            if ($this->username && $this->password) {
+                curl_setopt($ch, CURLOPT_USERPWD, $this->username . ':' . $this->password);
+            }
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            
+            error_log("Calendar Properties - Response Code: " . $httpCode);
+            error_log("Calendar Properties - Response:");
+            error_log($response);
+            
+            curl_close($ch);
+            
+        } catch (Exception $e) {
+            error_log("Error checking calendar properties: " . $e->getMessage());
+        }
+    }
 
     
     public function discoverCalendars() {
@@ -65,6 +268,15 @@ class CalDAVClient {
             error_log("=== Discovering Calendars (Roundcube Method) ===");
             error_log("Server URL: " . $this->serverUrl);
             error_log("Username: " . $this->username);
+            
+            // First, check server capabilities
+            $this->checkServerCapabilities();
+            
+            // Test RRULE support specifically
+            $this->testRRULESupport();
+            
+            // Check calendar properties
+            $this->checkCalendarProperties();
             
             $calendars = array();
             
@@ -543,6 +755,9 @@ class CalDAVClient {
           <C:prop name="DTEND"/>
           <C:prop name="LOCATION"/>
           <C:prop name="UID"/>
+          <C:prop name="RRULE"/>
+          <C:prop name="STATUS"/>
+          <C:prop name="TRANSP"/>
         </C:comp>
       </C:comp>
     </C:calendar-data>
@@ -621,11 +836,32 @@ class CalDAVClient {
                 $icalContent = (string)$calendarData;
                 error_log("Processing calendar data: " . substr($icalContent, 0, 200));
                 
+                // Enhanced debugging for RRULE detection
+                error_log("=== FULL iCalendar Content ===");
+                error_log($icalContent);
+                error_log("=== END iCalendar Content ===");
+                
+                // Check specifically for RRULE in the content
+                if (strpos($icalContent, 'RRULE:') !== false) {
+                    error_log("✅ RRULE FOUND in fetched iCalendar content!");
+                    preg_match('/RRULE:[^\r\n]+/', $icalContent, $rruleMatches);
+                    if (!empty($rruleMatches)) {
+                        error_log("✅ RRULE line: " . $rruleMatches[0]);
+                    }
+                } else {
+                    error_log("❌ NO RRULE found in fetched iCalendar content");
+                }
+                
                 // Parse the iCalendar content
                 $event = $this->parseICalendarData($icalContent);
                 if ($event) {
                     $events[] = $event;
                     error_log("Successfully added event: " . $event['title'] . " at " . $event['start_time']);
+                    if (isset($event['recurrence'])) {
+                        error_log("✅ Event has recurrence data: " . json_encode($event['recurrence']));
+                    } else {
+                        error_log("❌ Event has NO recurrence data");
+                    }
                 } else {
                     error_log("Failed to parse event from calendar data");
                 }
@@ -669,6 +905,11 @@ class CalDAVClient {
             foreach ($lines as $line) {
                 $line = trim($line);
                 
+                // Debug: Log each line being processed
+                if (strpos($line, 'RRULE:') === 0 || strpos($line, 'SUMMARY:') === 0 || strpos($line, 'UID:') === 0) {
+                    error_log("🔍 Processing iCalendar line: " . $line);
+                }
+                
                 // Handle line continuation
                 if (strpos($line, ' ') === 0) {
                     $propertyValue .= substr($line, 1);
@@ -705,6 +946,17 @@ class CalDAVClient {
                     $event['location'] = substr($line, 9);
                 } elseif (strpos($line, 'UID:') === 0) {
                     $event['uid'] = substr($line, 4);
+                } elseif (strpos($line, 'RRULE:') === 0) {
+                    $rrule = substr($line, 6);
+                    $event['recurrence'] = $this->parseRRULE($rrule);
+                    error_log("🔍 Found RRULE in iCalendar: " . $rrule);
+                    error_log("🔍 Parsed recurrence: " . json_encode($event['recurrence']));
+                    error_log("🔍 Event recurrence set to: " . json_encode($event['recurrence']));
+                } elseif (strpos($line, 'STATUS:') === 0) {
+                    $event['status'] = strtolower(substr($line, 7));
+                } elseif (strpos($line, 'TRANSP:') === 0) {
+                    $transp = substr($line, 7);
+                    $event['availability'] = $transp === 'TRANSPARENT' ? 'free' : 'busy';
                 }
             }
             
@@ -720,6 +972,56 @@ class CalDAVClient {
         } catch (Exception $e) {
             error_log("Error parsing iCalendar data: " . $e->getMessage());
             return null;
+        }
+    }
+    
+    private function parseRRULE($rrule) {
+        try {
+            error_log("Parsing RRULE: " . $rrule);
+            
+            $recurrence = [
+                'frequency' => 'never',
+                'interval' => 1
+            ];
+            
+            // Split by semicolon to get individual parts
+            $parts = explode(';', $rrule);
+            
+            foreach ($parts as $part) {
+                if (strpos($part, 'FREQ=') === 0) {
+                    $freq = strtolower(substr($part, 5));
+                    $recurrence['frequency'] = $freq;
+                } elseif (strpos($part, 'INTERVAL=') === 0) {
+                    $recurrence['interval'] = intval(substr($part, 9));
+                } elseif (strpos($part, 'COUNT=') === 0) {
+                    $recurrence['count'] = intval(substr($part, 6));
+                } elseif (strpos($part, 'UNTIL=') === 0) {
+                    $until = substr($part, 6);
+                    // Convert iCalendar date format to ISO format
+                    $recurrence['until'] = $this->parseICalendarDate($until);
+                } elseif (strpos($part, 'BYDAY=') === 0) {
+                    $byDay = substr($part, 6);
+                    $recurrence['byDay'] = explode(',', $byDay);
+                } elseif (strpos($part, 'BYMONTHDAY=') === 0) {
+                    $byMonthDay = substr($part, 11);
+                    $recurrence['byMonthDay'] = array_map('intval', explode(',', $byMonthDay));
+                } elseif (strpos($part, 'BYMONTH=') === 0) {
+                    $byMonth = substr($part, 8);
+                    $recurrence['byMonth'] = array_map('intval', explode(',', $byMonth));
+                } elseif (strpos($part, 'BYSETPOS=') === 0) {
+                    $recurrence['bySetPos'] = intval(substr($part, 9));
+                }
+            }
+            
+            error_log("Parsed recurrence: " . json_encode($recurrence));
+            return $recurrence;
+            
+        } catch (Exception $e) {
+            error_log("Error parsing RRULE: " . $e->getMessage());
+            return [
+                'frequency' => 'never',
+                'interval' => 1
+            ];
         }
     }
     
@@ -1026,6 +1328,11 @@ class CalDAVClient {
             // Create the event URL (usually calendar URL + event UID + .ics extension)
             $eventUrl = rtrim($calendarUrl, '/') . '/' . $uid . '.ics';
             error_log("Event URL: " . $eventUrl);
+            
+            // Debug: Log the exact iCalendar content being sent
+            error_log("🔍 Sending iCalendar content to CalDAV:");
+            error_log("Length: " . strlen($icalEvent));
+            error_log("Content: " . $icalEvent);
             
             // Make PUT request to create the event
             $response = $this->makeCalDAVRequest($eventUrl, 'PUT', $authToken, [
