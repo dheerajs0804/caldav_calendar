@@ -3956,5 +3956,386 @@
             "relativeTo": "start"
         },
         "valarm": null
+    },
+    {
+        "id": "event_68cd179ead11f",
+        "title": "normal event del 4",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-19T14:13:00",
+        "end_time": "2025-09-19T15:13:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68cd179ead12a",
+        "etag": "etag_68cd179ead12b",
+        "created_at": "2025-09-19T10:43:10+02:00",
+        "updated_at": "2025-09-19T10:43:10+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "never",
+            "interval": 1
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68cd17ea32ad1",
+        "title": "recur event again",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-19T14:13:00",
+        "end_time": "2025-09-19T15:13:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68cd17ea32adc",
+        "etag": "etag_68cd17ea32add",
+        "created_at": "2025-09-19T10:44:26+02:00",
+        "updated_at": "2025-09-19T10:44:26+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "daily",
+            "interval": 1,
+            "count": 2
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68cd1ef7cdb13",
+        "title": "not recurring event ",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T14:44:00",
+        "end_time": "2025-09-16T15:44:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68cd1ef7cdb1c",
+        "etag": "etag_68cd1ef7cdb1d",
+        "created_at": "2025-09-19T11:14:31+02:00",
+        "updated_at": "2025-09-19T11:14:31+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "never",
+            "interval": 1
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68cd1f237e591",
+        "title": "recurring event",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T16:44:00",
+        "end_time": "2025-09-16T17:44:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68cd1f237e59d",
+        "etag": "etag_68cd1f237e59e",
+        "created_at": "2025-09-19T11:15:15+02:00",
+        "updated_at": "2025-09-19T11:15:15+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "daily",
+            "interval": 1,
+            "count": 3
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68cd1fd4bb926",
+        "title": "recurring event 2",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T14:47:00",
+        "end_time": "2025-09-16T15:47:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68cd1fd4bb933",
+        "etag": "etag_68cd1fd4bb934",
+        "created_at": "2025-09-19T11:18:12+02:00",
+        "updated_at": "2025-09-19T11:18:12+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "daily",
+            "interval": 1,
+            "count": 3
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68cd206d8e366",
+        "title": "all delete test",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T14:50:00",
+        "end_time": "2025-09-16T15:50:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68cd206d8e372",
+        "etag": "etag_68cd206d8e373",
+        "created_at": "2025-09-19T11:20:45+02:00",
+        "updated_at": "2025-09-19T11:20:45+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "daily",
+            "interval": 1,
+            "count": 3
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68cd23ba7de93",
+        "title": "all delete test 2",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T15:04:00",
+        "end_time": "2025-09-16T16:04:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68cd23ba7de9b",
+        "etag": "etag_68cd23ba7de9c",
+        "created_at": "2025-09-19T11:34:50+02:00",
+        "updated_at": "2025-09-19T11:34:50+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "daily",
+            "interval": 1,
+            "count": 3
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68cd255b31160",
+        "title": "1by1 delete test",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T15:11:00",
+        "end_time": "2025-09-16T16:11:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68cd255b3116a",
+        "etag": "etag_68cd255b3116b",
+        "created_at": "2025-09-19T11:41:47+02:00",
+        "updated_at": "2025-09-19T11:41:47+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "daily",
+            "interval": 1,
+            "count": 3
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68cd25c5450b7",
+        "title": "all delete test 3",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T15:13:00",
+        "end_time": "2025-09-16T16:13:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68cd25c5450c1",
+        "etag": "etag_68cd25c5450c2",
+        "created_at": "2025-09-19T11:43:33+02:00",
+        "updated_at": "2025-09-19T11:43:33+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "daily",
+            "interval": 1,
+            "count": 3
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68cd27cd93331",
+        "title": "normal delete final",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-19T15:21:00",
+        "end_time": "2025-09-19T16:21:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68cd27cd9333a",
+        "etag": "etag_68cd27cd9333b",
+        "created_at": "2025-09-19T11:52:13+02:00",
+        "updated_at": "2025-09-19T11:52:13+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "never",
+            "interval": 1
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68cd280494d96",
+        "title": "1by1 delete final",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T17:22:00",
+        "end_time": "2025-09-16T18:22:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68cd280494da2",
+        "etag": "etag_68cd280494da3",
+        "created_at": "2025-09-19T11:53:08+02:00",
+        "updated_at": "2025-09-19T11:53:08+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "daily",
+            "interval": 1,
+            "count": 3
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68cd2840ecb4a",
+        "title": "all delete final",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-16T19:23:00",
+        "end_time": "2025-09-16T20:23:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68cd2840ecb56",
+        "etag": "etag_68cd2840ecb57",
+        "created_at": "2025-09-19T11:54:08+02:00",
+        "updated_at": "2025-09-19T11:54:08+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "daily",
+            "interval": 1,
+            "count": 3
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
     }
 ]

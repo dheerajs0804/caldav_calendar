@@ -151,7 +151,7 @@
       <app-week-view 
         *ngIf="currentView.type === 'week'"
         [date]="currentDate"
-        [events]="events"
+        [events]="expandedEvents"
         [calendars]="calendars"
         (eventClick)="openEventDetailModal($event)"
       ></app-week-view>
@@ -160,7 +160,7 @@
       <app-month-view 
         *ngIf="currentView.type === 'month'"
         [date]="currentDate"
-        [events]="events"
+        [events]="expandedEvents"
         [calendars]="calendars"
       ></app-month-view>
       
@@ -169,7 +169,7 @@
         <h2>Agenda View</h2>
         <div class="agenda-events">
           <div 
-            *ngFor="let event of events | sortByStartTime"
+            *ngFor="let event of expandedEvents | sortByStartTime"
             (click)="openEventDetailModal(event)"
             class="agenda-event"
           >
@@ -597,6 +597,15 @@
   (editEvent)="onEditEvent($event)"
   (deleteEvent)="onDeleteEvent($event)"
 ></app-event-detail-modal>
+
+<!-- Recurring Event Delete Modal -->
+<app-recurring-event-delete-modal
+  *ngIf="showRecurringDeleteModal"
+  [isVisible]="showRecurringDeleteModal"
+  [event]="recurringDeleteEvent"
+  (deleteConfirmed)="onRecurringDeleteConfirmed($event)"
+  (cancelled)="closeRecurringDeleteModal()"
+></app-recurring-event-delete-modal>
 
 <!-- Reminder Notifications -->
 <app-reminder-notification

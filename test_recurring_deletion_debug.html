@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Recurring Event Deletion Test</title>
+</head>
+<body>
+    <h1>Recurring Event Deletion Test</h1>
+    
+    <div>
+        <h2>Test Steps:</h2>
+        <ol>
+            <li>Create a recurring event (daily for 3 days)</li>
+            <li>Try to delete "Current" occurrence</li>
+            <li>Check console logs for debugging info</li>
+            <li>Check backend logs for filtering info</li>
+        </ol>
+    </div>
+    
+    <div>
+        <h2>Debugging Info:</h2>
+        <p>Open browser console and backend logs to see:</p>
+        <ul>
+            <li>Frontend: Event properties (isRecurringInstance, occurrenceIndex)</li>
+            <li>Frontend: Event identifier being sent to backend</li>
+            <li>Backend: Deletion tracking and filtering</li>
+        </ul>
+    </div>
+    
+    <div>
+        <h2>Expected Behavior:</h2>
+        <ul>
+            <li><strong>Current:</strong> Only the specific occurrence should disappear</li>
+            <li><strong>All:</strong> All occurrences should disappear</li>
+            <li><strong>After refresh:</strong> Deleted events should stay deleted</li>
+        </ul>
+    </div>
+    
+    <script>
+        console.log('🧪 Test page loaded - ready for debugging');
+        console.log('🧪 Check browser console for frontend logs');
+        console.log('🧪 Check backend logs for server-side filtering');
+    </script>
+</body>
+</html>

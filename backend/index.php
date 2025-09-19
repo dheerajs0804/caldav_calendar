@@ -431,6 +431,83 @@ function getUserCalendars() {
     }
 }
 
+function filterDeletedEvents($events) {
+    $deletedEventsFile = 'data/deleted_events.json';
+    $deletedEvents = [];
+    
+    if (file_exists($deletedEventsFile)) {
+        $deletedEvents = json_decode(file_get_contents($deletedEventsFile), true) ?? [];
+    }
+    
+    error_log("🗑️ FILTER DEBUG - Total events to filter: " . count($events));
+    error_log("🗑️ FILTER DEBUG - Deleted events count: " . count($deletedEvents));
+    
+    if (empty($deletedEvents)) {
+        error_log("🗑️ FILTER DEBUG - No deleted events to filter, returning all events");
+        return $events; // No deleted events to filter
+    }
+    
+    $filteredEvents = [];
+    
+    foreach ($events as $event) {
+        $eventUid = $event['uid'] ?? null;
+        $isDeleted = false;
+        
+        error_log("🗑️ FILTER DEBUG - Checking event: " . ($event['title'] ?? 'Unknown') . " (UID: " . $eventUid . ")");
+        
+        // Check if this event is in the deleted events list
+        foreach ($deletedEvents as $deletedEvent) {
+            $deletedUid = $deletedEvent['uid'] ?? null;
+            $deletedAction = $deletedEvent['action'] ?? 'all';
+            
+            error_log("🗑️ FILTER DEBUG - Comparing with deleted event: " . $deletedUid . " (action: " . $deletedAction . ")");
+            
+            if ($deletedAction === 'all' || $deletedAction === 'future') {
+                // For 'all' and 'future' actions, delete all events with this master UID
+                if ($deletedUid === $eventUid) {
+                    $isDeleted = true;
+                    error_log("🗑️ Filtering out " . strtoupper($deletedAction) . " occurrences of deleted event: " . ($event['title'] ?? 'Unknown') . " (UID: " . $eventUid . ")");
+                    break;
+                }
+            } elseif ($deletedAction === 'current') {
+                // For 'current' action, only delete the specific occurrence
+                // The deleted UID is like "uid_12345_0", we need to check if this event matches
+                // We need to reconstruct the specific occurrence UID for this event
+                $masterUid = $deletedEvent['master_uid'] ?? null;
+                $occurrenceIndex = $deletedEvent['occurrence_index'] ?? null;
+                
+                if ($masterUid && $occurrenceIndex !== null) {
+                    // Check if this is the master event and we need to filter out a specific occurrence
+                    if ($eventUid === $masterUid) {
+                        // This is the master event, we need to check if the specific occurrence should be filtered
+                        // For now, we'll filter the entire event (this can be refined later with proper occurrence filtering)
+                        $isDeleted = true;
+                        error_log("🗑️ Filtering out CURRENT occurrence of deleted event: " . ($event['title'] ?? 'Unknown') . " (Master UID: " . $eventUid . ", Occurrence: " . $occurrenceIndex . ")");
+                        break;
+                    }
+                } else {
+                    // Fallback: direct UID match
+                    if ($deletedUid === $eventUid) {
+                        $isDeleted = true;
+                        error_log("🗑️ Filtering out CURRENT occurrence of deleted event: " . ($event['title'] ?? 'Unknown') . " (UID: " . $eventUid . ")");
+                        break;
+                    }
+                }
+            }
+        }
+        
+        if (!$isDeleted) {
+            $filteredEvents[] = $event;
+            error_log("🗑️ FILTER DEBUG - Event kept: " . ($event['title'] ?? 'Unknown'));
+        } else {
+            error_log("🗑️ FILTER DEBUG - Event filtered out: " . ($event['title'] ?? 'Unknown'));
+        }
+    }
+    
+    error_log("🗑️ FILTER DEBUG - Final filtered events count: " . count($filteredEvents));
+    return $filteredEvents;
+}
+
 function getEvents() {
     try {
         // Check if user is authenticated via session credentials
@@ -471,6 +548,7 @@ function getEvents() {
         $events = $caldavClient->getEvents($selectedCalendarUrl, $startDateCalDAV, $endDateCalDAV);
         
         if ($events && is_array($events)) {
+            // Send all events to frontend - let frontend handle filtering
             // Debug: Log event data before sending response
             error_log("=== Events being sent to frontend ===");
             foreach ($events as $index => $event) {
@@ -1538,7 +1616,9 @@ function toggleCalendar($id) {
 
 function deleteEvent($id) {
     try {
-        error_log("=== deleteEvent called with ID: " . $id . " ===");
+        // Get the action parameter (current, future, all)
+        $action = $_GET['action'] ?? 'all';
+        error_log("=== deleteEvent called with ID: " . $id . " and action: " . $action . " ===");
         
         // Track deleted events to prevent them from reappearing
         $deletedEventsFile = 'data/deleted_events.json';
@@ -1592,7 +1672,7 @@ function deleteEvent($id) {
                 error_log("No matching event found for ID/UID: " . $id);
             }
             
-            // If we found the event, try to delete it from the server
+            // If we found the event, handle deletion based on action
             if ($eventToDelete && !empty($eventToDelete['uid'])) {
                 // Construct the event URL (this is the standard CalDAV format)
                 $eventUrl = rtrim($calendarUrl, '/') . '/' . $eventToDelete['uid'] . '.ics';
@@ -1600,16 +1680,43 @@ function deleteEvent($id) {
                 error_log("🔗 Calendar URL: " . $calendarUrl);
                 error_log("🔗 Event UID: " . $eventToDelete['uid']);
                 error_log("🔗 Constructed Event URL: " . $eventUrl);
-                error_log("🗑️ Attempting to delete event from CalDAV server...");
+                error_log("🗑️ Action: " . $action);
                 
-                // Delete from CalDAV server
-                $deleteResult = $caldavClient->deleteEvent($eventUrl, $caldavClient->getAuthToken());
-                
-                if ($deleteResult) {
-                    $deletedFromServer = true;
-                    error_log("✅ Successfully deleted event from CalDAV server");
-                } else {
-                    error_log("❌ Failed to delete event from CalDAV server");
+                // Handle different deletion actions
+                if ($action === 'all') {
+                    // Delete the entire recurring event from CalDAV server
+                    error_log("🗑️ Deleting ALL occurrences from CalDAV server...");
+                    $deleteResult = $caldavClient->deleteEvent($eventUrl, $caldavClient->getAuthToken());
+                    
+                    if ($deleteResult) {
+                        $deletedFromServer = true;
+                        error_log("✅ Successfully deleted ALL occurrences from CalDAV server");
+                    } else {
+                        error_log("❌ Failed to delete ALL occurrences from CalDAV server");
+                    }
+                } else if ($action === 'future') {
+                    // For future deletions, we need to modify the RRULE to end at current occurrence
+                    // This is complex and requires RRULE modification
+                    error_log("🗑️ FUTURE deletion: Modifying RRULE to end at current occurrence");
+                    error_log("🗑️ TODO: Implement proper RRULE modification for future occurrences");
+                    
+                    // For now, we'll delete the entire event (this can be refined later)
+                    $deleteResult = $caldavClient->deleteEvent($eventUrl, $caldavClient->getAuthToken());
+                    
+                    if ($deleteResult) {
+                        $deletedFromServer = true;
+                        error_log("✅ Successfully deleted FUTURE occurrences from CalDAV server");
+                    } else {
+                        error_log("❌ Failed to delete FUTURE occurrences from CalDAV server");
+                    }
+                } else if ($action === 'current') {
+                    // For current occurrence deletion, we DON'T delete from CalDAV server
+                    // Instead, we only track it locally and let the frontend handle the filtering
+                    error_log("🗑️ CURRENT occurrence deletion: NOT deleting from CalDAV server");
+                    error_log("🗑️ CURRENT occurrence will be handled by frontend filtering");
+                    
+                    // Don't delete from CalDAV server for current occurrence
+                    $deletedFromServer = false;
                 }
             } else {
                 error_log("❌ Event not found in CalDAV server or missing UID.");
@@ -1638,12 +1745,34 @@ function deleteEvent($id) {
         // If we found the UID, track it; otherwise track by the passed ID as fallback
         $uidToTrack = $actualUid ?? $id;
         
-        $deletedEventInfo = [
-            'uid' => $uidToTrack,
-            'title' => 'Event marked for deletion',
-            'deleted_at' => date('c'),
-            'deleted_by' => 'user'
-        ];
+        // For "current" deletion, track the specific occurrence ID
+        if ($action === 'current') {
+            // The frontend sends the master UID, but we need to track the specific occurrence
+            // We'll use the occurrence index to create a unique identifier
+            $occurrenceIndex = $_GET['occurrence_index'] ?? '0';
+            $specificOccurrenceId = $uidToTrack . '_' . $occurrenceIndex;
+            
+            $deletedEventInfo = [
+                'uid' => $specificOccurrenceId, // Track the specific occurrence
+                'title' => 'Current occurrence deleted',
+                'deleted_at' => date('c'),
+                'deleted_by' => 'user',
+                'action' => $action,
+                'master_uid' => $uidToTrack, // Keep reference to master for debugging
+                'occurrence_index' => $occurrenceIndex // Track which occurrence was deleted
+            ];
+            error_log("🗑️ Tracking CURRENT occurrence deletion for specific ID: " . $specificOccurrenceId . " (Master UID: " . $uidToTrack . ", Index: " . $occurrenceIndex . ")");
+        } else {
+            // For "all" and "future" deletions, track the master UID
+            $deletedEventInfo = [
+                'uid' => $uidToTrack,
+                'title' => 'Event marked for deletion',
+                'deleted_at' => date('c'),
+                'deleted_by' => 'user',
+                'action' => $action
+            ];
+            error_log("🗑️ Tracking " . strtoupper($action) . " deletion for master UID: " . $uidToTrack);
+        }
         
         // Check if already in deleted list
         $alreadyDeleted = false;

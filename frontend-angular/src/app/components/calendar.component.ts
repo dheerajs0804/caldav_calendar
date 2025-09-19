@@ -19,6 +19,7 @@ import { Router } from '@angular/router';
 import { CalendarEvent, Calendar } from '../interfaces/calendar-event.interface';
 import { ColorRegistryService } from '../services/color-registry.service';
 import { RecurrenceExpansionService } from '../services/recurrence-expansion.service';
+import { RecurringEventDeleteModalComponent, RecurringDeleteAction } from './recurring-event-delete-modal/recurring-event-delete-modal.component';
 
 
 interface View {
@@ -68,7 +69,7 @@ interface NewEvent {
 @Component({
   selector: 'app-calendar',
   standalone: true,
-  imports: [CommonModule, FormsModule, DayViewComponent, WeekViewComponent, MonthViewComponent, EventDetailModalComponent, ReminderNotificationComponent, DateNavigationComponent, ExportModalComponent, ImportModalComponent, SortByStartTimePipe],
+  imports: [CommonModule, FormsModule, DayViewComponent, WeekViewComponent, MonthViewComponent, EventDetailModalComponent, ReminderNotificationComponent, DateNavigationComponent, ExportModalComponent, ImportModalComponent, SortByStartTimePipe, RecurringEventDeleteModalComponent],
   templateUrl: './calendar.component.html',
   styleUrls: ['./calendar.component.scss']
 })
@@ -83,12 +84,15 @@ export class CalendarComponent implements OnInit, OnDestroy {
   currentView: View = this.views[1]; // Start with week view
   currentDate: dayjs.Dayjs = dayjs();
   calendars: Calendar[] = [];
-  events: CalendarEvent[] = [];
+  events: CalendarEvent[] = []; // Master events from backend
+  expandedEvents: CalendarEvent[] = []; // Expanded events for display
   loading: boolean = true;
   error: string | null = null;
   showAddEventModal: boolean = false;
   showEventDetailModal: boolean = false;
   selectedEvent: CalendarEvent | null = null;
+  showRecurringDeleteModal: boolean = false;
+  recurringDeleteEvent: CalendarEvent | null = null;
   selectedCalendar: any = null; // Store the selected calendar info
   showSidebar: boolean = true; // Show sidebar by default
   searchTerm: string = ''; // For filtering calendars in sidebar
@@ -458,15 +462,19 @@ export class CalendarComponent implements OnInit, OnDestroy {
         console.log('🔍 EVENTS DEBUG - After deduplication:', uniqueEvents);
         console.log('🔍 EVENTS DEBUG - Duplicates found:', allEvents.length - uniqueEvents.length);
         
-        // 🔄 Expand recurring events
-        const expandedEvents = this.expandRecurringEvents(uniqueEvents);
+        // Store master events from backend
+        this.events = uniqueEvents;
+        
+        // 🔄 Expand recurring events into individual instances for display
+        this.expandedEvents = this.expandRecurringEvents(uniqueEvents);
         console.log('🔄 Recurrence expansion:', {
           originalCount: uniqueEvents.length,
-          expandedCount: expandedEvents.length,
-          expansionRatio: expandedEvents.length / uniqueEvents.length
+          expandedCount: this.expandedEvents.length,
+          expansionRatio: this.expandedEvents.length / uniqueEvents.length,
+          deletedOccurrencesCount: this.getDeletedOccurrences().length,
+          deletedOccurrencesKeys: this.getDeletedOccurrences().map(d => d.uid)
         });
         
-        this.events = expandedEvents;
         console.log('Events loaded from all calendars:', uniqueEvents);
         
         // Start reminder checking if events exist
@@ -715,11 +723,16 @@ export class CalendarComponent implements OnInit, OnDestroy {
       if (event.recurrence && event.recurrence.frequency !== 'never') {
         // Expand recurring event
         const expanded = this.recurrenceExpansion.expandRecurringEvent(event, startDate, endDate);
-        expandedEvents.push(...expanded);
+        
+        // Filter out deleted occurrences
+        const filteredExpanded = this.filterDeletedOccurrences(expanded, event);
+        
+        expandedEvents.push(...filteredExpanded);
         
         console.log(`🔄 Expanded "${event.title}":`, {
           original: 1,
           expanded: expanded.length,
+          filtered: filteredExpanded.length,
           frequency: event.recurrence.frequency,
           count: event.recurrence.count
         });
@@ -730,6 +743,136 @@ export class CalendarComponent implements OnInit, OnDestroy {
     }
     
     return expandedEvents;
+  }
+
+  // Filter out deleted occurrences from expanded events
+  private filterDeletedOccurrences(expandedEvents: CalendarEvent[], masterEvent: CalendarEvent): CalendarEvent[] {
+    const deletedOccurrences = this.getDeletedOccurrences();
+    const masterUid = masterEvent.uid;
+    
+    if (!deletedOccurrences || deletedOccurrences.length === 0) {
+      return expandedEvents;
+    }
+    
+    return expandedEvents.filter(event => {
+      // Check if this specific occurrence was deleted
+      const occurrenceKey = `${masterUid}_${event.occurrenceIndex}`;
+      const isDeleted = deletedOccurrences.some(deleted => 
+        deleted.uid === occurrenceKey && deleted.action === 'current'
+      );
+      
+      if (isDeleted) {
+        console.log('🗑️ Filtering out deleted occurrence:', occurrenceKey);
+      }
+      
+      return !isDeleted;
+    });
+  }
+
+  // Get deleted occurrences from localStorage
+  private getDeletedOccurrences(): any[] {
+    try {
+      const deletedEvents = localStorage.getItem('deleted_events');
+      return deletedEvents ? JSON.parse(deletedEvents) : [];
+    } catch (error) {
+      console.error('Error loading deleted events:', error);
+      return [];
+    }
+  }
+
+  // Save deleted occurrence to localStorage
+  private saveDeletedOccurrence(event: CalendarEvent, masterUid: string): void {
+    try {
+      const deletedEvents = this.getDeletedOccurrences();
+      const occurrenceKey = `${masterUid}_${event.occurrenceIndex}`;
+      
+      const deletedOccurrence = {
+        uid: occurrenceKey,
+        masterUid: masterUid,
+        occurrenceIndex: event.occurrenceIndex,
+        action: 'current',
+        deletedAt: new Date().toISOString(),
+        title: event.title
+      };
+      
+      // Check if already exists
+      const exists = deletedEvents.some(deleted => deleted.uid === occurrenceKey);
+      if (!exists) {
+        deletedEvents.push(deletedOccurrence);
+        localStorage.setItem('deleted_events', JSON.stringify(deletedEvents));
+        console.log('🗑️ Saved deleted occurrence to localStorage:', occurrenceKey);
+      }
+    } catch (error) {
+      console.error('Error saving deleted occurrence:', error);
+    }
+  }
+
+  // Check if all occurrences of a master event have been deleted individually
+  private checkIfAllOccurrencesDeleted(masterUid: string): boolean {
+    try {
+      // Find the master event to get its recurrence count
+      const masterEvent = this.events.find(e => {
+        const eventUid = e.uid || e.id;
+        const eventMasterUid = eventUid.replace(/_(\d+)$/, '');
+        return eventMasterUid === masterUid && !e.isRecurringInstance;
+      });
+
+      if (!masterEvent || !masterEvent.recurrence) {
+        return false;
+      }
+
+      const totalOccurrences = masterEvent.recurrence.count || 10; // Default to 10 if no count
+      const deletedOccurrences = this.getDeletedOccurrences();
+      
+      // Count how many occurrences of this master event have been deleted
+      const deletedCount = deletedOccurrences.filter(deleted => 
+        deleted.masterUid === masterUid && deleted.action === 'current'
+      ).length;
+
+      console.log(`🗑️ Checking occurrences for ${masterUid}:`, {
+        totalOccurrences,
+        deletedCount,
+        shouldDeleteFromServer: deletedCount >= totalOccurrences
+      });
+
+      return deletedCount >= totalOccurrences;
+    } catch (error) {
+      console.error('Error checking if all occurrences deleted:', error);
+      return false;
+    }
+  }
+
+  // Delete master event from CalDAV server
+  private async deleteMasterEventFromServer(masterUid: string, calendarUrl: string): Promise<void> {
+    try {
+      const deleteUrl = `http://localhost:8000/events/${masterUid}?calendar_url=${encodeURIComponent(calendarUrl)}&action=all`;
+      
+      console.log('🗑️ Deleting master event from server:', deleteUrl);
+      
+      const response = await this.http.delete<any>(deleteUrl, { withCredentials: true }).toPromise();
+      
+      if (response.success) {
+        console.log('✅ Master event deleted from CalDAV server');
+        // Clear the deleted occurrences from localStorage since the master event is now deleted
+        this.clearDeletedOccurrencesForMaster(masterUid);
+      } else {
+        console.error('❌ Failed to delete master event from server:', response.message);
+      }
+    } catch (error) {
+      console.error('Error deleting master event from server:', error);
+    }
+  }
+
+  // Clear deleted occurrences from localStorage for a specific master event
+  private clearDeletedOccurrencesForMaster(masterUid: string): void {
+    try {
+      const deletedEvents = this.getDeletedOccurrences();
+      const filteredEvents = deletedEvents.filter(deleted => deleted.masterUid !== masterUid);
+      localStorage.setItem('deleted_events', JSON.stringify(filteredEvents));
+      console.log('🗑️ Cleared deleted occurrences for master event:', masterUid);
+    } catch (error) {
+      console.error('Error clearing deleted occurrences:', error);
+    }
   }
 
   // Get start date for recurrence expansion
@@ -1133,44 +1276,197 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   // Delete event handler
   async onDeleteEvent(event: CalendarEvent): Promise<void> {
+    console.log('🗑️ Delete event requested:', event);
+    console.log('🗑️ Event recurrence:', event.recurrence);
+    console.log('🗑️ Event properties:', {
+      id: event.id,
+      uid: event.uid,
+      isRecurringInstance: event.isRecurringInstance,
+      occurrenceIndex: event.occurrenceIndex,
+      originalEventId: event.originalEventId
+    });
+    
+    // Check if this is a recurring event
+    if (event.recurrence && event.recurrence.frequency !== 'never') {
+      console.log('🔄 This is a recurring event, showing deletion options');
+      this.showRecurringDeleteModal = true;
+      this.recurringDeleteEvent = event;
+      return;
+    }
+    
+    // For non-recurring events, proceed with normal deletion
+    await this.performEventDeletion(event, 'all');
+  }
+
+  // Close recurring delete modal
+  closeRecurringDeleteModal(): void {
+    this.showRecurringDeleteModal = false;
+    this.recurringDeleteEvent = null;
+  }
+
+  // Handle recurring delete confirmation
+  async onRecurringDeleteConfirmed(action: RecurringDeleteAction): Promise<void> {
+    console.log('🗑️ ===== MODAL CONFIRMATION DEBUG =====');
+    console.log('🗑️ Action received:', action);
+    console.log('🗑️ Recurring delete event exists:', !!this.recurringDeleteEvent);
+    console.log('🗑️ Recurring delete event:', this.recurringDeleteEvent);
+    
+    if (!this.recurringDeleteEvent) {
+      console.error('❌ No recurring delete event found!');
+      return;
+    }
+    
+    console.log('🗑️ Recurring deletion confirmed:', action, 'for event:', this.recurringDeleteEvent.title);
+    
+    // Store the event before closing the modal
+    const eventToDelete = this.recurringDeleteEvent;
+    
+    // Close the modal first
+    this.closeRecurringDeleteModal();
+    
+    console.log('🗑️ About to call performEventDeletion with:', {
+      event: eventToDelete.title,
+      action: action
+    });
+    
+    // Perform the deletion with the stored event
+    await this.performEventDeletion(eventToDelete, action);
+  }
+
+  // Perform event deletion based on action
+  async performEventDeletion(event: CalendarEvent, action: RecurringDeleteAction): Promise<void> {
     try {
-      console.log('🗑️ Delete event requested:', event);
-      console.log('🗑️ Event ID:', event.id);
-      console.log('🗑️ Event UID:', event.uid);
-      console.log('🗑️ Event Title:', event.title);
-      console.log('🗑️ Event Calendar:', event.calendar_name, 'URL:', event.calendar_url);
+      // Check if event is null or undefined
+      if (!event) {
+        console.error('❌ Event is null or undefined');
+        alert('Cannot delete event: Event information is missing.');
+        return;
+      }
       
-      // Use the event's calendar URL instead of selectedCalendar
+      console.log('🗑️ ===== DELETION DEBUG START =====');
+      console.log('🗑️ Performing deletion for action:', action);
+      console.log('🗑️ Event details:', {
+        title: event.title,
+        uid: event.uid,
+        id: event.id,
+        calendar_url: event.calendar_url,
+        recurrence: event.recurrence,
+        isRecurringInstance: event.isRecurringInstance,
+        occurrenceIndex: event.occurrenceIndex
+      });
+      
+      // Use the event's calendar URL
       if (!event.calendar_url) {
         console.error('❌ No calendar URL found for event');
         alert('Cannot delete event: No calendar information available.');
         return;
       }
 
-      // Use UID for deletion (the actual CalDAV identifier) instead of generated ID
-      const eventIdentifier = event.uid || event.id;
-      console.log('🗑️ Using identifier for deletion:', eventIdentifier, '(UID:', event.uid, 'ID:', event.id, ')');
+      // Use UID for deletion (the actual CalDAV identifier)
+      // For "current" deletion, we need to send the master UID but track the specific occurrence
+      let eventIdentifier = event.uid || event.id;
       
-      // Build the delete URL with the event's calendar URL
-      const deleteUrl = `http://localhost:8000/events/${eventIdentifier}?calendar_url=${encodeURIComponent(event.calendar_url)}`;
+      console.log('🗑️ Initial eventIdentifier:', eventIdentifier);
+      
+      console.log('🗑️ Event details for deletion:', {
+        action: action,
+        eventId: event.id,
+        eventUid: event.uid,
+        isRecurringInstance: event.isRecurringInstance,
+        occurrenceIndex: event.occurrenceIndex,
+        originalEventId: event.originalEventId
+      });
+      
+      if (action === 'current' && event.isRecurringInstance && event.occurrenceIndex !== undefined) {
+        // For current occurrence deletion, we need to extract the master UID
+        // The expanded UID is like "uid_12345_0", we need "uid_12345"
+        const masterUid = event.uid?.replace(/_(\d+)$/, '') || event.originalEventId || event.id;
+        eventIdentifier = masterUid;
+        console.log('🗑️ Current occurrence deletion - using master UID:', eventIdentifier);
+        console.log('🗑️ Occurrence index:', event.occurrenceIndex);
+        console.log('🗑️ Original expanded UID:', event.uid);
+      } else if (action === 'all' && event.isRecurringInstance) {
+        // For 'all' deletion, we also need to extract the master UID
+        // The expanded UID is like "uid_12345_0", we need "uid_12345"
+        const masterUid = event.uid?.replace(/_(\d+)$/, '') || event.originalEventId || event.id;
+        eventIdentifier = masterUid;
+        console.log('🗑️ All occurrence deletion - using master UID:', eventIdentifier);
+        console.log('🗑️ Original expanded UID:', event.uid);
+      } else {
+        console.log('🗑️ Using identifier for deletion:', eventIdentifier);
+      }
+      
+      // Build the delete URL with action parameter
+      let deleteUrl = `http://localhost:8000/events/${eventIdentifier}?calendar_url=${encodeURIComponent(event.calendar_url)}&action=${action}`;
+      
+      // For current deletion, add occurrence index parameter
+      if (action === 'current' && event.isRecurringInstance && event.occurrenceIndex !== undefined) {
+        deleteUrl += `&occurrence_index=${event.occurrenceIndex}`;
+      }
       
       console.log('🗑️ Deleting event from URL:', deleteUrl);
-      console.log('🗑️ Event calendar URL:', event.calendar_url);
       
       const response = await this.http.delete<any>(deleteUrl, { withCredentials: true }).toPromise();
       
       console.log('🗑️ Delete response:', response);
       
       if (response.success) {
-        // Remove the event from the local events array using the same identifier
-        this.events = this.events.filter(e => (e.uid || e.id) !== eventIdentifier);
-        console.log('✅ Event deleted successfully from local array');
+        // Handle different deletion actions
+        if (action === 'all') {
+          // For 'all' deletion, the backend should have deleted from CalDAV server
+          // Remove the master event from this.events (this will automatically remove all expanded occurrences)
+          const masterUid = eventIdentifier;
+          
+          console.log('🗑️ ALL deletion - Before filtering:');
+          console.log('🗑️ Master UID to remove:', masterUid);
+          console.log('🗑️ Current events count:', this.events.length);
+          console.log('🗑️ Current expanded events count:', this.expandedEvents.length);
+          console.log('🗑️ Events before filtering:', this.events.map(e => ({ uid: e.uid, title: e.title })));
+          
+          this.events = this.events.filter(e => {
+            const eventUid = e.uid || e.id;
+            const shouldKeep = eventUid !== masterUid;
+            console.log(`🗑️ Event ${eventUid} (${e.title}): ${shouldKeep ? 'KEEP' : 'REMOVE'}`);
+            return shouldKeep;
+          });
+          
+          console.log('🗑️ After filtering master events:', this.events.length);
+          
+          // Re-expand events to update expandedEvents
+          this.expandedEvents = this.expandRecurringEvents(this.events);
+          
+          console.log('🗑️ After re-expansion:', this.expandedEvents.length);
+          console.log('✅ All occurrences deleted successfully from server');
+        } else if (action === 'current') {
+          // For 'current' deletion, save to localStorage and check if all occurrences are now deleted
+          this.saveDeletedOccurrence(event, eventIdentifier);
+          console.log('✅ Current occurrence deletion saved to localStorage');
+          
+          // Check if all occurrences of this master event are now deleted
+          const shouldDeleteFromServer = this.checkIfAllOccurrencesDeleted(eventIdentifier);
+          if (shouldDeleteFromServer) {
+            console.log('🗑️ All occurrences deleted individually - deleting master event from server');
+            await this.deleteMasterEventFromServer(eventIdentifier, event.calendar_url);
+            
+            // Remove the master event from local events array since it's now deleted from server
+            this.events = this.events.filter(e => {
+              const eventUid = e.uid || e.id;
+              return eventUid !== eventIdentifier;
+            });
+            
+            console.log('🗑️ Removed master event from local events array');
+          }
+          
+          // Re-expand events to apply the filtering
+          this.expandedEvents = this.expandRecurringEvents(this.events);
+        }
         
-        // Close the modal
+        // Close any open modals
         this.closeEventDetailModal();
+        this.closeRecurringDeleteModal();
         
         // Show success message
-        alert('Event deleted successfully!');
+        alert(`Event ${action} deletion completed successfully!`);
       } else {
         console.error('❌ Delete failed:', response.message);
         alert('Failed to delete event: ' + (response.message || 'Unknown error'));
@@ -1527,7 +1823,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   // Get events for a specific day
   getEventsForDay(date: dayjs.Dayjs): CalendarEvent[] {
-    return this.events.filter(event => {
+    return this.expandedEvents.filter(event => {
       const eventDate = dayjs(event.start_time);
       return eventDate.isSame(date, 'day');
     });
