@@ -966,7 +966,18 @@ function createEvent() {
                 if ($response['status'] >= 200 && $response['status'] < 300) {
                     // Event created successfully, now send invitations if attendees exist
                     if (!empty($input['attendees']) && is_array($input['attendees'])) {
+                        error_log("🔍 About to call sendEventInvitations with " . count($input['attendees']) . " attendees");
+                        
+                        // Capture any output that might interfere with JSON response
+                        ob_start();
                         $invitationResult = sendEventInvitations($event, $input['attendees']);
+                        $capturedOutput = ob_get_clean();
+                        
+                        if (!empty($capturedOutput)) {
+                            error_log("🔍 WARNING: Captured output from sendEventInvitations: " . $capturedOutput);
+                        }
+                        
+                        error_log("🔍 sendEventInvitations returned: " . json_encode($invitationResult));
                         if ($invitationResult['success']) {
                             $successResponse = [
                                 'success' => true,
@@ -974,7 +985,10 @@ function createEvent() {
                                 'message' => 'Event created successfully, synced to CalDAV server, and invitations sent to ' . $invitationResult['data']['successfulSends'] . ' attendees'
                             ];
                             error_log("Sending success response with invitations: " . json_encode($successResponse));
+                            error_log("🔍 About to send success response to frontend");
+                            header('Content-Type: application/json');
                             echo json_encode($successResponse);
+                            exit; // Stop execution to prevent any additional output
                         } else {
                             $partialResponse = [
                                 'success' => true,
@@ -982,7 +996,10 @@ function createEvent() {
                                 'message' => 'Event created successfully and synced to CalDAV server, but failed to send invitations: ' . $invitationResult['message']
                             ];
                             error_log("Sending partial success response: " . json_encode($partialResponse));
+                            error_log("🔍 About to send partial success response to frontend");
+                            header('Content-Type: application/json');
                             echo json_encode($partialResponse);
+                            exit; // Stop execution to prevent any additional output
                         }
                     } else {
                         $successResponse = [
@@ -991,7 +1008,10 @@ function createEvent() {
                             'message' => 'Event created successfully and synced to CalDAV server'
                         ];
                         error_log("Sending success response without invitations: " . json_encode($successResponse));
+                        error_log("🔍 About to send success response (no invitations) to frontend");
+                        header('Content-Type: application/json');
                         echo json_encode($successResponse);
+                        exit; // Stop execution to prevent any additional output
                     }
                 } else {
                     $partialResponse = [
@@ -1000,7 +1020,10 @@ function createEvent() {
                         'message' => 'Event created locally but CalDAV sync failed: ' . $response['body']
                     ];
                     error_log("Sending partial success response (CalDAV failed): " . json_encode($partialResponse));
+                    error_log("🔍 About to send partial success response (CalDAV failed) to frontend");
+                    header('Content-Type: application/json');
                     echo json_encode($partialResponse);
+                    exit; // Stop execution to prevent any additional output
                 }
             } else {
                 $noCalendarResponse = [
@@ -1009,7 +1032,10 @@ function createEvent() {
                     'message' => 'Event created locally but no CalDAV calendar found'
                 ];
                 error_log("Sending no calendar response: " . json_encode($noCalendarResponse));
+                error_log("🔍 About to send no calendar response to frontend");
+                header('Content-Type: application/json');
                 echo json_encode($noCalendarResponse);
+                exit; // Stop execution to prevent any additional output
             }
         } catch (Exception $caldavError) {
             error_log("CalDAV error in createEvent: " . $caldavError->getMessage());
@@ -1019,7 +1045,10 @@ function createEvent() {
                 'message' => 'Event created locally but CalDAV sync error: ' . $caldavError->getMessage()
             ];
             error_log("Sending response: " . json_encode($response));
+            error_log("🔍 About to send CalDAV error response to frontend");
+            header('Content-Type: application/json');
             echo json_encode($response);
+            exit; // Stop execution to prevent any additional output
         }
         
     } catch (Exception $e) {
@@ -1030,7 +1059,10 @@ function createEvent() {
             'message' => $e->getMessage()
         ];
         error_log("Sending error response: " . json_encode($errorResponse));
+        error_log("🔍 About to send error response to frontend");
+        header('Content-Type: application/json');
         echo json_encode($errorResponse);
+        exit; // Stop execution to prevent any additional output
     }
 }
 
@@ -2674,6 +2706,16 @@ function sendEventInvitations($event, $attendees) {
         }
         
         // Generate iCalendar invitation
+        $organizer = 'unknown@mithi.com';
+        try {
+            $caldavClient = getCalDAVClient();
+            if ($caldavClient) {
+                $organizer = $caldavClient->getUsername();
+            }
+        } catch (Exception $e) {
+            error_log("Could not get CalDAV client for organizer: " . $e->getMessage());
+        }
+        
         $icalContent = generateICalInvitation([
             'title' => $event['title'],
             'description' => $event['description'] ?? '',
@@ -2681,7 +2723,7 @@ function sendEventInvitations($event, $attendees) {
             'startTime' => $event['start_time'],
             'endTime' => $event['end_time'],
             'allDay' => $event['all_day'] ?? false,
-            'organizer' => $caldavClient ? $caldavClient->getUsername() : ($_SESSION['username'] ?? 'unknown@mithi.com')
+            'organizer' => $organizer
         ], $validAttendees);
         
         error_log("Generated iCalendar content length: " . strlen($icalContent));

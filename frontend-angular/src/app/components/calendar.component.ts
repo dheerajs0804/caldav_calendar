@@ -1206,8 +1206,10 @@ export class CalendarComponent implements OnInit, OnDestroy {
       }).toPromise();
       
       console.log('🔍 POST request completed successfully');
-      
       console.log('📥 Backend response:', response);
+      console.log('🔍 Response type:', typeof response);
+      console.log('🔍 Response success:', response?.success);
+      console.log('🔍 Response message:', response?.message);
       
       if (response.success) {
         console.log('✅ Event created successfully in calendar:', targetCalendar.name);

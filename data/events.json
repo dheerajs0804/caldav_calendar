@@ -5721,5 +5721,264 @@
             "relativeTo": "start"
         },
         "valarm": null
+    },
+    {
+        "id": "event_68d264456b58a",
+        "title": "email test latest",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-23T14:41:00",
+        "end_time": "2025-09-23T15:41:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68d264456b592",
+        "etag": "etag_68d264456b593",
+        "created_at": "2025-09-23T11:11:33+02:00",
+        "updated_at": "2025-09-23T11:11:33+02:00",
+        "attendees": [
+            {
+                "email": "dheeraj2004.sharma@gmail.com",
+                "name": "1",
+                "response": "pending",
+                "role": "required"
+            }
+        ],
+        "recurrence": {
+            "frequency": "never",
+            "interval": 1
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68d264f52e7da",
+        "title": "emailtest080392",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-23T14:43:00",
+        "end_time": "2025-09-23T15:43:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68d264f52e7e0",
+        "etag": "etag_68d264f52e7e1",
+        "created_at": "2025-09-23T11:14:29+02:00",
+        "updated_at": "2025-09-23T11:14:29+02:00",
+        "attendees": [
+            {
+                "email": "dheeraj.sharma@mithi.com",
+                "name": "2",
+                "response": "pending",
+                "role": "required"
+            }
+        ],
+        "recurrence": {
+            "frequency": "never",
+            "interval": 1
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68d26617dca4d",
+        "title": "emailbug",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-23T14:47:00",
+        "end_time": "2025-09-23T15:47:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68d26617dca56",
+        "etag": "etag_68d26617dca57",
+        "created_at": "2025-09-23T11:19:19+02:00",
+        "updated_at": "2025-09-23T11:19:19+02:00",
+        "attendees": [
+            {
+                "email": "dheeraj2004.sharma@gmail.com",
+                "name": "2",
+                "response": "pending",
+                "role": "required"
+            }
+        ],
+        "recurrence": {
+            "frequency": "never",
+            "interval": 1
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68d267734b949",
+        "title": "emailbugfix",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-23T14:54:00",
+        "end_time": "2025-09-23T15:54:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68d267734b953",
+        "etag": "etag_68d267734b954",
+        "created_at": "2025-09-23T11:25:07+02:00",
+        "updated_at": "2025-09-23T11:25:07+02:00",
+        "attendees": [
+            {
+                "email": "dheeraj2004.sharma@gmail.com",
+                "name": "",
+                "response": "pending",
+                "role": "required"
+            }
+        ],
+        "recurrence": {
+            "frequency": "never",
+            "interval": 1
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68d2687e42515",
+        "title": "emailbugfixed",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-23T15:00:00",
+        "end_time": "2025-09-23T16:00:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68d2687e4251c",
+        "etag": "etag_68d2687e4251d",
+        "created_at": "2025-09-23T11:29:34+02:00",
+        "updated_at": "2025-09-23T11:29:34+02:00",
+        "attendees": [
+            {
+                "email": "dheeraj.sharma@gmail.com",
+                "name": "1",
+                "response": "pending",
+                "role": "required"
+            }
+        ],
+        "recurrence": {
+            "frequency": "never",
+            "interval": 1
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68d268afd245b",
+        "title": "email bug not fixed",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-23T16:05:00",
+        "end_time": "2025-09-23T17:05:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68d268afd2461",
+        "etag": "etag_68d268afd2462",
+        "created_at": "2025-09-23T11:30:23+02:00",
+        "updated_at": "2025-09-23T11:30:23+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "never",
+            "interval": 1
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68d2696c957aa",
+        "title": "attendee_event_test",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-23T15:02:00",
+        "end_time": "2025-09-23T16:02:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68d2696c957b1",
+        "etag": "etag_68d2696c957b2",
+        "created_at": "2025-09-23T11:33:32+02:00",
+        "updated_at": "2025-09-23T11:33:32+02:00",
+        "attendees": [
+            {
+                "email": "dheeraj2004.sharma@gmail.com",
+                "name": "1",
+                "response": "pending",
+                "role": "required"
+            }
+        ],
+        "recurrence": {
+            "frequency": "never",
+            "interval": 1
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
     }
 ]
