@@ -28,12 +28,23 @@ export class RecurrenceExpansionService {
     const maxOccurrences = event.recurrence.count || 1000; // Default to 1000 if no count specified
     const untilDate = event.recurrence.until ? new Date(event.recurrence.until) : null;
     
+    // Parse EXDATE exceptions
+    const exceptionDates = this.parseExceptionDates(event.exdate);
+    console.log('🗑️ EXDATE exceptions for', event.title, ':', exceptionDates);
+    
     // Generate occurrences
     while (occurrenceCount < maxOccurrences && currentDate <= endDate) {
       // Skip if this occurrence is before our start date range
       if (currentDate >= startDate) {
-        const expandedEvent = this.createExpandedEvent(event, currentDate, duration, occurrenceCount);
-        expandedEvents.push(expandedEvent);
+        // Check if this occurrence is in the EXDATE list
+        const isException = this.isDateInExceptions(currentDate, exceptionDates);
+        
+        if (!isException) {
+          const expandedEvent = this.createExpandedEvent(event, currentDate, duration, occurrenceCount);
+          expandedEvents.push(expandedEvent);
+        } else {
+          console.log('🗑️ Skipping occurrence due to EXDATE:', currentDate.toISOString().split('T')[0]);
+        }
       }
       
       // Move to next occurrence
@@ -144,5 +155,83 @@ export class RecurrenceExpansionService {
     }
 
     return description;
+  }
+
+  /**
+   * Parse EXDATE exceptions from event data
+   */
+  private parseExceptionDates(exdate: any): Date[] {
+    if (!exdate) return [];
+    
+    const exceptions: Date[] = [];
+    
+    if (Array.isArray(exdate)) {
+      exdate.forEach(dateStr => {
+        const date = this.parseExdateString(dateStr);
+        if (date) {
+          exceptions.push(date);
+        }
+      });
+    } else if (typeof exdate === 'string') {
+      const date = this.parseExdateString(exdate);
+      if (date) {
+        exceptions.push(date);
+      }
+    }
+    
+    console.log('🗑️ Parsed EXDATE exceptions:', exceptions.map(d => d.toISOString().split('T')[0]));
+    return exceptions;
+  }
+
+  /**
+   * Parse EXDATE string (can be UTC format like "20250920T111800Z" or ISO format)
+   */
+  private parseExdateString(dateStr: string): Date | null {
+    try {
+      // Handle UTC format: 20250920T111800Z
+      if (/^\d{8}T\d{6}Z$/.test(dateStr)) {
+        const year = parseInt(dateStr.substring(0, 4));
+        const month = parseInt(dateStr.substring(4, 6)) - 1; // Month is 0-indexed
+        const day = parseInt(dateStr.substring(6, 8));
+        const hour = parseInt(dateStr.substring(9, 11));
+        const minute = parseInt(dateStr.substring(11, 13));
+        const second = parseInt(dateStr.substring(13, 15));
+        
+        const date = new Date(Date.UTC(year, month, day, hour, minute, second));
+        console.log(`🗑️ Parsed UTC EXDATE: ${dateStr} -> ${date.toISOString()}`);
+        return date;
+      }
+      
+      // Handle ISO format: 2025-09-20T11:18:00+02:00
+      const date = new Date(dateStr);
+      if (!isNaN(date.getTime())) {
+        console.log(`🗑️ Parsed ISO EXDATE: ${dateStr} -> ${date.toISOString()}`);
+        return date;
+      }
+      
+      console.warn(`🗑️ Could not parse EXDATE: ${dateStr}`);
+      return null;
+    } catch (error) {
+      console.error(`🗑️ Error parsing EXDATE ${dateStr}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Check if a date is in the EXDATE exceptions list
+   */
+  private isDateInExceptions(date: Date, exceptions: Date[]): boolean {
+    return exceptions.some(exceptionDate => {
+      // Compare dates by day (ignore time and timezone)
+      const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
+      const exceptionStr = exceptionDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      
+      const isMatch = dateStr === exceptionStr;
+      if (isMatch) {
+        console.log(`🗑️ Found EXDATE match: ${dateStr} matches ${exceptionStr}`);
+      }
+      
+      return isMatch;
+    });
   }
 }

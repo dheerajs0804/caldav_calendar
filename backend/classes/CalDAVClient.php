@@ -756,6 +756,7 @@ class CalDAVClient {
           <C:prop name="LOCATION"/>
           <C:prop name="UID"/>
           <C:prop name="RRULE"/>
+          <C:prop name="EXDATE"/>
           <C:prop name="STATUS"/>
           <C:prop name="TRANSP"/>
         </C:comp>
@@ -899,21 +900,38 @@ class CalDAVClient {
                 'updated_at' => date('c')
             ];
             
-            $currentProperty = '';
-            $propertyValue = '';
+            // First pass: handle line continuation (RFC 5545)
+            $unfoldedLines = [];
+            $currentLine = '';
             
             foreach ($lines as $line) {
+                $line = rtrim($line, "\r\n"); // Remove line endings
+                
+                // Check if this is a continuation line (starts with space or tab)
+                if (strlen($line) > 0 && ($line[0] === ' ' || $line[0] === "\t")) {
+                    // This is a continuation line, append to current line (remove leading space/tab)
+                    $currentLine .= substr($line, 1);
+                } else {
+                    // This is a new property line
+                    if ($currentLine !== '') {
+                        $unfoldedLines[] = $currentLine;
+                    }
+                    $currentLine = $line;
+                }
+            }
+            
+            // Add the last line
+            if ($currentLine !== '') {
+                $unfoldedLines[] = $currentLine;
+            }
+            
+            // Second pass: parse the unfolded lines
+            foreach ($unfoldedLines as $line) {
                 $line = trim($line);
                 
-                // Debug: Log each line being processed
-                if (strpos($line, 'RRULE:') === 0 || strpos($line, 'SUMMARY:') === 0 || strpos($line, 'UID:') === 0) {
-                    error_log("🔍 Processing iCalendar line: " . $line);
-                }
-                
-                // Handle line continuation
-                if (strpos($line, ' ') === 0) {
-                    $propertyValue .= substr($line, 1);
-                    continue;
+                // Debug: Log important lines being processed
+                if (strpos($line, 'RRULE:') === 0 || strpos($line, 'SUMMARY:') === 0 || strpos($line, 'UID:') === 0 || strpos($line, 'EXDATE:') === 0) {
+                    error_log("🔍 Processing unfolded iCalendar line: " . $line);
                 }
                 
                 // Parse iCalendar properties
@@ -952,6 +970,38 @@ class CalDAVClient {
                     error_log("🔍 Found RRULE in iCalendar: " . $rrule);
                     error_log("🔍 Parsed recurrence: " . json_encode($event['recurrence']));
                     error_log("🔍 Event recurrence set to: " . json_encode($event['recurrence']));
+                } elseif (strpos($line, 'EXDATE:') === 0) {
+                    $exdateRaw = substr($line, 7);
+                    
+                    // Handle EXDATE (can be multiple values separated by commas)
+                    if (!isset($event['exdate'])) {
+                        $event['exdate'] = [];
+                    }
+                    
+                    // Split by comma in case multiple EXDATEs are in one line
+                    $exdateValues = explode(',', $exdateRaw);
+                    
+                    foreach ($exdateValues as $exdate) {
+                        $exdate = trim($exdate);
+                        if (empty($exdate)) continue;
+                        
+                        // Parse EXDATE and convert to UTC format
+                        $parsedExdate = $this->parseExdateToUtc($exdate);
+                        
+                        // Only add if it's a valid UTC format
+                        if (preg_match('/^\d{8}T\d{6}Z$/', $parsedExdate)) {
+                            // Add this EXDATE to the array
+                            if (is_array($event['exdate'])) {
+                                $event['exdate'][] = $parsedExdate;
+                            } else {
+                                $event['exdate'] = [$event['exdate'], $parsedExdate];
+                            }
+                            error_log("🗑️ Found valid EXDATE in iCalendar: " . $exdate . " -> " . $parsedExdate);
+                        } else {
+                            error_log("🗑️ Skipping invalid EXDATE format: " . $exdate . " -> " . $parsedExdate);
+                        }
+                    }
+                    error_log("🗑️ Current EXDATE array after processing line: " . json_encode($event['exdate']));
                 } elseif (strpos($line, 'STATUS:') === 0) {
                     $event['status'] = strtolower(substr($line, 7));
                 } elseif (strpos($line, 'TRANSP:') === 0) {
@@ -1149,6 +1199,102 @@ class CalDAVClient {
         } catch (Exception $e) {
             error_log("Error parsing iCalendar date: " . $e->getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Parse EXDATE and convert to UTC format (YYYYMMDDTHHMMSSZ)
+     */
+    private function parseExdateToUtc($exdate) {
+        try {
+            error_log("🗑️ Parsing EXDATE: '" . $exdate . "'");
+            
+            // If already in UTC format (YYYYMMDDTHHMMSSZ), return as is
+            if (preg_match('/^\d{8}T\d{6}Z$/', $exdate)) {
+                error_log("🗑️ EXDATE already in UTC format: " . $exdate);
+                return $exdate;
+            }
+            
+            // Handle timezone format like TZID=Asia/Kolkata:20250820T180000
+            if (preg_match('/TZID=([^:]+):(\d{8}T\d{6})/', $exdate, $matches)) {
+                $timezone = $matches[1];
+                $dateTime = $matches[2];
+                error_log("🗑️ Found timezone EXDATE format: " . $timezone . " with datetime: " . $dateTime);
+                
+                // Parse YYYYMMDDTHHMMSS format
+                $year = substr($dateTime, 0, 4);
+                $month = substr($dateTime, 4, 2);
+                $day = substr($dateTime, 6, 2);
+                $hour = substr($dateTime, 9, 2);
+                $minute = substr($dateTime, 11, 2);
+                $second = substr($dateTime, 13, 2);
+                
+                // Create DateTime object with the specified timezone
+                $dateString = sprintf('%04d-%02d-%02d %02d:%02d:%02d', $year, $month, $day, $hour, $minute, $second);
+                
+                try {
+                    // Map common timezone names to valid PHP timezone identifiers
+                    $timezoneMap = [
+                        'Asia/Kolkata' => 'Asia/Kolkata',
+                        'Asia/Calcutta' => 'Asia/Kolkata',
+                        'Asia/New_Delhi' => 'Asia/Kolkata',
+                        'Asia/Mumbai' => 'Asia/Kolkata'
+                    ];
+                    
+                    $phpTimezone = $timezoneMap[$timezone] ?? $timezone;
+                    $timezoneObj = new DateTimeZone($phpTimezone);
+                    $dateTimeObj = new DateTime($dateString, $timezoneObj);
+                    
+                    // Convert to UTC
+                    $dateTimeObj->setTimezone(new DateTimeZone('UTC'));
+                    $utcFormat = $dateTimeObj->format('Ymd\THis\Z');
+                    
+                    error_log("🗑️ Converted timezone EXDATE: " . $exdate . " -> " . $utcFormat);
+                    return $utcFormat;
+                } catch (Exception $e) {
+                    error_log("🗑️ Failed to parse timezone EXDATE: " . $e->getMessage());
+                    return $exdate; // Return original if parsing fails
+                }
+            }
+            
+            // Handle standard YYYYMMDDTHHMMSS format (assume local time)
+            if (preg_match('/^(\d{8}T\d{6})$/', $exdate, $matches)) {
+                $dateTime = $matches[1];
+                $year = substr($dateTime, 0, 4);
+                $month = substr($dateTime, 4, 2);
+                $day = substr($dateTime, 6, 2);
+                $hour = substr($dateTime, 9, 2);
+                $minute = substr($dateTime, 11, 2);
+                $second = substr($dateTime, 13, 2);
+                
+                // Create DateTime object (assume local time)
+                $dateString = sprintf('%04d-%02d-%02d %02d:%02d:%02d', $year, $month, $day, $hour, $minute, $second);
+                $dateTimeObj = new DateTime($dateString);
+                
+                // Convert to UTC
+                $dateTimeObj->setTimezone(new DateTimeZone('UTC'));
+                $utcFormat = $dateTimeObj->format('Ymd\THis\Z');
+                
+                error_log("🗑️ Converted local EXDATE: " . $exdate . " -> " . $utcFormat);
+                return $utcFormat;
+            }
+            
+            // Handle ISO format (YYYY-MM-DDTHH:MM:SS+HH:MM)
+            if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/', $exdate)) {
+                $dateTimeObj = new DateTime($exdate);
+                $dateTimeObj->setTimezone(new DateTimeZone('UTC'));
+                $utcFormat = $dateTimeObj->format('Ymd\THis\Z');
+                
+                error_log("🗑️ Converted ISO EXDATE: " . $exdate . " -> " . $utcFormat);
+                return $utcFormat;
+            }
+            
+            error_log("🗑️ EXDATE format not recognized: " . $exdate);
+            return $exdate; // Return original if format not recognized
+            
+        } catch (Exception $e) {
+            error_log("🗑️ Error parsing EXDATE: " . $e->getMessage());
+            return $exdate; // Return original if parsing fails
         }
     }
     
@@ -1380,6 +1526,41 @@ class CalDAVClient {
         }
     }
     
+    public function getEvent($eventUrl, $authToken = null) {
+        try {
+            error_log("=== Getting CalDAV Event ===");
+            error_log("Event URL: " . $eventUrl);
+            
+            // Use provided auth token or get from instance
+            if (!$authToken) {
+                $authToken = $this->getAuthToken();
+            }
+            
+            if (!$authToken) {
+                throw new Exception('Failed to get authentication token');
+            }
+            
+            // Make GET request to retrieve the event
+            $response = $this->makeCalDAVRequest($eventUrl, 'GET', $authToken);
+            
+            error_log("CalDAV GET Response Status: " . $response['status']);
+            error_log("CalDAV GET Response Body Length: " . strlen($response['body']));
+            
+            if ($response['status'] >= 200 && $response['status'] < 300) {
+                // Parse the iCalendar content to extract event data
+                $eventData = $this->parseICalendarData($response['body']);
+                return $eventData;
+            } else {
+                error_log("Failed to get event: " . $response['status']);
+                return null;
+            }
+            
+        } catch (Exception $e) {
+            error_log("Error getting CalDAV event: " . $e->getMessage());
+            return null;
+        }
+    }
+
     public function updateEvent($calendarUrl, $uid, $icalEvent) {
         try {
             error_log("=== Updating CalDAV Event ===");
@@ -1416,6 +1597,141 @@ class CalDAVClient {
         } catch (Exception $e) {
             error_log("Error updating CalDAV event: " . $e->getMessage());
             throw $e;
+        }
+    }
+    
+    /**
+     * Parse individual iCalendar event content
+     */
+    private function parseICalendarEvent($icalContent) {
+        try {
+            $lines = explode("\n", $icalContent);
+            $eventData = [];
+            
+            // First pass: handle line continuation (RFC 5545)
+            $unfoldedLines = [];
+            $currentLine = '';
+            
+            foreach ($lines as $line) {
+                $line = rtrim($line, "\r\n"); // Remove line endings
+                
+                // Check if this is a continuation line (starts with space or tab)
+                if (strlen($line) > 0 && ($line[0] === ' ' || $line[0] === "\t")) {
+                    // This is a continuation line, append to current line (remove leading space/tab)
+                    $currentLine .= substr($line, 1);
+                } else {
+                    // This is a new property line
+                    if ($currentLine !== '') {
+                        $unfoldedLines[] = $currentLine;
+                    }
+                    $currentLine = $line;
+                }
+            }
+            
+            // Add the last line
+            if ($currentLine !== '') {
+                $unfoldedLines[] = $currentLine;
+            }
+            
+            // Second pass: parse the unfolded lines
+            foreach ($unfoldedLines as $line) {
+                $line = trim($line);
+                if (empty($line)) continue;
+                
+                // Parse iCalendar properties
+                if (strpos($line, ':') !== false) {
+                    list($property, $value) = explode(':', $line, 2);
+                    $property = trim($property);
+                    $value = trim($value);
+                    
+                    switch ($property) {
+                        case 'UID':
+                            $eventData['uid'] = $value;
+                            break;
+                        case 'SUMMARY':
+                            $eventData['title'] = $value;
+                            break;
+                        case 'DESCRIPTION':
+                            $eventData['description'] = $value;
+                            break;
+                        case 'LOCATION':
+                            $eventData['location'] = $value;
+                            break;
+                        case 'DTSTART':
+                            $eventData['start_time'] = $this->parseICalDate($value);
+                            break;
+                        case 'DTEND':
+                            $eventData['end_time'] = $this->parseICalDate($value);
+                            break;
+                        case 'RRULE':
+                            $eventData['recurrence'] = $this->parseRRULE($value);
+                            break;
+                        case 'EXDATE':
+                            // Handle EXDATE (can be multiple values separated by commas)
+                            if (!isset($eventData['exdate'])) {
+                                $eventData['exdate'] = [];
+                            }
+                            
+                            // Split by comma in case multiple EXDATEs are in one line
+                            $exdateValues = explode(',', $value);
+                            
+                            foreach ($exdateValues as $exdate) {
+                                $exdate = trim($exdate);
+                                if (empty($exdate)) continue;
+                                
+                                // Parse EXDATE and convert to UTC format
+                                $parsedExdate = $this->parseExdateToUtc($exdate);
+                                
+                                // Only add if it's a valid UTC format
+                                if (preg_match('/^\d{8}T\d{6}Z$/', $parsedExdate)) {
+                                    // Add this EXDATE to the array
+                                    if (is_array($eventData['exdate'])) {
+                                        $eventData['exdate'][] = $parsedExdate;
+                                    } else {
+                                        $eventData['exdate'] = [$eventData['exdate'], $parsedExdate];
+                                    }
+                                    error_log("🗑️ Found valid EXDATE in parseICalendarEvent: " . $exdate . " -> " . $parsedExdate);
+                                } else {
+                                    error_log("🗑️ Skipping invalid EXDATE format in parseICalendarEvent: " . $exdate . " -> " . $parsedExdate);
+                                }
+                            }
+                            break;
+                        case 'STATUS':
+                            $eventData['status'] = strtolower($value);
+                            break;
+                        case 'TRANSP':
+                            $eventData['availability'] = strtolower($value) === 'transparent' ? 'free' : 'busy';
+                            break;
+                    }
+                }
+            }
+            
+            return $eventData;
+            
+        } catch (Exception $e) {
+            error_log("Error parsing iCalendar event: " . $e->getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * Parse iCalendar date format
+     */
+    private function parseICalDate($dateString) {
+        try {
+            // Handle different iCalendar date formats
+            if (strpos($dateString, 'T') !== false) {
+                // DateTime format: 20250214T090000Z
+                $dateString = str_replace('Z', '', $dateString);
+                $dateString = substr($dateString, 0, 8) . 'T' . substr($dateString, 9);
+                return date('Y-m-d\TH:i:s.000\Z', strtotime($dateString));
+            } else {
+                // Date format: 20250214
+                return date('Y-m-d\TH:i:s.000\Z', strtotime($dateString));
+            }
+        } catch (Exception $e) {
+            error_log("Error parsing iCalendar date: " . $e->getMessage());
+            return $dateString;
         }
     }
     

@@ -27,6 +27,7 @@ export interface CalendarEvent {
   availability?: 'free' | 'busy' | 'tentative';
   status?: 'confirmed' | 'tentative' | 'cancelled';
   recurrence?: RecurrenceRule;
+  exdate?: string | string[]; // Exception dates for single occurrence deletions
   reminder?: {
     enabled: boolean;
     type: string;

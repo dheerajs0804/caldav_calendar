@@ -438,13 +438,16 @@ export class CalendarComponent implements OnInit, OnDestroy {
                   sampleEvent: eventsWithCalendar[0] || null
                 });
                 
-                // Debug recurrence data specifically
+                // Debug recurrence and EXDATE data specifically
                 eventsWithCalendar.forEach((event: CalendarEvent, index: number) => {
                   console.log(`🔄 Event ${index + 1} recurrence data:`, {
                     title: event.title,
                     recurrence: event.recurrence,
                     hasRecurrence: !!event.recurrence,
-                    recurrenceType: event.recurrence?.frequency || 'none'
+                    recurrenceType: event.recurrence?.frequency || 'none',
+                    exdate: event.exdate,
+                    hasExdate: !!event.exdate,
+                    exdateCount: event.exdate ? (Array.isArray(event.exdate) ? event.exdate.length : 1) : 0
                   });
                 });
               }
@@ -470,9 +473,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
         console.log('🔄 Recurrence expansion:', {
           originalCount: uniqueEvents.length,
           expandedCount: this.expandedEvents.length,
-          expansionRatio: this.expandedEvents.length / uniqueEvents.length,
-          deletedOccurrencesCount: this.getDeletedOccurrences().length,
-          deletedOccurrencesKeys: this.getDeletedOccurrences().map(d => d.uid)
+          expansionRatio: this.expandedEvents.length / uniqueEvents.length
         });
         
         console.log('Events loaded from all calendars:', uniqueEvents);
@@ -496,7 +497,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
             expandedCount: expandedEvents.length
           });
           
-          this.events = expandedEvents;
+          this.events = uniqueEvents;
+          this.expandedEvents = expandedEvents;
           console.log('Events loaded from selected calendar:', uniqueEvents);
           
           if (this.events.length > 0) {
@@ -721,20 +723,17 @@ export class CalendarComponent implements OnInit, OnDestroy {
     
     for (const event of events) {
       if (event.recurrence && event.recurrence.frequency !== 'never') {
-        // Expand recurring event
+        // Expand recurring event (EXDATE handling is done in the expansion service)
         const expanded = this.recurrenceExpansion.expandRecurringEvent(event, startDate, endDate);
         
-        // Filter out deleted occurrences
-        const filteredExpanded = this.filterDeletedOccurrences(expanded, event);
-        
-        expandedEvents.push(...filteredExpanded);
+        expandedEvents.push(...expanded);
         
         console.log(`🔄 Expanded "${event.title}":`, {
           original: 1,
           expanded: expanded.length,
-          filtered: filteredExpanded.length,
           frequency: event.recurrence.frequency,
-          count: event.recurrence.count
+          count: event.recurrence.count,
+          exdateCount: event.exdate ? (Array.isArray(event.exdate) ? event.exdate.length : 1) : 0
         });
       } else {
         // Non-recurring event, add as-is
@@ -745,31 +744,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
     return expandedEvents;
   }
 
-  // Filter out deleted occurrences from expanded events
-  private filterDeletedOccurrences(expandedEvents: CalendarEvent[], masterEvent: CalendarEvent): CalendarEvent[] {
-    const deletedOccurrences = this.getDeletedOccurrences();
-    const masterUid = masterEvent.uid;
-    
-    if (!deletedOccurrences || deletedOccurrences.length === 0) {
-      return expandedEvents;
-    }
-    
-    return expandedEvents.filter(event => {
-      // Check if this specific occurrence was deleted
-      const occurrenceKey = `${masterUid}_${event.occurrenceIndex}`;
-      const isDeleted = deletedOccurrences.some(deleted => 
-        deleted.uid === occurrenceKey && deleted.action === 'current'
-      );
-      
-      if (isDeleted) {
-        console.log('🗑️ Filtering out deleted occurrence:', occurrenceKey);
-      }
-      
-      return !isDeleted;
-    });
-  }
+  // Note: Deleted occurrences are now handled via EXDATE in the recurrence expansion service
 
-  // Get deleted occurrences from localStorage
+  // Get deleted occurrences from localStorage (legacy method - now using EXDATE)
   private getDeletedOccurrences(): any[] {
     try {
       const deletedEvents = localStorage.getItem('deleted_events');
@@ -780,7 +757,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Save deleted occurrence to localStorage
+  // Save deleted occurrence to localStorage (legacy method - now using EXDATE)
   private saveDeletedOccurrence(event: CalendarEvent, masterUid: string): void {
     try {
       const deletedEvents = this.getDeletedOccurrences();
@@ -807,7 +784,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Check if all occurrences of a master event have been deleted individually
+  // Check if all occurrences of a master event have been deleted individually (legacy method)
   private checkIfAllOccurrencesDeleted(masterUid: string): boolean {
     try {
       // Find the master event to get its recurrence count
@@ -842,7 +819,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Delete master event from CalDAV server
+  // Delete master event from CalDAV server (legacy method)
   private async deleteMasterEventFromServer(masterUid: string, calendarUrl: string): Promise<void> {
     try {
       const deleteUrl = `http://localhost:8000/events/${masterUid}?calendar_url=${encodeURIComponent(calendarUrl)}&action=all`;
@@ -863,7 +840,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Clear deleted occurrences from localStorage for a specific master event
+  // Clear deleted occurrences from localStorage for a specific master event (legacy method)
   private clearDeletedOccurrencesForMaster(masterUid: string): void {
     try {
       const deletedEvents = this.getDeletedOccurrences();
@@ -1438,27 +1415,12 @@ export class CalendarComponent implements OnInit, OnDestroy {
           console.log('🗑️ After re-expansion:', this.expandedEvents.length);
           console.log('✅ All occurrences deleted successfully from server');
         } else if (action === 'current') {
-          // For 'current' deletion, save to localStorage and check if all occurrences are now deleted
-          this.saveDeletedOccurrence(event, eventIdentifier);
-          console.log('✅ Current occurrence deletion saved to localStorage');
+          // For 'current' deletion, the backend adds EXDATE to master event
+          // We need to refresh events to get the updated event with EXDATE
+          console.log('✅ Current occurrence deletion - EXDATE added to master event');
           
-          // Check if all occurrences of this master event are now deleted
-          const shouldDeleteFromServer = this.checkIfAllOccurrencesDeleted(eventIdentifier);
-          if (shouldDeleteFromServer) {
-            console.log('🗑️ All occurrences deleted individually - deleting master event from server');
-            await this.deleteMasterEventFromServer(eventIdentifier, event.calendar_url);
-            
-            // Remove the master event from local events array since it's now deleted from server
-            this.events = this.events.filter(e => {
-              const eventUid = e.uid || e.id;
-              return eventUid !== eventIdentifier;
-            });
-            
-            console.log('🗑️ Removed master event from local events array');
-          }
-          
-          // Re-expand events to apply the filtering
-          this.expandedEvents = this.expandRecurringEvents(this.events);
+          // Refresh events to get the updated event with EXDATE
+          await this.fetchEvents();
         }
         
         // Close any open modals

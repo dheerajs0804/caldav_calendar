@@ -557,6 +557,8 @@ function getEvents() {
                     'uid' => $event['uid'] ?? 'N/A',
                     'recurrence' => $event['recurrence'] ?? null,
                     'hasRecurrence' => !empty($event['recurrence']),
+                    'exdate' => $event['exdate'] ?? null,
+                    'hasExdate' => !empty($event['exdate']),
                     'status' => $event['status'] ?? 'N/A',
                     'availability' => $event['availability'] ?? 'N/A'
                 ]));
@@ -1139,13 +1141,38 @@ function generateICalEvent($event) {
             $ical .= "LAST-MODIFIED:{$dtstamp}\r\n";
             $ical .= "CLASS:PUBLIC\r\n";
             $ical .= "PRIORITY:5\r\n";
-            
-            error_log("📅 Added recurring event properties: SEQUENCE, CREATED, LAST-MODIFIED, CLASS, PRIORITY");
-        } else {
-            error_log("📅 No RRULE generated for recurrence: " . json_encode($event['recurrence']));
         }
-    } else {
-        error_log("📅 No recurrence data in event");
+    }
+    
+    // Add EXDATE (exception dates) for single occurrence deletions
+    if (!empty($event['exdate'])) {
+        if (is_array($event['exdate'])) {
+            // Sort EXDATEs chronologically for better CalDAV compatibility
+            $sortedExdates = $event['exdate'];
+            usort($sortedExdates, function($a, $b) {
+                return strcmp($a, $b);
+            });
+            
+            // Use separate EXDATE properties for each exception date
+            foreach ($sortedExdates as $exdate) {
+                // Validate EXDATE format before adding
+                if (preg_match('/^\d{8}T\d{6}Z$/', $exdate)) {
+                    $ical .= "EXDATE:{$exdate}\r\n";
+                    error_log("🗑️ Added individual EXDATE to iCalendar: " . $exdate);
+                } else {
+                    error_log("🗑️ Skipping malformed EXDATE: " . $exdate);
+                }
+            }
+            error_log("🗑️ Added " . count($sortedExdates) . " separate EXDATE properties");
+        } else {
+            // Validate single EXDATE format
+            if (preg_match('/^\d{8}T\d{6}Z$/', $event['exdate'])) {
+                $ical .= "EXDATE:{$event['exdate']}\r\n";
+                error_log("🗑️ Added single EXDATE to iCalendar: " . $event['exdate']);
+            } else {
+                error_log("🗑️ Skipping malformed single EXDATE: " . $event['exdate']);
+            }
+        }
     }
     
     // Debug: Log the complete iCalendar content
@@ -1167,6 +1194,135 @@ function generateICalEvent($event) {
     $ical .= "END:VCALENDAR\r\n";
     
     return $ical;
+}
+
+/**
+ * Calculate the specific occurrence date for a recurring event
+ */
+function calculateOccurrenceDate($event, $occurrenceIndex) {
+    error_log("🗑️ calculateOccurrenceDate called with index: " . $occurrenceIndex);
+    $startDate = new DateTime($event['start_time']);
+    $recurrence = $event['recurrence'] ?? null;
+    
+    if (!$recurrence || $recurrence['frequency'] === 'never') {
+        error_log("🗑️ No recurrence, returning start date");
+        return $startDate;
+    }
+    
+    $currentDate = clone $startDate;
+    error_log("🗑️ Starting from: " . $currentDate->format('Y-m-d H:i:s'));
+    
+    // Generate occurrences up to the specified index
+    for ($i = 0; $i < $occurrenceIndex; $i++) {
+        $currentDate = getNextOccurrenceDate($currentDate, $recurrence);
+        error_log("🗑️ After iteration " . ($i + 1) . ": " . $currentDate->format('Y-m-d H:i:s'));
+    }
+    
+    error_log("🗑️ Final calculated date: " . $currentDate->format('Y-m-d H:i:s'));
+    return $currentDate;
+}
+
+/**
+ * Fold long iCalendar lines according to RFC 5545 (75-character limit)
+ */
+function foldICalendarLine($line) {
+    if (strlen($line) <= 75) {
+        return $line;
+    }
+    
+    $folded = '';
+    $remaining = $line;
+    
+    while (strlen($remaining) > 75) {
+        $folded .= substr($remaining, 0, 75) . "\r\n ";
+        $remaining = substr($remaining, 75);
+    }
+    
+    if (!empty($remaining)) {
+        $folded .= $remaining;
+    }
+    
+    return $folded;
+}
+
+/**
+ * Normalize EXDATE to UTC format (YYYYMMDDTHHMMSSZ)
+ */
+function normalizeExdateToUtc($exdate) {
+    try {
+        // Clean the input first
+        $exdate = trim($exdate);
+        
+        // If already in UTC format (YYYYMMDDTHHMMSSZ), return as is
+        if (preg_match('/^\d{8}T\d{6}Z$/', $exdate)) {
+            error_log("🗑️ EXDATE already in UTC format: " . $exdate);
+            return $exdate;
+        }
+        
+        // If in ISO format (YYYY-MM-DDTHH:MM:SS+HH:MM), convert to UTC
+        if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/', $exdate)) {
+            $date = new DateTime($exdate);
+            $date->setTimezone(new DateTimeZone('UTC'));
+            $normalized = $date->format('Ymd\THis\Z');
+            error_log("🗑️ Converted ISO EXDATE: '$exdate' -> '$normalized'");
+            return $normalized;
+        }
+        
+        // If in other formats, try to parse and convert
+        $date = new DateTime($exdate);
+        $date->setTimezone(new DateTimeZone('UTC'));
+        $normalized = $date->format('Ymd\THis\Z');
+        error_log("🗑️ Converted other format EXDATE: '$exdate' -> '$normalized'");
+        return $normalized;
+        
+    } catch (Exception $e) {
+        error_log("🗑️ Error normalizing EXDATE '$exdate': " . $e->getMessage());
+        
+        // If parsing fails, try to clean up the format manually
+        $cleaned = preg_replace('/[^0-9TZ]/', '', $exdate);
+        
+        // Fix common corruption patterns
+        $cleaned = preg_replace('/T{2,}/', 'T', $cleaned); // Remove double T
+        $cleaned = preg_replace('/Z{2,}/', 'Z', $cleaned); // Remove double Z
+        
+        if (preg_match('/^\d{8}T\d{6}Z$/', $cleaned)) {
+            error_log("🗑️ Fixed corrupted EXDATE: '$exdate' -> '$cleaned'");
+            return $cleaned;
+        }
+        
+        error_log("🗑️ Could not normalize EXDATE, returning original: " . $exdate);
+        return $exdate; // Return original if all else fails
+    }
+}
+
+/**
+ * Get the next occurrence date based on recurrence rule
+ */
+function getNextOccurrenceDate($currentDate, $recurrence) {
+    $nextDate = clone $currentDate;
+    $frequency = $recurrence['frequency'];
+    $interval = $recurrence['interval'] ?? 1;
+    
+    switch ($frequency) {
+        case 'daily':
+            $nextDate->add(new DateInterval('P' . $interval . 'D'));
+            break;
+        case 'weekly':
+            $nextDate->add(new DateInterval('P' . $interval . 'W'));
+            break;
+        case 'monthly':
+            $nextDate->add(new DateInterval('P' . $interval . 'M'));
+            break;
+        case 'annually':
+            $nextDate->add(new DateInterval('P' . $interval . 'Y'));
+            break;
+        default:
+            // Default to daily
+            $nextDate->add(new DateInterval('P' . $interval . 'D'));
+            break;
+    }
+    
+    return $nextDate;
 }
 
 function updateCalendar($id) {
@@ -1710,13 +1866,103 @@ function deleteEvent($id) {
                         error_log("❌ Failed to delete FUTURE occurrences from CalDAV server");
                     }
                 } else if ($action === 'current') {
-                    // For current occurrence deletion, we DON'T delete from CalDAV server
-                    // Instead, we only track it locally and let the frontend handle the filtering
-                    error_log("🗑️ CURRENT occurrence deletion: NOT deleting from CalDAV server");
-                    error_log("🗑️ CURRENT occurrence will be handled by frontend filtering");
+                    // For current occurrence deletion, add EXDATE to master event
+                    error_log("🗑️ CURRENT occurrence deletion: Adding EXDATE to master event");
                     
-                    // Don't delete from CalDAV server for current occurrence
-                    $deletedFromServer = false;
+                    try {
+                        // Get the occurrence index from the request
+                        $occurrenceIndex = $_GET['occurrence_index'] ?? '0';
+                        error_log("🗑️ Occurrence index from request: " . $occurrenceIndex);
+                        error_log("🗑️ All GET parameters: " . json_encode($_GET));
+                        
+                        // Calculate the specific occurrence date
+                        error_log("🗑️ Calculating occurrence date for index: " . $occurrenceIndex);
+                        error_log("🗑️ Event start time: " . $eventToDelete['start_time']);
+                        error_log("🗑️ Event recurrence: " . json_encode($eventToDelete['recurrence']));
+                        $occurrenceDate = calculateOccurrenceDate($eventToDelete, intval($occurrenceIndex));
+                        error_log("🗑️ Calculated occurrence date: " . $occurrenceDate->format('Y-m-d H:i:s'));
+                        
+                        // Get the current event data from CalDAV
+                        $currentEventData = $caldavClient->getEvent($eventUrl, $caldavClient->getAuthToken());
+                        
+                        if ($currentEventData) {
+                            // Add EXDATE to the event (convert to UTC)
+                            $occurrenceDate->setTimezone(new DateTimeZone('UTC'));
+                            $exdateString = $occurrenceDate->format('Ymd\THis\Z');
+                            
+                            // Handle existing EXDATE (can be array or single value)
+                            if (isset($currentEventData['exdate'])) {
+                                error_log("🗑️ Existing EXDATE found: " . json_encode($currentEventData['exdate']));
+                                
+                                // Normalize existing EXDATEs to UTC format
+                                $normalizedExisting = [];
+                                if (is_array($currentEventData['exdate'])) {
+                                    foreach ($currentEventData['exdate'] as $existingExdate) {
+                                        // Convert existing EXDATE to UTC format if needed
+                                        $normalizedExisting[] = normalizeExdateToUtc($existingExdate);
+                                    }
+                                } else {
+                                    $normalizedExisting[] = normalizeExdateToUtc($currentEventData['exdate']);
+                                }
+                                
+                                // Check if this EXDATE already exists to avoid duplicates
+                                $exdateExists = in_array($exdateString, $normalizedExisting);
+                                
+                                if ($exdateExists) {
+                                    error_log("🗑️ EXDATE already exists, skipping: " . $exdateString);
+                                } else {
+                                    $normalizedExisting[] = $exdateString;
+                                    $currentEventData['exdate'] = $normalizedExisting;
+                                    error_log("🗑️ Added new EXDATE to existing array: " . $exdateString);
+                                }
+                            } else {
+                                $currentEventData['exdate'] = $exdateString;
+                                error_log("🗑️ Created new EXDATE: " . $exdateString);
+                            }
+                            
+                            error_log("🗑️ Added EXDATE: " . $exdateString);
+                            error_log("🗑️ Updated event EXDATE: " . json_encode($currentEventData['exdate']));
+                            
+                            // Check if all occurrences are now deleted (EXDATE count >= recurrence count)
+                            $recurrenceCount = $currentEventData['recurrence']['count'] ?? 0;
+                            $exdateCount = is_array($currentEventData['exdate']) ? count($currentEventData['exdate']) : 1;
+                            
+                            error_log("🗑️ Recurrence count: " . $recurrenceCount);
+                            error_log("🗑️ EXDATE count: " . $exdateCount);
+                            
+                            if ($exdateCount >= $recurrenceCount) {
+                                // All occurrences are deleted, delete the entire master event
+                                error_log("🗑️ All occurrences deleted, removing master event from server");
+                                $deleteResult = $caldavClient->deleteEvent($eventUrl, $caldavClient->getAuthToken());
+                                
+                                if ($deleteResult) {
+                                    $deletedFromServer = true;
+                                    error_log("✅ Successfully deleted master event (all occurrences deleted)");
+                                } else {
+                                    error_log("❌ Failed to delete master event after all occurrences deleted");
+                                }
+                            } else {
+                                // Generate iCalendar content for the updated event
+                                $updatedICal = generateICalEvent($currentEventData);
+                                
+                                // Update the event on CalDAV server
+                                $updateResult = $caldavClient->updateEvent($calendarUrl, $eventToDelete['uid'], $updatedICal);
+                                
+                                if ($updateResult && $updateResult['success']) {
+                                    $deletedFromServer = true;
+                                    error_log("✅ Successfully added EXDATE to master event on CalDAV server");
+                                } else {
+                                    error_log("❌ Failed to update master event with EXDATE");
+                                    error_log("❌ Update result: " . json_encode($updateResult));
+                                }
+                            }
+                        } else {
+                            error_log("❌ Could not retrieve current event data for EXDATE update");
+                        }
+                    } catch (Exception $exdateError) {
+                        error_log("❌ Error handling EXDATE: " . $exdateError->getMessage());
+                        $deletedFromServer = false;
+                    }
                 }
             } else {
                 error_log("❌ Event not found in CalDAV server or missing UID.");
@@ -1745,23 +1991,11 @@ function deleteEvent($id) {
         // If we found the UID, track it; otherwise track by the passed ID as fallback
         $uidToTrack = $actualUid ?? $id;
         
-        // For "current" deletion, track the specific occurrence ID
+        // For "current" deletion, don't track in deleted_events.json since we use EXDATE
         if ($action === 'current') {
-            // The frontend sends the master UID, but we need to track the specific occurrence
-            // We'll use the occurrence index to create a unique identifier
-            $occurrenceIndex = $_GET['occurrence_index'] ?? '0';
-            $specificOccurrenceId = $uidToTrack . '_' . $occurrenceIndex;
-            
-            $deletedEventInfo = [
-                'uid' => $specificOccurrenceId, // Track the specific occurrence
-                'title' => 'Current occurrence deleted',
-                'deleted_at' => date('c'),
-                'deleted_by' => 'user',
-                'action' => $action,
-                'master_uid' => $uidToTrack, // Keep reference to master for debugging
-                'occurrence_index' => $occurrenceIndex // Track which occurrence was deleted
-            ];
-            error_log("🗑️ Tracking CURRENT occurrence deletion for specific ID: " . $specificOccurrenceId . " (Master UID: " . $uidToTrack . ", Index: " . $occurrenceIndex . ")");
+            error_log("🗑️ CURRENT deletion: Using EXDATE instead of deleted_events.json tracking");
+            // Skip tracking for current deletion since EXDATE handles it
+            $deletedEventInfo = null;
         } else {
             // For "all" and "future" deletions, track the master UID
             $deletedEventInfo = [
@@ -1774,16 +2008,18 @@ function deleteEvent($id) {
             error_log("🗑️ Tracking " . strtoupper($action) . " deletion for master UID: " . $uidToTrack);
         }
         
-        // Check if already in deleted list
+        // Check if already in deleted list (only for non-current deletions)
         $alreadyDeleted = false;
-        foreach ($deletedEvents as $deletedEvent) {
-            if ($deletedEvent['uid'] === $deletedEventInfo['uid']) {
-                $alreadyDeleted = true;
-                break;
+        if ($deletedEventInfo) {
+            foreach ($deletedEvents as $deletedEvent) {
+                if ($deletedEvent['uid'] === $deletedEventInfo['uid']) {
+                    $alreadyDeleted = true;
+                    break;
+                }
             }
         }
         
-        if (!$alreadyDeleted) {
+        if (!$alreadyDeleted && $deletedEventInfo) {
             $deletedEvents[] = $deletedEventInfo;
             file_put_contents($deletedEventsFile, json_encode($deletedEvents, JSON_PRETTY_PRINT));
             error_log("Added event to deleted events tracking with UID: " . $uidToTrack);
