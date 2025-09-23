@@ -168,6 +168,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
     // Always fetch calendars and show calendar view directly after login
     this.fetchCalendars();
     
+    // Set up periodic refresh to detect EXDATE changes from other clients
+    this.setupPeriodicRefresh();
+    
     // 🎨 Thunderbird-style: Expose color management methods to window for testing
     (window as any).calendarColorManager = {
       setColor: (calendarName: string, color: string) => this.setCalendarColor(calendarName, color),
@@ -449,6 +452,14 @@ export class CalendarComponent implements OnInit, OnDestroy {
                     hasExdate: !!event.exdate,
                     exdateCount: event.exdate ? (Array.isArray(event.exdate) ? event.exdate.length : 1) : 0
                   });
+                  
+                  // Special debug for events with EXDATE
+                  if (event.exdate) {
+                    console.log(`🗑️ FRONTEND EXDATE DEBUG: Event "${event.title}" has EXDATE:`, event.exdate);
+                    console.log(`🗑️ FRONTEND EXDATE DEBUG: EXDATE type:`, typeof event.exdate, Array.isArray(event.exdate) ? 'array' : 'not array');
+                    console.log(`🗑️ FRONTEND EXDATE DEBUG: Event UID:`, event.uid);
+                    console.log(`🗑️ FRONTEND EXDATE DEBUG: Event recurrence:`, event.recurrence);
+                  }
                 });
               }
             } catch (error) {
@@ -516,6 +527,17 @@ export class CalendarComponent implements OnInit, OnDestroy {
       console.error('Error loading events:', error);
       this.error = 'Error loading events';
     }
+  }
+
+  // Set up periodic refresh to detect EXDATE changes from other clients
+  private setupPeriodicRefresh(): void {
+    // Refresh events every 30 seconds to detect changes from other clients
+    setInterval(() => {
+      if (this.events.length > 0) {
+        console.log('🔄 Periodic refresh: checking for EXDATE changes from other clients');
+        this.fetchEvents();
+      }
+    }, 30000); // 30 seconds
   }
 
   // Start checking for reminders every minute

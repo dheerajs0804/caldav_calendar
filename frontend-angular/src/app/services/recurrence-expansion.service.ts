@@ -31,6 +31,8 @@ export class RecurrenceExpansionService {
     // Parse EXDATE exceptions
     const exceptionDates = this.parseExceptionDates(event.exdate);
     console.log('🗑️ EXDATE exceptions for', event.title, ':', exceptionDates);
+    console.log('🗑️ EXDATE raw data for', event.title, ':', event.exdate);
+    console.log('🗑️ EXDATE processing for event UID:', event.uid);
     
     // Generate occurrences
     while (occurrenceCount < maxOccurrences && currentDate <= endDate) {
@@ -45,6 +47,9 @@ export class RecurrenceExpansionService {
         } else {
           console.log('🗑️ Skipping occurrence due to EXDATE:', currentDate.toISOString().split('T')[0]);
         }
+        
+        // Debug: Log every occurrence check
+        console.log(`🗑️ Occurrence ${occurrenceCount} for ${event.title}: ${currentDate.toISOString().split('T')[0]} - ${isException ? 'EXCLUDED' : 'INCLUDED'}`);
       }
       
       // Move to next occurrence

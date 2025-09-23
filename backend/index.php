@@ -536,23 +536,30 @@ function getEvents() {
             return;
         }
         
-        // Get date range for events (default to current month)
-        $startDate = $_GET['start_date'] ?? date('Y-m-d', strtotime('-1 month'));
-        $endDate = $_GET['end_date'] ?? date('Y-m-d', strtotime('+1 month'));
+        // Get date range for events (default to wider range to capture EXDATE changes)
+        $startDate = $_GET['start_date'] ?? date('Y-m-d', strtotime('-6 months'));
+        $endDate = $_GET['end_date'] ?? date('Y-m-d', strtotime('+6 months'));
         
         // Convert dates to CalDAV format (Ymd\THis\Z)
         $startDateCalDAV = date('Ymd\THis\Z', strtotime($startDate));
         $endDateCalDAV = date('Ymd\THis\Z', strtotime($endDate));
         
         // Fetch real events from CalDAV server
-        $events = $caldavClient->getEvents($selectedCalendarUrl, $startDateCalDAV, $endDateCalDAV);
+        // Use getAllEvents to ensure we capture EXDATE changes from other clients
+        $events = $caldavClient->getAllEvents($selectedCalendarUrl);
+        
+        // If getAllEvents fails or returns empty, fallback to time-filtered query
+        if (empty($events)) {
+            error_log("getAllEvents returned empty, falling back to time-filtered query");
+            $events = $caldavClient->getEvents($selectedCalendarUrl, $startDateCalDAV, $endDateCalDAV);
+        }
         
         if ($events && is_array($events)) {
             // Send all events to frontend - let frontend handle filtering
             // Debug: Log event data before sending response
             error_log("=== Events being sent to frontend ===");
             foreach ($events as $index => $event) {
-                error_log("Event " . ($index + 1) . ": " . json_encode([
+                $eventData = [
                     'title' => $event['title'] ?? 'N/A',
                     'uid' => $event['uid'] ?? 'N/A',
                     'recurrence' => $event['recurrence'] ?? null,
@@ -561,7 +568,16 @@ function getEvents() {
                     'hasExdate' => !empty($event['exdate']),
                     'status' => $event['status'] ?? 'N/A',
                     'availability' => $event['availability'] ?? 'N/A'
-                ]));
+                ];
+                
+                error_log("Event " . ($index + 1) . ": " . json_encode($eventData));
+                
+                // Special logging for events with EXDATE
+                if (!empty($event['exdate'])) {
+                    error_log("🗑️ EXDATE DEBUG: Event '" . $event['title'] . "' has EXDATE: " . json_encode($event['exdate']));
+                    error_log("🗑️ EXDATE DEBUG: Event UID: " . $event['uid']);
+                    error_log("🗑️ EXDATE DEBUG: Event recurrence: " . json_encode($event['recurrence']));
+                }
             }
             
             sendJsonResponse([

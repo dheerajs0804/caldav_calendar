@@ -652,6 +652,19 @@ class CalDAVClient {
                 error_log("Status: " . $response['status']);
                 error_log("Response body length: " . strlen($response['body']));
                 
+                // Check if EXDATE is mentioned in the time-filtered response
+                if (strpos($response['body'], 'EXDATE') !== false) {
+                    error_log("✅ EXDATE found in time-filtered response");
+                    
+                    // Extract and log all EXDATE values found
+                    preg_match_all('/EXDATE:([^\r\n]+)/', $response['body'], $exdateMatches);
+                    if (!empty($exdateMatches[1])) {
+                        error_log("🗑️ All EXDATE values in time-filtered response: " . implode(', ', $exdateMatches[1]));
+                    }
+                } else {
+                    error_log("❌ EXDATE NOT found in time-filtered response");
+                }
+                
                 // Parse the XML response to extract events
                 $events = $this->parseCalendarEvents($response['body']);
                 
@@ -674,6 +687,75 @@ class CalDAVClient {
             error_log("Error getting CalDAV events: " . $e->getMessage());
             // Don't return mock events on error - let the caller handle it
             throw $e;
+        }
+    }
+    
+    /**
+     * Get all events from calendar without time filter (for EXDATE synchronization)
+     */
+    public function getAllEvents($calendarUrl) {
+        try {
+            error_log("=== Getting ALL Events from CalDAV (no time filter) ===");
+            error_log("Calendar URL: " . $calendarUrl);
+            
+            $authToken = $this->getAuthToken();
+            if (!$authToken) {
+                throw new Exception('Failed to get authentication token');
+            }
+            
+            // Generate the calendar report XML without time filter
+            $reportXml = $this->getCalendarReportXmlAllEvents();
+            error_log("Calendar Report XML (all events): " . $reportXml);
+            
+            // Make the REPORT request
+            $response = $this->makeCalDAVRequest($calendarUrl, 'REPORT', $authToken, [
+                'Content-Type: application/xml; charset=utf-8',
+                'Depth: 1'
+            ], $reportXml);
+            
+            error_log("CalDAV REPORT (all events) Response Status: " . $response['status']);
+            error_log("CalDAV REPORT (all events) Response Body Length: " . strlen($response['body']));
+            
+            if ($response['status'] >= 200 && $response['status'] < 300) {
+                // Log the raw response to debug EXDATE issues
+                error_log("=== Raw CalDAV Response (All Events) ===");
+                error_log("Response length: " . strlen($response['body']));
+                error_log("First 1000 chars: " . substr($response['body'], 0, 1000));
+                
+                // Check if EXDATE is mentioned in the response
+                if (strpos($response['body'], 'EXDATE') !== false) {
+                    error_log("✅ EXDATE found in raw response");
+                    
+                    // Extract and log all EXDATE values found
+                    preg_match_all('/EXDATE:([^\r\n]+)/', $response['body'], $exdateMatches);
+                    if (!empty($exdateMatches[1])) {
+                        error_log("🗑️ All EXDATE values in response: " . implode(', ', $exdateMatches[1]));
+                    }
+                } else {
+                    error_log("❌ EXDATE NOT found in raw response");
+                }
+                
+                // Parse the response to extract events
+                $events = $this->parseCalendarEvents($response['body']);
+                error_log("Successfully parsed " . count($events) . " events (all events)");
+                
+                // Log EXDATE information for each event
+                foreach ($events as $index => $event) {
+                    if (!empty($event['exdate'])) {
+                        error_log("Event " . ($index + 1) . " has EXDATE: " . json_encode($event['exdate']));
+                    }
+                }
+                
+                return $events;
+            } else {
+                error_log("CalDAV REPORT (all events) failed with status: " . $response['status']);
+                error_log("Response body: " . substr($response['body'], 0, 500));
+                return [];
+            }
+            
+        } catch (Exception $e) {
+            error_log("Error getting all events from CalDAV: " . $e->getMessage());
+            return [];
         }
     }
     
@@ -768,6 +850,39 @@ class CalDAVClient {
       <C:comp-filter name="VEVENT">
         <C:time-range start="' . $startDate . '" end="' . $endDate . '"/>
       </C:comp-filter>
+    </C:comp-filter>
+  </C:filter>
+</C:calendar-query>';
+    }
+    
+    /**
+     * Get calendar report XML without time filter to fetch all events (for EXDATE synchronization)
+     */
+    public function getCalendarReportXmlAllEvents() {
+        return '<?xml version="1.0" encoding="utf-8" ?>
+<C:calendar-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+  <D:prop>
+    <D:getetag/>
+    <C:calendar-data>
+      <C:comp name="VCALENDAR">
+        <C:comp name="VEVENT">
+          <C:prop name="SUMMARY"/>
+          <C:prop name="DESCRIPTION"/>
+          <C:prop name="DTSTART"/>
+          <C:prop name="DTEND"/>
+          <C:prop name="LOCATION"/>
+          <C:prop name="UID"/>
+          <C:prop name="RRULE"/>
+          <C:prop name="EXDATE"/>
+          <C:prop name="STATUS"/>
+          <C:prop name="TRANSP"/>
+        </C:comp>
+      </C:comp>
+    </C:calendar-data>
+  </D:prop>
+  <C:filter>
+    <C:comp-filter name="VCALENDAR">
+      <C:comp-filter name="VEVENT"/>
     </C:comp-filter>
   </C:filter>
 </C:calendar-query>';
@@ -930,7 +1045,7 @@ class CalDAVClient {
                 $line = trim($line);
                 
                 // Debug: Log important lines being processed
-                if (strpos($line, 'RRULE:') === 0 || strpos($line, 'SUMMARY:') === 0 || strpos($line, 'UID:') === 0 || strpos($line, 'EXDATE:') === 0) {
+                if (strpos($line, 'RRULE:') === 0 || strpos($line, 'SUMMARY:') === 0 || strpos($line, 'UID:') === 0 || strpos($line, 'EXDATE') === 0) {
                     error_log("🔍 Processing unfolded iCalendar line: " . $line);
                 }
                 
@@ -970,8 +1085,16 @@ class CalDAVClient {
                     error_log("🔍 Found RRULE in iCalendar: " . $rrule);
                     error_log("🔍 Parsed recurrence: " . json_encode($event['recurrence']));
                     error_log("🔍 Event recurrence set to: " . json_encode($event['recurrence']));
-                } elseif (strpos($line, 'EXDATE:') === 0) {
-                    $exdateRaw = substr($line, 7);
+                } elseif (strpos($line, 'EXDATE') === 0) {
+                    // Handle both EXDATE: and EXDATE;TZID= formats
+                    if (strpos($line, 'EXDATE:') === 0) {
+                        $exdateRaw = substr($line, 7);
+                    } else {
+                        // Handle EXDATE;TZID=timezone:datetime format
+                        $exdateRaw = $line; // Pass the whole line to parseExdateToUtc
+                    }
+                    error_log("🗑️ DEBUG: Found EXDATE line: " . $line);
+                    error_log("🗑️ DEBUG: Raw EXDATE value: " . $exdateRaw);
                     
                     // Handle EXDATE (can be multiple values separated by commas)
                     if (!isset($event['exdate'])) {
@@ -980,10 +1103,13 @@ class CalDAVClient {
                     
                     // Split by comma in case multiple EXDATEs are in one line
                     $exdateValues = explode(',', $exdateRaw);
+                    error_log("🗑️ DEBUG: Split into " . count($exdateValues) . " EXDATE values");
                     
                     foreach ($exdateValues as $exdate) {
                         $exdate = trim($exdate);
                         if (empty($exdate)) continue;
+                        
+                        error_log("🗑️ DEBUG: Processing EXDATE: " . $exdate);
                         
                         // Parse EXDATE and convert to UTC format
                         $parsedExdate = $this->parseExdateToUtc($exdate);
