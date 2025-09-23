@@ -146,7 +146,18 @@ export class DayViewComponent {
   }
 
   getEventsForDay(): CalendarEvent[] {
-    return this.events.filter(event => dayjs(event.start_time).isSame(this.date, 'day'));
+    return this.events.filter(event => {
+      const eventStart = dayjs(event.start_time);
+      const eventEnd = dayjs(event.end_time);
+      
+      // Include events that:
+      // 1. Start on this day, OR
+      // 2. End on this day, OR  
+      // 3. Span across this day (start before and end after)
+      return eventStart.isSame(this.date, 'day') || 
+             eventEnd.isSame(this.date, 'day') || 
+             (eventStart.isBefore(this.date, 'day') && eventEnd.isAfter(this.date, 'day'));
+    });
   }
 
   getAllDayEvents(): CalendarEvent[] {
@@ -217,9 +228,30 @@ export class DayViewComponent {
     if (event.all_day) {
       return 'All Day';
     }
+    
     const eventStart = this.parseEventTime(event.start_time);
     const eventEnd = this.parseEventTime(event.end_time);
-    return `${eventStart.format('HH:mm')} - ${eventEnd.format('HH:mm')}`;
+    
+    // Check if this is a multi-day event
+    const isMultiDayEvent = !eventStart.isSame(eventEnd, 'day');
+    const isEventStartingToday = eventStart.isSame(this.date, 'day');
+    const isEventEndingToday = eventEnd.isSame(this.date, 'day');
+    
+    if (isMultiDayEvent) {
+      if (isEventStartingToday) {
+        // Event starts today - show start time to end of day
+        return `${eventStart.format('HH:mm')} - 23:59`;
+      } else if (isEventEndingToday) {
+        // Event ends today - show start of day to end time
+        return `00:00 - ${eventEnd.format('HH:mm')}`;
+      } else {
+        // Event spans across this day - show full day
+        return 'All Day';
+      }
+    } else {
+      // Single day event - show normal time range
+      return `${eventStart.format('HH:mm')} - ${eventEnd.format('HH:mm')}`;
+    }
   }
 
   getEventTitle(event: CalendarEvent): string {
@@ -241,16 +273,45 @@ export class DayViewComponent {
     const eventStart = this.parseEventTime(event.start_time);
     const eventEnd = this.parseEventTime(event.end_time);
     
-    // Calculate base positioning
-    const startMinutes = eventStart.hour() * 60 + eventStart.minute();
+    // Check if this is a multi-day event
+    const isMultiDayEvent = !eventStart.isSame(eventEnd, 'day');
+    const isEventStartingToday = eventStart.isSame(this.date, 'day');
+    const isEventEndingToday = eventEnd.isSame(this.date, 'day');
+    
+    let startMinutes, durationMinutes;
+    
+    if (isMultiDayEvent) {
+      if (isEventStartingToday) {
+        // Event starts today - position from actual start time
+        startMinutes = eventStart.hour() * 60 + eventStart.minute();
+        // Calculate duration until end of day (23:59)
+        const endOfDay = this.date.endOf('day');
+        durationMinutes = endOfDay.diff(eventStart, 'minute');
+      } else if (isEventEndingToday) {
+        // Event ends today - position from start of day (00:00)
+        startMinutes = 0;
+        // Calculate duration from start of day to actual end time
+        const startOfDay = this.date.startOf('day');
+        durationMinutes = eventEnd.diff(startOfDay, 'minute');
+      } else {
+        // Event spans across this day - show full day
+        startMinutes = 0;
+        // Full day duration (24 hours)
+        durationMinutes = 24 * 60;
+      }
+    } else {
+      // Single day event - use original logic
+      startMinutes = eventStart.hour() * 60 + eventStart.minute();
+      durationMinutes = eventEnd.diff(eventStart, 'minute');
+    }
+    
     const gridPixelsPerMinute = 64 / 60;
     const topPositionPixels = startMinutes * gridPixelsPerMinute;
     
     // Position events relative to the time grid container (no header offset needed)
     const adjustedTopPosition = topPositionPixels;
     
-    // Calculate duration in minutes
-    const durationMinutes = eventEnd.diff(eventStart, 'minute');
+    // Calculate height in pixels
     const heightPositionPixels = durationMinutes * gridPixelsPerMinute;
     
     // Determine if this event is part of the global overlapping group

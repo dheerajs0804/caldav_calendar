@@ -5980,5 +5980,98 @@
             "relativeTo": "start"
         },
         "valarm": null
+    },
+    {
+        "id": "event_68d26bc320762",
+        "title": "multiday event",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-23T12:00:00",
+        "end_time": "2025-09-24T06:00:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/A54BA145-A520-0365-3A6F-A227594D7593\/",
+        "color": "#4285f4",
+        "uid": "uid_68d26bc32076c",
+        "etag": "etag_68d26bc32076d",
+        "created_at": "2025-09-23T11:43:31+02:00",
+        "updated_at": "2025-09-23T11:43:31+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "never",
+            "interval": 1
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68d26c3643af2",
+        "title": "multiday event 2",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-23T15:00:00",
+        "end_time": "2025-09-24T06:00:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68d26c3643b16",
+        "etag": "etag_68d26c3643b17",
+        "created_at": "2025-09-23T11:45:26+02:00",
+        "updated_at": "2025-09-23T11:45:26+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "never",
+            "interval": 1
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68d26dce6c4f4",
+        "title": "multi day event 3",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-23T15:22:00",
+        "end_time": "2025-09-24T16:22:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68d26dce6c4fb",
+        "etag": "etag_68d26dce6c4fc",
+        "created_at": "2025-09-23T11:52:14+02:00",
+        "updated_at": "2025-09-23T11:52:14+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "never",
+            "interval": 1
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
     }
 ]

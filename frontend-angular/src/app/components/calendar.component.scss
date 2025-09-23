@@ -492,11 +492,107 @@
   padding: 20px;
 }
 
+.agenda-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
 .agenda-view h2 {
-  margin: 0 0 20px 0;
+  margin: 0;
   color: #333;
   font-size: 20px;
   font-weight: 600;
+}
+
+.range-selector {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.range-selector label {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.range-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.range-input {
+  width: 100px;
+  padding: 8px 12px;
+  border: 1px solid #e1e5e9;
+  border-radius: 6px;
+  background: white;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+}
+
+.range-input:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.range-dropdown-arrow {
+  position: absolute;
+  right: 8px;
+  cursor: pointer;
+  color: #666;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.range-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border: 1px solid #e1e5e9;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  min-width: 120px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.range-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+  border-bottom: 1px solid #f1f3f4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.range-option:last-child {
+  border-bottom: none;
+}
+
+.range-option:hover {
+  background: #f8f9fa;
+}
+
+.range-option.selected {
+  background: #fff3cd;
+  color: #333;
+}
+
+.checkmark {
+  color: #333;
+  font-weight: bold;
+  font-size: 12px;
 }
 
 .agenda-events {
@@ -507,8 +603,8 @@
 
 .agenda-event {
   display: flex;
-  align-items: center;
-  gap: 16px;
+  flex-direction: column;
+  gap: 4px;
   padding: 16px;
   border: 1px solid #e1e5e9;
   border-radius: 8px;
@@ -521,21 +617,34 @@
   border-color: #667eea;
 }
 
-.event-time {
+.event-date {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.event-time-span {
   font-weight: 500;
   color: #667eea;
-  min-width: 80px;
+  font-size: 14px;
 }
 
 .event-title {
   font-weight: 500;
   color: #333;
-  flex: 1;
+  font-size: 16px;
 }
 
 .event-location {
   color: #666;
   font-size: 14px;
+}
+
+.event-calendar {
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .event-calendar {

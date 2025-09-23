@@ -80,12 +80,37 @@ export class WeekViewComponent {
     const HOUR_HEIGHT = 64; // pixels per hour
     const MINUTE_HEIGHT = HOUR_HEIGHT / 60; // pixels per minute
 
-    // Calculate position from start of day (00:00)
-    const startMinutes = eventStart.hour() * 60 + eventStart.minute();
-    const endMinutes = eventEnd.hour() * 60 + eventEnd.minute();
+    // Check if this is a multi-day event
+    const isMultiDayEvent = !eventStart.isSame(eventEnd, 'day');
+    const isEventStartingToday = eventStart.isSame(day, 'day');
+    const isEventEndingToday = eventEnd.isSame(day, 'day');
 
-    const topPixels = startMinutes * MINUTE_HEIGHT;
-    const heightPixels = (endMinutes - startMinutes) * MINUTE_HEIGHT;
+    let startMinutes, endMinutes, topPixels, heightPixels;
+
+    if (isMultiDayEvent) {
+      if (isEventStartingToday) {
+        // Event starts today - position from actual start time
+        startMinutes = eventStart.hour() * 60 + eventStart.minute();
+        // Calculate duration until end of day (23:59)
+        endMinutes = 24 * 60; // End of day
+      } else if (isEventEndingToday) {
+        // Event ends today - position from start of day (00:00)
+        startMinutes = 0;
+        // Calculate duration from start of day to actual end time
+        endMinutes = eventEnd.hour() * 60 + eventEnd.minute();
+      } else {
+        // Event spans across this day - show full day
+        startMinutes = 0;
+        endMinutes = 24 * 60; // Full day
+      }
+    } else {
+      // Single day event - use original logic
+      startMinutes = eventStart.hour() * 60 + eventStart.minute();
+      endMinutes = eventEnd.hour() * 60 + eventEnd.minute();
+    }
+
+    topPixels = startMinutes * MINUTE_HEIGHT;
+    heightPixels = (endMinutes - startMinutes) * MINUTE_HEIGHT;
 
     // Get all events for the current day
     const eventsForDay = allEvents.filter(e => {
@@ -248,7 +273,19 @@ export class WeekViewComponent {
   getEventsForDay(day: dayjs.Dayjs): CalendarEvent[] {
     const eventsForDay = this.events.filter(event => {
       const eventStart = this.parseEventTime(event.start_time);
-      return eventStart.isValid() && eventStart.isSame(day, 'day');
+      const eventEnd = this.parseEventTime(event.end_time);
+      
+      if (!eventStart.isValid() || !eventEnd.isValid()) {
+        return false;
+      }
+      
+      // Include events that:
+      // 1. Start on this day, OR
+      // 2. End on this day, OR  
+      // 3. Span across this day (start before and end after)
+      return eventStart.isSame(day, 'day') || 
+             eventEnd.isSame(day, 'day') || 
+             (eventStart.isBefore(day, 'day') && eventEnd.isAfter(day, 'day'));
     });
     console.log(`Events for day ${day.format('YYYY-MM-DD')}:`, eventsForDay.length);
     return eventsForDay;
@@ -276,9 +313,20 @@ export class WeekViewComponent {
     if (event.all_day) {
       return 'All Day';
     }
+    
     const eventStart = this.parseEventTime(event.start_time);
     const eventEnd = this.parseEventTime(event.end_time);
-    return `${eventStart.format('HH:mm')} - ${eventEnd.format('HH:mm')}`;
+    
+    // Check if this is a multi-day event
+    const isMultiDayEvent = !eventStart.isSame(eventEnd, 'day');
+    
+    if (isMultiDayEvent) {
+      // For multi-day events, show the full time range
+      return `${eventStart.format('MMM DD HH:mm')} - ${eventEnd.format('MMM DD HH:mm')}`;
+    } else {
+      // Single day event - show normal time range
+      return `${eventStart.format('HH:mm')} - ${eventEnd.format('HH:mm')}`;
+    }
   }
 
   getEventTitle(event: CalendarEvent): string {

@@ -166,14 +166,42 @@
       
       <!-- Agenda View -->
       <div *ngIf="currentView.type === 'agenda'" class="agenda-view">
-        <h2>Agenda View</h2>
+        <div class="agenda-header">
+          <h2>Agenda View</h2>
+          <div class="range-selector">
+            <label for="agenda-range">Range to display:</label>
+            <div class="range-input-container">
+              <input 
+                type="text" 
+                id="agenda-range"
+                [value]="agendaRange + ' days'"
+                readonly
+                class="range-input"
+                (click)="toggleRangeDropdown()"
+              >
+              <div class="range-dropdown-arrow" (click)="toggleRangeDropdown()">⏷</div>
+            </div>
+            <div *ngIf="showRangeDropdown" class="range-dropdown">
+              <div 
+                *ngFor="let option of getRangeOptions()"
+                class="range-option"
+                [class.selected]="agendaRange === option"
+                (click)="selectRange(option)"
+              >
+                <span *ngIf="agendaRange === option" class="checkmark">✓</span>
+                {{ option }} days
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="agenda-events">
           <div 
-            *ngFor="let event of expandedEvents | sortByStartTime"
+            *ngFor="let event of getAgendaEvents()"
             (click)="openEventDetailModal(event)"
             class="agenda-event"
           >
-            <div class="event-time">{{ formatTime(event.start_time, event.all_day) }}</div>
+            <div class="event-date">{{ formatEventDate(event.start_time) }}</div>
+            <div class="event-time-span">{{ formatTimeSpan(event) }}</div>
             <div class="event-title">{{ event.title }}</div>
             <div *ngIf="event.location" class="event-location">📍 {{ event.location }}</div>
             <div *ngIf="event.calendar_name" class="event-calendar" [style.color]="event.calendar_color">

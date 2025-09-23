@@ -53,8 +53,16 @@ export class MonthViewComponent {
 
   getEventsForDate(date: dayjs.Dayjs): CalendarEvent[] {
     return this.events.filter(event => {
-      const eventDate = dayjs(event.start_time);
-      return eventDate.isSame(date, 'day');
+      const eventStart = dayjs(event.start_time);
+      const eventEnd = dayjs(event.end_time);
+      
+      // Include events that:
+      // 1. Start on this day, OR
+      // 2. End on this day, OR  
+      // 3. Span across this day (start before and end after)
+      return eventStart.isSame(date, 'day') || 
+             eventEnd.isSame(date, 'day') || 
+             (eventStart.isBefore(date, 'day') && eventEnd.isAfter(date, 'day'));
     });
   }
 

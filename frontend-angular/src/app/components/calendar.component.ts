@@ -12,7 +12,6 @@ import { ReminderNotificationComponent, ReminderNotification, ReminderEvent } fr
 import { DateNavigationComponent } from './date-navigation.component';
 import { ExportModalComponent, ExportOptions } from './export-modal/export-modal.component';
 import { ImportModalComponent, ImportOptions } from './import-modal/import-modal.component';
-import { SortByStartTimePipe } from '../pipes/sort-by-start-time.pipe';
 import { EmailService } from '../services/email.service';
 import { AuthService } from '../services/auth.service';
 import { Router } from '@angular/router';
@@ -69,7 +68,7 @@ interface NewEvent {
 @Component({
   selector: 'app-calendar',
   standalone: true,
-  imports: [CommonModule, FormsModule, DayViewComponent, WeekViewComponent, MonthViewComponent, EventDetailModalComponent, ReminderNotificationComponent, DateNavigationComponent, ExportModalComponent, ImportModalComponent, SortByStartTimePipe, RecurringEventDeleteModalComponent],
+  imports: [CommonModule, FormsModule, DayViewComponent, WeekViewComponent, MonthViewComponent, EventDetailModalComponent, ReminderNotificationComponent, DateNavigationComponent, ExportModalComponent, ImportModalComponent, RecurringEventDeleteModalComponent],
   templateUrl: './calendar.component.html',
   styleUrls: ['./calendar.component.scss']
 })
@@ -96,6 +95,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
   selectedCalendar: any = null; // Store the selected calendar info
   showSidebar: boolean = true; // Show sidebar by default
   searchTerm: string = ''; // For filtering calendars in sidebar
+  agendaRange: number = 30; // Default agenda range in days
+  showRangeDropdown: boolean = false; // Control range dropdown visibility
   newEvent: NewEvent = {
     summary: '',
     location: '',
@@ -1810,8 +1811,16 @@ export class CalendarComponent implements OnInit, OnDestroy {
   // Get events for a specific day
   getEventsForDay(date: dayjs.Dayjs): CalendarEvent[] {
     return this.expandedEvents.filter(event => {
-      const eventDate = dayjs(event.start_time);
-      return eventDate.isSame(date, 'day');
+      const eventStart = dayjs(event.start_time);
+      const eventEnd = dayjs(event.end_time);
+      
+      // Include events that:
+      // 1. Start on this day, OR
+      // 2. End on this day, OR  
+      // 3. Span across this day (start before and end after)
+      return eventStart.isSame(date, 'day') || 
+             eventEnd.isSame(date, 'day') || 
+             (eventStart.isBefore(date, 'day') && eventEnd.isAfter(date, 'day'));
     });
   }
 
@@ -1830,6 +1839,67 @@ export class CalendarComponent implements OnInit, OnDestroy {
       return 'All Day';
     }
     return dayjs(time).format('h:mm A');
+  }
+
+  // Get events for agenda view within the selected range
+  getAgendaEvents(): CalendarEvent[] {
+    const startDate = this.currentDate.startOf('day');
+    const endDate = this.currentDate.add(this.agendaRange, 'day').endOf('day');
+    
+    return this.expandedEvents.filter(event => {
+      const eventStart = dayjs(event.start_time);
+      const eventEnd = dayjs(event.end_time);
+      
+      // Include events that start or end within the range
+      return (eventStart.isAfter(startDate) && eventStart.isBefore(endDate)) ||
+             (eventEnd.isAfter(startDate) && eventEnd.isBefore(endDate)) ||
+             (eventStart.isBefore(startDate) && eventEnd.isAfter(endDate));
+    }).sort((a, b) => {
+      // Sort by start time
+      return dayjs(a.start_time).isBefore(dayjs(b.start_time)) ? -1 : 1;
+    });
+  }
+
+  // Format time span for agenda events
+  formatTimeSpan(event: CalendarEvent): string {
+    if (event.all_day) {
+      return 'All Day';
+    }
+    
+    const eventStart = dayjs(event.start_time);
+    const eventEnd = dayjs(event.end_time);
+    
+    // Check if this is a multi-day event
+    const isMultiDayEvent = !eventStart.isSame(eventEnd, 'day');
+    
+    if (isMultiDayEvent) {
+      // For multi-day events, show the full time range with dates
+      return `${eventStart.format('MMM DD, h:mm A')} - ${eventEnd.format('MMM DD, h:mm A')}`;
+    } else {
+      // Single day event - show time range
+      return `${eventStart.format('h:mm A')} - ${eventEnd.format('h:mm A')}`;
+    }
+  }
+
+  // Get available range options
+  getRangeOptions(): number[] {
+    return [2, 5, 7, 14, 30, 60, 90, 180, 365];
+  }
+
+  // Toggle range dropdown visibility
+  toggleRangeDropdown(): void {
+    this.showRangeDropdown = !this.showRangeDropdown;
+  }
+
+  // Select a range option
+  selectRange(range: number): void {
+    this.agendaRange = range;
+    this.showRangeDropdown = false;
+  }
+
+  // Format event date for agenda view
+  formatEventDate(time: string): string {
+    return dayjs(time).format('MMM DD, YYYY');
   }
   
   // Export functionality

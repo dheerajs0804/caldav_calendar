@@ -1147,5 +1147,26 @@
         "deleted_at": "2025-09-23T11:30:41+02:00",
         "deleted_by": "user",
         "action": "all"
+    },
+    {
+        "uid": "uid_68d26bc32076c",
+        "title": "Event marked for deletion",
+        "deleted_at": "2025-09-23T11:44:57+02:00",
+        "deleted_by": "user",
+        "action": "all"
+    },
+    {
+        "uid": "uid_68d26c3643b16",
+        "title": "Event marked for deletion",
+        "deleted_at": "2025-09-23T11:51:40+02:00",
+        "deleted_by": "user",
+        "action": "all"
+    },
+    {
+        "uid": "uid_68d2696c957b1",
+        "title": "Event marked for deletion",
+        "deleted_at": "2025-09-23T11:56:48+02:00",
+        "deleted_by": "user",
+        "action": "all"
     }
 ]
