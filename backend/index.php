@@ -1,17 +1,41 @@
 <?php
+// IMMEDIATE PUT REQUEST DETECTION - BEFORE ANYTHING ELSE
+error_log("🔥🔥🔥 SERVER STARTED WITH UPDATED INDEX.PHP! 🔥🔥🔥");
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'PUT') {
+    error_log("🚨🚨🚨 PUT REQUEST DETECTED AT VERY START! 🚨🚨🚨");
+    error_log("🚨 PUT URI: " . ($_SERVER['REQUEST_URI'] ?? 'unknown'));
+    error_log("🚨 PUT Time: " . date('Y-m-d H:i:s'));
+}
+
 // Enable error reporting and logging to terminal
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 ini_set('log_errors', 1);
 ini_set('error_log', 'php://stderr'); // Send errors to stderr so they appear in terminal
 
+// Also log to file for debugging
+function logToFile($message) {
+    file_put_contents('../debug.log', $message . "\n", FILE_APPEND | LOCK_EX);
+}
+
 // Debug: Log all incoming requests
-error_log("=== INCOMING REQUEST ===");
-error_log("Method: " . ($_SERVER['REQUEST_METHOD'] ?? 'unknown'));
-error_log("URI: " . ($_SERVER['REQUEST_URI'] ?? 'unknown'));
-error_log("Path Info: " . ($_SERVER['PATH_INFO'] ?? 'none'));
-error_log("Request Time: " . date('Y-m-d H:i:s'));
-error_log("========================");
+$requestLog = "=== INCOMING REQUEST ===\n";
+$requestLog .= "Method: " . ($_SERVER['REQUEST_METHOD'] ?? 'unknown') . "\n";
+$requestLog .= "URI: " . ($_SERVER['REQUEST_URI'] ?? 'unknown') . "\n";
+$requestLog .= "Path Info: " . ($_SERVER['PATH_INFO'] ?? 'none') . "\n";
+$requestLog .= "Request Time: " . date('Y-m-d H:i:s') . "\n";
+$requestLog .= "========================";
+
+error_log($requestLog);
+logToFile($requestLog);
+
+// Force immediate logging for PUT requests
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'PUT') {
+    $putLog = "🚨 PUT REQUEST DETECTED IMMEDIATELY!\n🚨 PUT URI: " . ($_SERVER['REQUEST_URI'] ?? 'unknown');
+    error_log($putLog);
+    logToFile($putLog);
+}
 
 // Enable CORS for cross-origin requests with credentials
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -45,11 +69,14 @@ ini_set('session.cookie_path', '/'); // Set path to root
 session_start();
 
 // Debug: Log all requests
-error_log("=== REQUEST RECEIVED ===");
-error_log("Method: " . $_SERVER['REQUEST_METHOD']);
-error_log("Path: " . ($_SERVER['PATH_INFO'] ?? $_SERVER['REQUEST_URI'] ?? 'unknown'));
-error_log("Request URI: " . ($_SERVER['REQUEST_URI'] ?? 'unknown'));
-error_log("DEBUG: Server is loading updated index.php at " . date('Y-m-d H:i:s'));
+$mainLog = "=== REQUEST RECEIVED ===\n";
+$mainLog .= "Method: " . $_SERVER['REQUEST_METHOD'] . "\n";
+$mainLog .= "Path: " . ($_SERVER['PATH_INFO'] ?? $_SERVER['REQUEST_URI'] ?? 'unknown') . "\n";
+$mainLog .= "Request URI: " . ($_SERVER['REQUEST_URI'] ?? 'unknown') . "\n";
+$mainLog .= "DEBUG: Server is loading updated index.php at " . date('Y-m-d H:i:s');
+
+error_log($mainLog);
+logToFile($mainLog);
 
 header('Content-Type: application/json');
 
@@ -166,6 +193,7 @@ try {
             }
             break;
         case 'PUT':
+            error_log("🔧 PUT REQUEST DETECTED - Path: " . $path);
             handlePutRequest($path);
             break;
         case 'DELETE':
@@ -278,11 +306,15 @@ function handlePostRequest($path) {
 }
 
 function handlePutRequest($path) {
+    error_log("🔧 PUT REQUEST RECEIVED - Path: " . $path);
     if (preg_match('/^events\/(.+)$/', $path, $matches)) {
+        error_log("🔧 PUT request matches events pattern, calling updateEvent with: " . $matches[1]);
         updateEvent($matches[1]);
     } elseif (preg_match('/^calendars\/(\d+)\/toggle$/', $path, $matches)) {
+        error_log("🔧 PUT request matches calendars toggle pattern, calling toggleCalendar with: " . $matches[1]);
         toggleCalendar($matches[1]);
     } else {
+        error_log("🔧 PUT request path not matched: " . $path);
         http_response_code(404);
         echo json_encode(['error' => 'Endpoint not found']);
     }
@@ -1464,6 +1496,8 @@ function updateEvent($id) {
                     $eventToUpdate = $event;
                     $originalEvent = json_decode(json_encode($event), true); // Deep copy for comparison
                     error_log("Found exact match! ID: " . ($event['id'] ?? 'no-id') . ", UID: " . ($event['uid'] ?? 'no-uid'));
+                    error_log("Original event calendar info: ID=" . ($event['calendar_id'] ?? 'null') . ", Name=" . ($event['calendar_name'] ?? 'null') . ", URL=" . ($event['calendar_url'] ?? 'null'));
+                    error_log("🔍 FULL ORIGINAL EVENT DATA: " . json_encode($event));
                     break;
                 }
                 
@@ -1481,7 +1515,7 @@ function updateEvent($id) {
                 error_log("Searching for ID: " . $id);
                 error_log("Available events:");
                 foreach ($storedEvents as $index => $event) {
-                    error_log("  Event " . $index . ": ID='" . ($event['id'] ?? 'null') . "', UID='" . ($event['uid'] ?? 'null') . "', Title='" . ($event['title'] ?? 'null') . "'");
+                    error_log("  Event " . $index . ": ID='" . ($event['id'] ?? 'null') . "', UID='" . ($event['uid'] ?? 'null') . "', Title='" . ($event['title'] ?? 'null') . "', CalendarID='" . ($event['calendar_id'] ?? 'null') . "', CalendarName='" . ($event['calendar_name'] ?? 'null') . "'");
                 }
                 
                 // Try to find the event in CalDAV server
@@ -1539,7 +1573,11 @@ function updateEvent($id) {
             $eventToUpdate['all_day'] = $input['all_day'] ?? $eventToUpdate['all_day'];
             $eventToUpdate['availability'] = $input['availability'] ?? $eventToUpdate['availability'] ?? 'busy';
             $eventToUpdate['status'] = $input['status'] ?? $eventToUpdate['status'] ?? 'confirmed';
-            $eventToUpdate['calendar_id'] = $input['calendar_id'] ?? $eventToUpdate['calendar_id'];
+            
+            // 🔧 FIX: Check for calendar change BEFORE updating calendar_id
+            $originalCalendarId = $eventToUpdate['calendar_id'];
+            $newCalendarId = $input['calendar_id'] ?? $eventToUpdate['calendar_id'];
+            
             // Handle attendees - convert null string to empty array if needed
             $attendees = $input['attendees'] ?? $eventToUpdate['attendees'];
             if ($attendees === 'null' || $attendees === null) {
@@ -1550,11 +1588,12 @@ function updateEvent($id) {
             
             error_log("Updated attendees: " . json_encode($eventToUpdate['attendees']));
             error_log("Updated recurrence: " . json_encode($eventToUpdate['recurrence']));
-            error_log("Updated event data: " . json_encode($eventToUpdate));
+            error_log("Original calendar ID: " . $originalCalendarId);
+            error_log("New calendar ID: " . $newCalendarId);
             
             // Update calendar information if calendar_id changed
-            if (isset($input['calendar_id']) && $input['calendar_id'] != $eventToUpdate['calendar_id']) {
-                error_log("Calendar ID changed from " . $eventToUpdate['calendar_id'] . " to " . $input['calendar_id']);
+            if (isset($input['calendar_id']) && $input['calendar_id'] != $originalCalendarId) {
+                error_log("🔧 Calendar ID changed from " . $originalCalendarId . " to " . $input['calendar_id']);
                 
                 // Get calendar information by ID
                 $calendarInfo = getCalendarById($input['calendar_id']);
@@ -1567,11 +1606,19 @@ function updateEvent($id) {
                     $eventToUpdate['calendar_color'] = $calendarInfo['color'];
                     $eventToUpdate['color'] = $calendarInfo['color']; // Update event color too
                     
-                    error_log("Updated calendar info: Name=" . $calendarInfo['name'] . ", URL=" . $calendarInfo['url'] . ", Color=" . $calendarInfo['color']);
+                    error_log("✅ Updated calendar info: Name=" . $calendarInfo['name'] . ", URL=" . $calendarInfo['url'] . ", Color=" . $calendarInfo['color']);
                 } else {
-                    error_log("Warning: Could not find calendar info for ID " . $input['calendar_id']);
+                    error_log("❌ Warning: Could not find calendar info for ID " . $input['calendar_id']);
+                    // Fallback: just update the calendar_id
+                    $eventToUpdate['calendar_id'] = $input['calendar_id'];
                 }
+            } else {
+                // No calendar change, just ensure calendar_id is set
+                $eventToUpdate['calendar_id'] = $newCalendarId;
+                error_log("📅 No calendar change detected, keeping calendar_id: " . $newCalendarId);
             }
+            
+            error_log("Final event data: " . json_encode($eventToUpdate));
             
             // Handle reminder data - convert frontend reminder format to VALARM
             if (!empty($input['reminder'])) {
@@ -1621,35 +1668,84 @@ function updateEvent($id) {
                 // Don't fail the update if email processing fails
             }
             
-            // Find the event in CalDAV server to update it
+            // Handle CalDAV server update
             try {
                 error_log("Attempting to update event on CalDAV server...");
                 $caldavClient = getCalDAVClient();
                 if (!$caldavClient) {
-                    throw new Exception('Failed to get CalDAV client - user not authenticated');
+                    error_log("⚠️ CalDAV client not available - skipping CalDAV sync");
+                    $calendars = [];
+                } else {
+                    $calendars = $caldavClient->discoverCalendars();
                 }
-                $calendars = $caldavClient->discoverCalendars();
                 
                 if (!empty($calendars)) {
-                    // Use the event's specific calendar URL for the update
-                    $eventCalendarUrl = $eventToUpdate['calendar_url'] ?? $calendars[0]['href'];
-                    error_log("Using event calendar URL for update: " . $eventCalendarUrl);
+                    // Check if calendar changed
+                    $originalCalendarUrl = $originalEvent['calendar_url'] ?? null;
+                    $newCalendarUrl = $eventToUpdate['calendar_url'] ?? null;
                     
-                    // Generate updated iCalendar content
-                    $updatedICal = generateICalEvent($eventToUpdate);
-                    error_log("Generated updated iCalendar content for CalDAV update");
-                    error_log("Event attendees being sent to CalDAV: " . json_encode($eventToUpdate['attendees'] ?? []));
+                    error_log("🔍 CALENDAR CHANGE DEBUG:");
+                    error_log("  Original calendar URL: " . ($originalCalendarUrl ?? 'NULL'));
+                    error_log("  New calendar URL: " . ($newCalendarUrl ?? 'NULL'));
+                    error_log("  Original calendar ID: " . ($originalEvent['calendar_id'] ?? 'NULL'));
+                    error_log("  New calendar ID: " . ($eventToUpdate['calendar_id'] ?? 'NULL'));
+                    error_log("  URLs are different: " . ($originalCalendarUrl !== $newCalendarUrl ? 'YES' : 'NO'));
                     
-                    // Update the event on CalDAV server
-                    $response = $caldavClient->updateEvent($eventCalendarUrl, $eventToUpdate['uid'], $updatedICal);
-                    error_log("CalDAV update response: " . json_encode($response));
-                    
-                    if ($response['success']) {
-                        error_log("✅ Event updated successfully on CalDAV server");
+                    if ($originalCalendarUrl && $newCalendarUrl && $originalCalendarUrl !== $newCalendarUrl) {
+                        // Calendar changed - need to delete from old calendar and create in new calendar
+                        error_log("🔄 Calendar changed from " . $originalCalendarUrl . " to " . $newCalendarUrl);
+                        
+                        // For existing events, we'll try to delete from the stored calendar
+                        // If it fails (404), that's okay - the event might not be there
+                        error_log("🔍 Attempting calendar change for existing event...");
+                        
+                        // Delete from old calendar
+                        try {
+                            $oldEventUrl = rtrim($originalCalendarUrl, '/') . '/' . $eventToUpdate['uid'] . '.ics';
+                            error_log("Deleting event from old calendar: " . $oldEventUrl);
+                            $caldavClient->deleteEvent($oldEventUrl);
+                            error_log("✅ Event deleted from old calendar");
+                        } catch (Exception $deleteError) {
+                            error_log("⚠️ Failed to delete from old calendar: " . $deleteError->getMessage());
+                            // Continue anyway - the event might not exist in the old calendar
+                        }
+                        
+                        // Create in new calendar
+                        try {
+                            $updatedICal = generateICalEvent($eventToUpdate);
+                            error_log("Creating event in new calendar: " . $newCalendarUrl);
+                            $response = $caldavClient->createEvent($newCalendarUrl, $updatedICal, $eventToUpdate['uid']);
+                            error_log("CalDAV create response: " . json_encode($response));
+                            
+                            if ($response['status'] >= 200 && $response['status'] < 300) {
+                                error_log("✅ Event created successfully in new calendar");
+                            } else {
+                                error_log("❌ CalDAV create failed: " . $response['body']);
+                            }
+                        } catch (Exception $createError) {
+                            error_log("❌ Failed to create in new calendar: " . $createError->getMessage());
+                        }
                     } else {
-                        error_log("❌ CalDAV update failed: " . $response['body']);
-                        error_log("❌ CalDAV update status: " . ($response['status'] ?? 'unknown'));
-                        // Don't fail the entire update if CalDAV sync fails, but log it
+                        // Same calendar - just update the event
+                        $eventCalendarUrl = $eventToUpdate['calendar_url'] ?? $calendars[0]['href'];
+                        error_log("Using event calendar URL for update: " . $eventCalendarUrl);
+                        
+                        // Generate updated iCalendar content
+                        $updatedICal = generateICalEvent($eventToUpdate);
+                        error_log("Generated updated iCalendar content for CalDAV update");
+                        error_log("Event attendees being sent to CalDAV: " . json_encode($eventToUpdate['attendees'] ?? []));
+                        
+                        // Update the event on CalDAV server
+                        $response = $caldavClient->updateEvent($eventCalendarUrl, $eventToUpdate['uid'], $updatedICal);
+                        error_log("CalDAV update response: " . json_encode($response));
+                        
+                        if ($response['success']) {
+                            error_log("✅ Event updated successfully on CalDAV server");
+                        } else {
+                            error_log("❌ CalDAV update failed: " . $response['body']);
+                            error_log("❌ CalDAV update status: " . ($response['status'] ?? 'unknown'));
+                            // Don't fail the entire update if CalDAV sync fails, but log it
+                        }
                     }
                 } else {
                     error_log("No CalDAV calendars found for update");

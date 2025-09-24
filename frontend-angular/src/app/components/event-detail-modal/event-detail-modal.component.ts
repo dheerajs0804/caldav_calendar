@@ -26,6 +26,10 @@ interface Event {
   end_time: string;
   all_day: boolean;
   calendar_id: number;
+  calendar_name?: string;
+  calendar_url?: string;
+  calendar_color?: string;
+  color?: string;
   availability?: 'free' | 'busy' | 'tentative';
   status?: 'confirmed' | 'tentative' | 'cancelled';
   recurrence?: {
@@ -142,7 +146,7 @@ export class EventDetailModalComponent {
 
   getEventCalendar(): Calendar | undefined {
     if (!this.event) return undefined;
-    return this.calendars.find(cal => cal.id === this.event!.calendar_id);
+    return this.calendars.find(cal => Number(cal.id) === Number(this.event!.calendar_id));
   }
 
   formatDateTime(dateTime: string): string {
@@ -157,15 +161,51 @@ export class EventDetailModalComponent {
     this.isEditMode = true;
   }
 
+  onCalendarChange(event: any): void {
+    const target = event.target as HTMLSelectElement;
+    const selectedCalendarId = target.value;
+    console.log('🚀 onCalendarChange called with:', selectedCalendarId, 'Type:', typeof selectedCalendarId);
+    console.log('📅 Available calendars:', this.calendars.map(cal => ({ id: cal.id, name: cal.name, type: typeof cal.id })));
+    
+    if (this.editedEvent) {
+      // Convert to number to ensure type consistency
+      this.editedEvent.calendar_id = Number(selectedCalendarId);
+      console.log('📅 Calendar changed to:', selectedCalendarId, 'Type:', typeof selectedCalendarId);
+      console.log('📅 Updated editedEvent.calendar_id:', this.editedEvent.calendar_id, 'Type:', typeof this.editedEvent.calendar_id);
+      
+      // Also update calendar-related fields
+      const selectedCalendar = this.calendars.find(cal => Number(cal.id) === Number(selectedCalendarId));
+      if (selectedCalendar) {
+        this.editedEvent.calendar_name = selectedCalendar.name;
+        this.editedEvent.calendar_url = selectedCalendar.url;
+        this.editedEvent.calendar_color = selectedCalendar.color;
+        this.editedEvent.color = selectedCalendar.color;
+        console.log('📅 Updated calendar info:', {
+          name: selectedCalendar.name,
+          url: selectedCalendar.url,
+          color: selectedCalendar.color
+        });
+      } else {
+        console.error('❌ Calendar not found for ID:', selectedCalendarId);
+      }
+    } else {
+      console.error('❌ No editedEvent found in onCalendarChange!');
+    }
+  }
+
   onSave(): void {
+    console.log('🚀 onSave method called in event detail modal!');
     if (this.editedEvent) {
       console.log('💾 Saving edited event:', this.editedEvent);
       console.log('🕐 Start time:', this.editedEvent.start_time);
       console.log('🕐 End time:', this.editedEvent.end_time);
       console.log('📅 Calendar ID being saved:', this.editedEvent.calendar_id);
       console.log('📅 Calendar ID type:', typeof this.editedEvent.calendar_id);
+      console.log('📤 Emitting editEvent with data:', this.editedEvent);
       this.editEvent.emit(this.editedEvent);
       this.isEditMode = false;
+    } else {
+      console.error('❌ No editedEvent found!');
     }
   }
 
