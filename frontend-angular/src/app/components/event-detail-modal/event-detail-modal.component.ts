@@ -87,6 +87,7 @@ export class EventDetailModalComponent {
         ...this.event,
         availability: this.event.availability || 'busy',
         status: this.event.status || 'confirmed',
+        attendees: this.event.attendees || [],
         recurrence: this.event.recurrence || {
           frequency: 'never',
           interval: 1
@@ -144,7 +145,10 @@ export class EventDetailModalComponent {
     this.isEditMode = false;
     // Reset edited event to original
     if (this.event) {
-      this.editedEvent = { ...this.event };
+      this.editedEvent = { 
+        ...this.event,
+        attendees: this.event.attendees || []
+      };
     }
   }
 

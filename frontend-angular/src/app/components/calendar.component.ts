@@ -1507,9 +1507,11 @@ export class CalendarComponent implements OnInit, OnDestroy {
       }).toPromise();
       
       console.log('📥 Backend edit response:', response);
+      console.log('📥 Response attendees:', response.data?.attendees);
       
       if (response.success) {
         console.log('✅ Event updated successfully');
+        console.log('✅ Updated event data:', response.data);
         this.closeEventDetailModal();
         await this.fetchEvents(); // Refresh events
         alert('Event updated successfully!');

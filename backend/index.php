@@ -1238,6 +1238,37 @@ function generateICalEvent($event) {
         $ical .= "END:VALARM\r\n";
     }
     
+    // Add attendees
+    if (!empty($event['attendees']) && is_array($event['attendees'])) {
+        foreach ($event['attendees'] as $attendee) {
+            if (!empty($attendee['email'])) {
+                $attendeeLine = "ATTENDEE";
+                
+                // Add role if specified
+                if (!empty($attendee['role'])) {
+                    $role = strtoupper($attendee['role']);
+                    if ($role === 'REQUIRED') {
+                        $attendeeLine .= ";ROLE=REQ-PARTICIPANT";
+                    } elseif ($role === 'OPTIONAL') {
+                        $attendeeLine .= ";ROLE=OPT-PARTICIPANT";
+                    }
+                }
+                
+                // Add response status if specified
+                if (!empty($attendee['response'])) {
+                    $response = strtoupper($attendee['response']);
+                    if (in_array($response, ['ACCEPTED', 'DECLINED', 'TENTATIVE', 'NEEDS-ACTION'])) {
+                        $attendeeLine .= ";PARTSTAT=" . $response;
+                    }
+                }
+                
+                $attendeeLine .= ":mailto:" . $attendee['email'];
+                $ical .= $attendeeLine . "\r\n";
+                error_log("👥 Added attendee to iCalendar: " . $attendee['email']);
+            }
+        }
+    }
+    
     $ical .= "END:VEVENT\r\n";
     $ical .= "END:VCALENDAR\r\n";
     
@@ -1384,6 +1415,7 @@ function updateEvent($id) {
         
         // Get the request body
         $input = json_decode(file_get_contents('php://input'), true);
+        error_log("=== EDIT EVENT REQUEST START ===");
         error_log("Raw input received: " . file_get_contents('php://input'));
         error_log("Parsed input: " . json_encode($input));
         error_log("Calendar ID in input: " . ($input['calendar_id'] ?? 'not set'));
@@ -1508,9 +1540,15 @@ function updateEvent($id) {
             $eventToUpdate['availability'] = $input['availability'] ?? $eventToUpdate['availability'] ?? 'busy';
             $eventToUpdate['status'] = $input['status'] ?? $eventToUpdate['status'] ?? 'confirmed';
             $eventToUpdate['calendar_id'] = $input['calendar_id'] ?? $eventToUpdate['calendar_id'];
-            $eventToUpdate['attendees'] = $input['attendees'] ?? $eventToUpdate['attendees'];
+            // Handle attendees - convert null string to empty array if needed
+            $attendees = $input['attendees'] ?? $eventToUpdate['attendees'];
+            if ($attendees === 'null' || $attendees === null) {
+                $attendees = [];
+            }
+            $eventToUpdate['attendees'] = $attendees;
             $eventToUpdate['recurrence'] = $input['recurrence'] ?? $eventToUpdate['recurrence'];
             
+            error_log("Updated attendees: " . json_encode($eventToUpdate['attendees']));
             error_log("Updated recurrence: " . json_encode($eventToUpdate['recurrence']));
             error_log("Updated event data: " . json_encode($eventToUpdate));
             
@@ -1600,15 +1638,17 @@ function updateEvent($id) {
                     // Generate updated iCalendar content
                     $updatedICal = generateICalEvent($eventToUpdate);
                     error_log("Generated updated iCalendar content for CalDAV update");
+                    error_log("Event attendees being sent to CalDAV: " . json_encode($eventToUpdate['attendees'] ?? []));
                     
                     // Update the event on CalDAV server
                     $response = $caldavClient->updateEvent($eventCalendarUrl, $eventToUpdate['uid'], $updatedICal);
                     error_log("CalDAV update response: " . json_encode($response));
                     
                     if ($response['success']) {
-                        error_log("Event updated successfully on CalDAV server");
+                        error_log("✅ Event updated successfully on CalDAV server");
                     } else {
-                        error_log("CalDAV update failed: " . $response['body']);
+                        error_log("❌ CalDAV update failed: " . $response['body']);
+                        error_log("❌ CalDAV update status: " . ($response['status'] ?? 'unknown'));
                         // Don't fail the entire update if CalDAV sync fails, but log it
                     }
                 } else {
@@ -1641,6 +1681,7 @@ function updateEvent($id) {
             ];
             
             error_log("Sending success response: " . json_encode($successResponse));
+            error_log("Response attendees data: " . json_encode($successResponse['data']['attendees'] ?? 'not set'));
             echo json_encode($successResponse);
             
         } else {

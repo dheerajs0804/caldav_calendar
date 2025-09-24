@@ -6601,18 +6601,62 @@
         "end_time": "2025-09-25T12:35:00+05:30",
         "all_day": false,
         "availability": "free",
-        "status": "confirmed",
+        "status": "tentative",
         "calendar_id": 3,
         "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
         "color": "#4285f4",
         "uid": "uid_68d385c224d46",
         "etag": "etag_68d385c224d47",
         "created_at": "2025-09-24T07:46:42+02:00",
-        "updated_at": "2025-09-24T08:11:01+02:00",
+        "updated_at": "2025-09-24T08:18:11+02:00",
         "attendees": [
             {
+                "email": "dheeraj.sharma@mithi.com",
+                "name": "1",
+                "response": "pending",
+                "role": "required"
+            }
+        ],
+        "recurrence": {
+            "frequency": "never",
+            "interval": 1
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68d38d812389c",
+        "title": "new edit event test 2 (edited)",
+        "description": "everything edited",
+        "location": "loc added",
+        "start_time": "2025-09-25T12:00:00",
+        "end_time": "2025-09-25T13:00:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 3,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68d38d81238a5",
+        "etag": "etag_68d38d81238a6",
+        "created_at": "2025-09-24T08:19:45+02:00",
+        "updated_at": "2025-09-24T09:04:40+02:00",
+        "attendees": [
+            {
+                "email": "dheeraj.sharma@mithi.com",
+                "name": "1",
+                "role": "required",
+                "response": "pending"
+            },
+            {
                 "email": "dheeraj2004.sharma@gmail.com",
-                "name": "",
+                "name": "2",
                 "response": "pending",
                 "role": "required"
             }

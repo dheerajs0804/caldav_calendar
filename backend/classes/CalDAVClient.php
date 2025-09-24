@@ -841,6 +841,7 @@ class CalDAVClient {
           <C:prop name="EXDATE"/>
           <C:prop name="STATUS"/>
           <C:prop name="TRANSP"/>
+          <C:prop name="ATTENDEE"/>
         </C:comp>
       </C:comp>
     </C:calendar-data>
@@ -876,6 +877,7 @@ class CalDAVClient {
           <C:prop name="EXDATE"/>
           <C:prop name="STATUS"/>
           <C:prop name="TRANSP"/>
+          <C:prop name="ATTENDEE"/>
         </C:comp>
       </C:comp>
     </C:calendar-data>
@@ -1045,7 +1047,7 @@ class CalDAVClient {
                 $line = trim($line);
                 
                 // Debug: Log important lines being processed
-                if (strpos($line, 'RRULE:') === 0 || strpos($line, 'SUMMARY:') === 0 || strpos($line, 'UID:') === 0 || strpos($line, 'EXDATE') === 0) {
+                if (strpos($line, 'RRULE:') === 0 || strpos($line, 'SUMMARY:') === 0 || strpos($line, 'UID:') === 0 || strpos($line, 'EXDATE') === 0 || strpos($line, 'ATTENDEE') === 0) {
                     error_log("🔍 Processing unfolded iCalendar line: " . $line);
                 }
                 
@@ -1085,6 +1087,52 @@ class CalDAVClient {
                     error_log("🔍 Found RRULE in iCalendar: " . $rrule);
                     error_log("🔍 Parsed recurrence: " . json_encode($event['recurrence']));
                     error_log("🔍 Event recurrence set to: " . json_encode($event['recurrence']));
+                } elseif (strpos($line, 'ATTENDEE') === 0) {
+                    // Parse ATTENDEE property: ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION:mailto:user@example.com
+                    error_log("🔍 Processing ATTENDEE line: " . $line);
+                    
+                    if (!isset($event['attendees'])) {
+                        $event['attendees'] = [];
+                    }
+                    
+                    $attendee = ['email' => '', 'name' => '', 'role' => 'required', 'response' => 'pending'];
+                    
+                    // Extract email from mailto: prefix or urn:x-uid: format
+                    if (preg_match('/mailto:([^;]+)/', $line, $emailMatches)) {
+                        $attendee['email'] = $emailMatches[1];
+                    } elseif (preg_match('/urn:x-uid:([^;]+)/', $line, $uidMatches)) {
+                        // For urn:x-uid format, try to extract email from CN parameter
+                        if (preg_match('/CN=([^;]+)/', $line, $cnMatches)) {
+                            $attendee['email'] = $cnMatches[1];
+                        } else {
+                            // Fallback to using the UID as email if no CN found
+                            $attendee['email'] = $uidMatches[1];
+                        }
+                    }
+                    
+                    // Extract role from ROLE parameter
+                    if (preg_match('/ROLE=([^;]+)/', $line, $roleMatches)) {
+                        $role = strtoupper($roleMatches[1]);
+                        if ($role === 'REQ-PARTICIPANT') {
+                            $attendee['role'] = 'required';
+                        } elseif ($role === 'OPT-PARTICIPANT') {
+                            $attendee['role'] = 'optional';
+                        }
+                    }
+                    
+                    // Extract response status from PARTSTAT parameter
+                    if (preg_match('/PARTSTAT=([^;]+)/', $line, $statusMatches)) {
+                        $status = strtoupper($statusMatches[1]);
+                        if (in_array($status, ['ACCEPTED', 'DECLINED', 'TENTATIVE', 'NEEDS-ACTION'])) {
+                            $attendee['response'] = strtolower($status);
+                        }
+                    }
+                    
+                    // Only add if we have a valid email
+                    if (!empty($attendee['email'])) {
+                        $event['attendees'][] = $attendee;
+                        error_log("👥 Parsed attendee: " . $attendee['email'] . " (role: " . $attendee['role'] . ", status: " . $attendee['response'] . ")");
+                    }
                 } elseif (strpos($line, 'EXDATE') === 0) {
                     // Handle both EXDATE: and EXDATE;TZID= formats
                     if (strpos($line, 'EXDATE:') === 0) {
@@ -1760,6 +1808,7 @@ class CalDAVClient {
             }
             
             // Second pass: parse the unfolded lines
+            error_log("🔍 Total unfolded lines to process: " . count($unfoldedLines));
             foreach ($unfoldedLines as $line) {
                 $line = trim($line);
                 if (empty($line)) continue;
@@ -1769,6 +1818,12 @@ class CalDAVClient {
                     list($property, $value) = explode(':', $line, 2);
                     $property = trim($property);
                     $value = trim($value);
+                    
+                    // Only log ATTENDEE lines to reduce noise
+                    if (strpos($property, 'ATTENDEE') === 0) {
+                        error_log("🔍 Processing ATTENDEE line: " . $line);
+                        error_log("🔍 Property: " . $property . ", Value: " . $value);
+                    }
                     
                     switch ($property) {
                         case 'UID':
@@ -1827,6 +1882,53 @@ class CalDAVClient {
                             break;
                         case 'TRANSP':
                             $eventData['availability'] = strtolower($value) === 'transparent' ? 'free' : 'busy';
+                            break;
+                        case 'ATTENDEE':
+                            // Parse ATTENDEE property: ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION:mailto:user@example.com
+                            error_log("🔍 Processing ATTENDEE line: " . $line);
+                            error_log("🔍 ATTENDEE value: " . $value);
+                            if (!isset($eventData['attendees'])) {
+                                $eventData['attendees'] = [];
+                            }
+                            
+                            $attendee = ['email' => '', 'name' => '', 'role' => 'required', 'response' => 'pending'];
+                            
+                            // Extract email from mailto: prefix or urn:x-uid: format
+                            if (preg_match('/mailto:([^;]+)/', $value, $emailMatches)) {
+                                $attendee['email'] = $emailMatches[1];
+                            } elseif (preg_match('/urn:x-uid:([^;]+)/', $value, $uidMatches)) {
+                                // For urn:x-uid format, try to extract email from CN parameter
+                                if (preg_match('/CN=([^;]+)/', $line, $cnMatches)) {
+                                    $attendee['email'] = $cnMatches[1];
+                                } else {
+                                    // Fallback to using the UID as email if no CN found
+                                    $attendee['email'] = $uidMatches[1];
+                                }
+                            }
+                            
+                            // Extract role from ROLE parameter
+                            if (preg_match('/ROLE=([^;]+)/', $line, $roleMatches)) {
+                                $role = strtoupper($roleMatches[1]);
+                                if ($role === 'REQ-PARTICIPANT') {
+                                    $attendee['role'] = 'required';
+                                } elseif ($role === 'OPT-PARTICIPANT') {
+                                    $attendee['role'] = 'optional';
+                                }
+                            }
+                            
+                            // Extract response status from PARTSTAT parameter
+                            if (preg_match('/PARTSTAT=([^;]+)/', $line, $statusMatches)) {
+                                $status = strtoupper($statusMatches[1]);
+                                if (in_array($status, ['ACCEPTED', 'DECLINED', 'TENTATIVE', 'NEEDS-ACTION'])) {
+                                    $attendee['response'] = strtolower($status);
+                                }
+                            }
+                            
+                            // Only add if we have a valid email
+                            if (!empty($attendee['email'])) {
+                                $eventData['attendees'][] = $attendee;
+                                error_log("👥 Parsed attendee: " . $attendee['email'] . " (role: " . $attendee['role'] . ", status: " . $attendee['response'] . ")");
+                            }
                             break;
                     }
                 }
