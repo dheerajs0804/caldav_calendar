@@ -1489,7 +1489,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
         all_day: event.all_day,
         availability: event.availability || 'busy',
         status: event.status || 'confirmed',
-        calendar_id: event.calendar_id, // This now contains the UPDATED calendar_id from the form
+        calendar_id: event.calendar_id,
         attendees: event.attendees,
         recurrence: event.recurrence,
         reminder: event.reminder,

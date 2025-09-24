@@ -1512,6 +1512,7 @@ function updateEvent($id) {
             $eventToUpdate['recurrence'] = $input['recurrence'] ?? $eventToUpdate['recurrence'];
             
             error_log("Updated recurrence: " . json_encode($eventToUpdate['recurrence']));
+            error_log("Updated event data: " . json_encode($eventToUpdate));
             
             // Update calendar information if calendar_id changed
             if (isset($input['calendar_id']) && $input['calendar_id'] != $eventToUpdate['calendar_id']) {
@@ -1521,10 +1522,6 @@ function updateEvent($id) {
                 $calendarInfo = getCalendarById($input['calendar_id']);
                 
                 if ($calendarInfo) {
-                    // Store original calendar info for deletion
-                    $originalCalendarUrl = $eventToUpdate['calendar_url'];
-                    $originalCalendarName = $eventToUpdate['calendar_name'];
-                    
                     // Update calendar-related fields
                     $eventToUpdate['calendar_id'] = $input['calendar_id'];
                     $eventToUpdate['calendar_url'] = $calendarInfo['url'];
@@ -1533,11 +1530,6 @@ function updateEvent($id) {
                     $eventToUpdate['color'] = $calendarInfo['color']; // Update event color too
                     
                     error_log("Updated calendar info: Name=" . $calendarInfo['name'] . ", URL=" . $calendarInfo['url'] . ", Color=" . $calendarInfo['color']);
-                    error_log("Original calendar: " . $originalCalendarName . " (" . $originalCalendarUrl . ")");
-                    
-                    // Mark this event for calendar move (we'll handle it after the main update)
-                    $eventToUpdate['_move_to_calendar'] = $calendarInfo['url'];
-                    $eventToUpdate['_delete_from_calendar'] = $originalCalendarUrl;
                 } else {
                     error_log("Warning: Could not find calendar info for ID " . $input['calendar_id']);
                 }
@@ -1601,20 +1593,23 @@ function updateEvent($id) {
                 $calendars = $caldavClient->discoverCalendars();
                 
                 if (!empty($calendars)) {
-                    $calendarUrl = $calendars[0]['href'];
+                    // Use the event's specific calendar URL for the update
+                    $eventCalendarUrl = $eventToUpdate['calendar_url'] ?? $calendars[0]['href'];
+                    error_log("Using event calendar URL for update: " . $eventCalendarUrl);
                     
                     // Generate updated iCalendar content
                     $updatedICal = generateICalEvent($eventToUpdate);
                     error_log("Generated updated iCalendar content for CalDAV update");
                     
                     // Update the event on CalDAV server
-                    $response = $caldavClient->updateEvent($calendarUrl, $eventToUpdate['uid'], $updatedICal);
+                    $response = $caldavClient->updateEvent($eventCalendarUrl, $eventToUpdate['uid'], $updatedICal);
                     error_log("CalDAV update response: " . json_encode($response));
                     
                     if ($response['success']) {
                         error_log("Event updated successfully on CalDAV server");
                     } else {
                         error_log("CalDAV update failed: " . $response['body']);
+                        // Don't fail the entire update if CalDAV sync fails, but log it
                     }
                 } else {
                     error_log("No CalDAV calendars found for update");
@@ -1622,49 +1617,6 @@ function updateEvent($id) {
             } catch (Exception $caldavError) {
                 error_log("CalDAV update error: " . $caldavError->getMessage());
                 // Don't fail the update if CalDAV sync fails
-            }
-            
-            // Handle calendar move if needed
-            if (isset($eventToUpdate['_move_to_calendar']) && isset($eventToUpdate['_delete_from_calendar'])) {
-                try {
-                    error_log("🔄 Moving event between calendars...");
-                    error_log("Move from: " . $eventToUpdate['_delete_from_calendar']);
-                    error_log("Move to: " . $eventToUpdate['_move_to_calendar']);
-                    
-                    // Generate updated iCalendar content for the new calendar
-                    $movedICal = generateICalEvent($eventToUpdate);
-                    
-                    // Create event in new calendar
-                    $createResponse = $caldavClient->createEvent($eventToUpdate['_move_to_calendar'], $movedICal, $eventToUpdate['uid']);
-                    error_log("Create in new calendar response: " . json_encode($createResponse));
-                    
-                    if ($createResponse['status'] >= 200 && $createResponse['status'] < 300) {
-                        error_log("✅ Event created in new calendar successfully");
-                        
-                        // Delete event from old calendar
-                        $eventUrl = rtrim($eventToUpdate['_delete_from_calendar'], '/') . '/' . $eventToUpdate['uid'] . '.ics';
-                        $deleteResponse = $caldavClient->deleteEvent($eventUrl, $caldavClient->getAuthToken());
-                        
-                        if ($deleteResponse) {
-                            error_log("✅ Event deleted from old calendar successfully");
-                            error_log("🎉 Event moved between calendars successfully!");
-                        } else {
-                            error_log("⚠️ Event created in new calendar but failed to delete from old calendar");
-                        }
-                    } else {
-                        error_log("❌ Failed to create event in new calendar: " . $createResponse['body']);
-                    }
-                    
-                    // Clean up temporary fields
-                    unset($eventToUpdate['_move_to_calendar']);
-                    unset($eventToUpdate['_delete_from_calendar']);
-                    
-                } catch (Exception $moveError) {
-                    error_log("❌ Error moving event between calendars: " . $moveError->getMessage());
-                    // Clean up temporary fields even on error
-                    unset($eventToUpdate['_move_to_calendar']);
-                    unset($eventToUpdate['_delete_from_calendar']);
-                }
             }
             
             // Update the stored events array with the updated event
@@ -1679,6 +1631,7 @@ function updateEvent($id) {
             $updatedEvents = array_values($storedEvents); // Re-index array
             file_put_contents($eventsFile, json_encode($updatedEvents, JSON_PRETTY_PRINT));
             error_log("Updated local storage with modified event: " . json_encode($eventToUpdate));
+            error_log("Total events after update: " . count($updatedEvents));
             
             // Return success response
             $successResponse = [
