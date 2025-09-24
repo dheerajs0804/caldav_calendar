@@ -130,6 +130,178 @@
             <option value="annually">Annually</option>
             <option value="ondates">On specific dates</option>
           </select>
+          
+          <!-- Recurrence Options -->
+          <div *ngIf="editedEvent.recurrence?.frequency !== 'never'" class="mt-4 space-y-4">
+            
+            <!-- Interval -->
+            <div *ngIf="editedEvent.recurrence?.frequency !== 'ondates'">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Every</label>
+              <div class="flex items-center space-x-2">
+                <input 
+                  type="number" 
+                  [ngModel]="editedEvent.recurrence?.interval || 1" 
+                  (ngModelChange)="updateRecurrenceInterval($event)"
+                  min="1" 
+                  max="99"
+                  class="w-20 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <span class="text-sm text-gray-600">{{ getRecurrenceIntervalText() }}</span>
+              </div>
+            </div>
+            
+            <!-- End Options -->
+            <div *ngIf="editedEvent.recurrence?.frequency !== 'ondates'">
+              <label class="block text-sm font-medium text-gray-700 mb-2">End</label>
+              <div class="space-y-2">
+                <label class="flex items-center">
+                  <input 
+                    type="radio" 
+                    name="endType" 
+                    value="never" 
+                    [ngModel]="getEndType()"
+                    (ngModelChange)="setEndType($event)"
+                    class="mr-2"
+                  />
+                  <span class="text-sm text-gray-700">Never</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                  <input 
+                    type="radio" 
+                    name="endType" 
+                    value="count" 
+                    [ngModel]="getEndType()"
+                    (ngModelChange)="setEndType($event)"
+                    class="mr-2"
+                  />
+                  <span class="text-sm text-gray-700">After</span>
+                  <input 
+                    type="number" 
+                    [ngModel]="editedEvent.recurrence?.count || 1" 
+                    (ngModelChange)="updateRecurrenceCount($event)"
+                    min="1" 
+                    max="999"
+                    class="w-20 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span class="text-sm text-gray-700">occurrences</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                  <input 
+                    type="radio" 
+                    name="endType" 
+                    value="until" 
+                    [ngModel]="getEndType()"
+                    (ngModelChange)="setEndType($event)"
+                    class="mr-2"
+                  />
+                  <span class="text-sm text-gray-700">On</span>
+                  <input 
+                    type="date" 
+                    [ngModel]="editedEvent.recurrence?.until" 
+                    (ngModelChange)="updateRecurrenceUntil($event)"
+                    class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </label>
+              </div>
+            </div>
+            
+            <!-- Weekly Options -->
+            <div *ngIf="editedEvent.recurrence?.frequency === 'weekly'">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Days of week</label>
+              <div class="flex flex-wrap gap-2">
+                <button 
+                  *ngFor="let day of weekDays" 
+                  type="button"
+                  [class]="isDaySelected(day.value) ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                  (click)="toggleDayOfWeek(day.value)"
+                  class="px-3 py-1 text-sm rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {{ day.label }}
+                </button>
+              </div>
+            </div>
+            
+            <!-- Monthly Options -->
+            <div *ngIf="editedEvent.recurrence?.frequency === 'monthly'">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Day of month</label>
+              <div class="space-y-2">
+                <label class="flex items-center space-x-2">
+                  <input 
+                    type="radio" 
+                    name="monthType" 
+                    value="day" 
+                    [ngModel]="getMonthType()"
+                    (ngModelChange)="setMonthType($event)"
+                    class="mr-2"
+                  />
+                  <span class="text-sm text-gray-700">Day</span>
+                  <input 
+                    type="number" 
+                    [ngModel]="editedEvent.recurrence?.byMonthDay?.[0] || ''" 
+                    (ngModelChange)="updateMonthDay($event)"
+                    min="1" 
+                    max="31"
+                    class="w-20 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </label>
+                <label class="flex items-center space-x-2">
+                  <input 
+                    type="radio" 
+                    name="monthType" 
+                    value="position" 
+                    [ngModel]="getMonthType()"
+                    (ngModelChange)="setMonthType($event)"
+                    class="mr-2"
+                  />
+                  <select [ngModel]="editedEvent.recurrence?.bySetPos" (ngModelChange)="updateBySetPos($event)" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="1">First</option>
+                    <option value="2">Second</option>
+                    <option value="3">Third</option>
+                    <option value="4">Fourth</option>
+                    <option value="-1">Last</option>
+                  </select>
+                  <select [ngModel]="selectedDayOfWeek" (ngModelChange)="updateSelectedDayOfWeek($event)" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="MO">Monday</option>
+                    <option value="TU">Tuesday</option>
+                    <option value="WE">Wednesday</option>
+                    <option value="TH">Thursday</option>
+                    <option value="FR">Friday</option>
+                    <option value="SA">Saturday</option>
+                    <option value="SU">Sunday</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            
+            <!-- Specific Dates -->
+            <div *ngIf="editedEvent.recurrence?.frequency === 'ondates'">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Specific dates</label>
+              <div class="space-y-2">
+                <div *ngFor="let date of editedEvent.recurrence?.specificDates || []; let i = index" class="flex items-center space-x-2">
+                  <input 
+                    type="date" 
+                    [ngModel]="editedEvent.recurrence?.specificDates?.[i] || ''" 
+                    (ngModelChange)="updateSpecificDate(i, $event)"
+                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button 
+                    type="button" 
+                    (click)="removeSpecificDate(i)" 
+                    class="px-2 py-2 text-red-600 hover:text-red-800 focus:outline-none"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <button 
+                  type="button" 
+                  (click)="addSpecificDate()" 
+                  class="px-3 py-2 text-sm text-blue-600 hover:text-blue-800 focus:outline-none"
+                >
+                  + Add Date
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Reminder Section -->

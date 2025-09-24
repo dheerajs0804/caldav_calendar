@@ -77,6 +77,20 @@ export class EventDetailModalComponent {
 
   isEditMode: boolean = false;
   editedEvent: Event | null = null;
+  
+  // Recurrence UI state properties
+  endType: 'never' | 'count' | 'until' = 'never';
+  monthType: 'day' | 'position' = 'day';
+  selectedDayOfWeek: string = 'MO';
+  weekDays = [
+    { value: 'MO', label: 'Mon' },
+    { value: 'TU', label: 'Tue' },
+    { value: 'WE', label: 'Wed' },
+    { value: 'TH', label: 'Thu' },
+    { value: 'FR', label: 'Fri' },
+    { value: 'SA', label: 'Sat' },
+    { value: 'SU', label: 'Sun' }
+  ];
 
   constructor(private emailService: EmailService) {}
 
@@ -100,6 +114,10 @@ export class EventDetailModalComponent {
           relativeTo: 'start'
         }
       };
+      
+      // Initialize recurrence UI state
+      this.initializeRecurrenceProperties();
+      
       console.log('🔄 Event detail modal initialized with event:', this.event);
       console.log('🔄 Edited event created:', this.editedEvent);
       console.log('🔄 Event recurrence data:', {
@@ -149,6 +167,8 @@ export class EventDetailModalComponent {
         ...this.event,
         attendees: this.event.attendees || []
       };
+      // Reinitialize recurrence properties
+      this.initializeRecurrenceProperties();
     }
   }
 
@@ -306,5 +326,189 @@ export class EventDetailModalComponent {
     };
     
     return days.map(day => dayMap[day] || day).join(', ');
+  }
+
+  // Recurrence helper methods
+  initializeRecurrenceProperties(): void {
+    if (!this.editedEvent?.recurrence) return;
+    
+    const recurrence = this.editedEvent.recurrence;
+    
+    // Initialize end type
+    if (recurrence.count) {
+      this.endType = 'count';
+    } else if (recurrence.until) {
+      this.endType = 'until';
+    } else {
+      this.endType = 'never';
+    }
+    
+    // Initialize month type
+    if (recurrence.bySetPos) {
+      this.monthType = 'position';
+      this.selectedDayOfWeek = recurrence.byDay?.[0] || 'MO';
+    } else {
+      this.monthType = 'day';
+    }
+  }
+
+  getRecurrenceIntervalText(): string {
+    if (!this.editedEvent?.recurrence?.frequency) return '';
+    
+    const frequency = this.editedEvent.recurrence.frequency;
+    const interval = this.editedEvent.recurrence.interval || 1;
+    
+    if (interval === 1) {
+      return frequency === 'daily' ? 'day' : 
+             frequency === 'weekly' ? 'week' : 
+             frequency === 'monthly' ? 'month' : 
+             frequency === 'annually' ? 'year' : '';
+    } else {
+      return frequency === 'daily' ? 'days' : 
+             frequency === 'weekly' ? 'weeks' : 
+             frequency === 'monthly' ? 'months' : 
+             frequency === 'annually' ? 'years' : '';
+    }
+  }
+
+  getEndType(): string {
+    return this.endType;
+  }
+
+  setEndType(value: string): void {
+    this.endType = value as 'never' | 'count' | 'until';
+    
+    if (!this.editedEvent?.recurrence) return;
+    
+    // Clear other end conditions
+    if (value === 'never') {
+      delete this.editedEvent.recurrence.count;
+      delete this.editedEvent.recurrence.until;
+    } else if (value === 'count') {
+      delete this.editedEvent.recurrence.until;
+      if (!this.editedEvent.recurrence.count) {
+        this.editedEvent.recurrence.count = 1;
+      }
+    } else if (value === 'until') {
+      delete this.editedEvent.recurrence.count;
+      if (!this.editedEvent.recurrence.until) {
+        // Set until date to 1 year from start date
+        const startDate = new Date(this.editedEvent.start_time);
+        const untilDate = new Date(startDate);
+        untilDate.setFullYear(untilDate.getFullYear() + 1);
+        this.editedEvent.recurrence.until = untilDate.toISOString().split('T')[0];
+      }
+    }
+  }
+
+  getMonthType(): string {
+    return this.monthType;
+  }
+
+  setMonthType(value: string): void {
+    this.monthType = value as 'day' | 'position';
+    
+    if (!this.editedEvent?.recurrence) return;
+    
+    if (value === 'day') {
+      delete this.editedEvent.recurrence.bySetPos;
+      delete this.editedEvent.recurrence.byDay;
+      if (!this.editedEvent.recurrence.byMonthDay) {
+        this.editedEvent.recurrence.byMonthDay = [1];
+      }
+    } else if (value === 'position') {
+      delete this.editedEvent.recurrence.byMonthDay;
+      if (!this.editedEvent.recurrence.bySetPos) {
+        this.editedEvent.recurrence.bySetPos = 1;
+      }
+      if (!this.editedEvent.recurrence.byDay) {
+        this.editedEvent.recurrence.byDay = ['MO'];
+      }
+    }
+  }
+
+  updateRecurrenceInterval(value: number): void {
+    if (this.editedEvent?.recurrence) {
+      this.editedEvent.recurrence.interval = Math.max(1, value);
+    }
+  }
+
+  updateRecurrenceCount(value: number): void {
+    if (this.editedEvent?.recurrence) {
+      this.editedEvent.recurrence.count = Math.max(1, value);
+    }
+  }
+
+  updateRecurrenceUntil(value: string): void {
+    if (this.editedEvent?.recurrence) {
+      this.editedEvent.recurrence.until = value;
+    }
+  }
+
+  isDaySelected(dayValue: string): boolean {
+    return this.editedEvent?.recurrence?.byDay?.includes(dayValue) || false;
+  }
+
+  toggleDayOfWeek(dayValue: string): void {
+    if (!this.editedEvent?.recurrence) return;
+    
+    if (!this.editedEvent.recurrence.byDay) {
+      this.editedEvent.recurrence.byDay = [];
+    }
+    
+    const index = this.editedEvent.recurrence.byDay.indexOf(dayValue);
+    if (index > -1) {
+      this.editedEvent.recurrence.byDay.splice(index, 1);
+    } else {
+      this.editedEvent.recurrence.byDay.push(dayValue);
+    }
+    
+    // Ensure at least one day is selected
+    if (this.editedEvent.recurrence.byDay.length === 0) {
+      this.editedEvent.recurrence.byDay.push(dayValue);
+    }
+  }
+
+  updateMonthDay(value: number): void {
+    if (this.editedEvent?.recurrence) {
+      this.editedEvent.recurrence.byMonthDay = [Math.max(1, Math.min(31, value))];
+    }
+  }
+
+  updateBySetPos(value: number): void {
+    if (this.editedEvent?.recurrence) {
+      this.editedEvent.recurrence.bySetPos = value;
+    }
+  }
+
+  updateSelectedDayOfWeek(value: string): void {
+    this.selectedDayOfWeek = value;
+    if (this.editedEvent?.recurrence) {
+      this.editedEvent.recurrence.byDay = [value];
+    }
+  }
+
+  addSpecificDate(): void {
+    if (!this.editedEvent?.recurrence) return;
+    
+    if (!this.editedEvent.recurrence.specificDates) {
+      this.editedEvent.recurrence.specificDates = [];
+    }
+    
+    // Add today's date as default
+    const today = new Date().toISOString().split('T')[0];
+    this.editedEvent.recurrence.specificDates.push(today);
+  }
+
+  removeSpecificDate(index: number): void {
+    if (this.editedEvent?.recurrence?.specificDates) {
+      this.editedEvent.recurrence.specificDates.splice(index, 1);
+    }
+  }
+
+  updateSpecificDate(index: number, value: string): void {
+    if (this.editedEvent?.recurrence?.specificDates) {
+      this.editedEvent.recurrence.specificDates[index] = value;
+    }
   }
 }
