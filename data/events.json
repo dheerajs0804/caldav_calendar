@@ -6706,5 +6706,69 @@
             "relativeTo": "start"
         },
         "valarm": null
+    },
+    {
+        "id": "event_68d39b084e259",
+        "title": "cal change test",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-24T12:47:00+05:30",
+        "end_time": "2025-09-24T13:47:00+05:30",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 3,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68d39b084e262",
+        "etag": "etag_68d39b084e263",
+        "created_at": "2025-09-24T09:17:28+02:00",
+        "updated_at": "2025-09-24T09:37:06+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "daily",
+            "interval": 1,
+            "count": 3
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68d3a269422a7",
+        "title": "occur update test",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-24T13:16:00+05:30",
+        "end_time": "2025-09-24T14:16:00+05:30",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68d3a269422af",
+        "etag": "etag_68d3a269422b0",
+        "created_at": "2025-09-24T09:48:57+02:00",
+        "updated_at": "2025-09-24T09:49:18+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "daily",
+            "interval": 1,
+            "count": 3
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
     }
 ]

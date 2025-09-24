@@ -39,6 +39,7 @@ interface Event {
     bySetPos?: number;
     specificDates?: string[];
   };
+  exdate?: string | string[]; // Excluded dates in UTC format (can be single string or array)
   reminder?: {
     enabled: boolean;
     type: string;
@@ -120,6 +121,15 @@ export class EventDetailModalComponent {
       
       console.log('🔄 Event detail modal initialized with event:', this.event);
       console.log('🔄 Edited event created:', this.editedEvent);
+      console.log('🗑️ EXDATE data in event:', this.event.exdate);
+      console.log('🗑️ EXDATE data type:', typeof this.event.exdate, Array.isArray(this.event.exdate) ? 'array' : 'not array');
+      if (this.event.exdate) {
+        if (Array.isArray(this.event.exdate)) {
+          console.log('🗑️ EXDATE array length:', this.event.exdate.length);
+        } else {
+          console.log('🗑️ EXDATE single value:', this.event.exdate);
+        }
+      }
       console.log('🔄 Event recurrence data:', {
         originalRecurrence: this.event.recurrence,
         editedRecurrence: this.editedEvent.recurrence,
@@ -326,6 +336,85 @@ export class EventDetailModalComponent {
     };
     
     return days.map(day => dayMap[day] || day).join(', ');
+  }
+
+  // Helper method to check if exdate is an array
+  isExdateArray(): boolean {
+    return Array.isArray(this.event?.exdate);
+  }
+
+  // Helper method to calculate remaining occurrences
+  getRemainingOccurrences(): number {
+    if (!this.event?.recurrence?.count) return 0;
+    
+    const originalCount = this.event.recurrence.count;
+    const excludedCount = this.getExdateArray().length;
+    const remaining = Math.max(0, originalCount - excludedCount);
+    
+    console.log('🗑️ Occurrence calculation:', {
+      originalCount,
+      excludedCount,
+      remaining,
+      exdateArray: this.getExdateArray()
+    });
+    
+    return remaining;
+  }
+
+  // Helper method to get exdate as array
+  getExdateArray(): string[] {
+    if (!this.event?.exdate) return [];
+    if (Array.isArray(this.event.exdate)) {
+      return this.event.exdate;
+    } else {
+      return [this.event.exdate];
+    }
+  }
+
+  formatExdate(exdate: string): string {
+    console.log('🗑️ Formatting EXDATE:', exdate);
+    try {
+      // Handle UTC format: 20250920T111800Z
+      if (/^\d{8}T\d{6}Z$/.test(exdate)) {
+        const year = exdate.substring(0, 4);
+        const month = exdate.substring(4, 6);
+        const day = exdate.substring(6, 8);
+        const hour = exdate.substring(9, 11);
+        const minute = exdate.substring(11, 13);
+        
+        // Create a readable date format
+        const date = new Date(`${year}-${month}-${day}T${hour}:${minute}:00Z`);
+        const formatted = date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        console.log('🗑️ Formatted UTC EXDATE:', exdate, '->', formatted);
+        return formatted;
+      }
+      
+      // Handle ISO format
+      const date = new Date(exdate);
+      if (!isNaN(date.getTime())) {
+        const formatted = date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        console.log('🗑️ Formatted ISO EXDATE:', exdate, '->', formatted);
+        return formatted;
+      }
+      
+      console.log('🗑️ Could not parse EXDATE, returning original:', exdate);
+      return exdate; // Return original if parsing fails
+    } catch (error) {
+      console.error('🗑️ Error formatting EXDATE:', error);
+      return exdate;
+    }
   }
 
   // Recurrence helper methods

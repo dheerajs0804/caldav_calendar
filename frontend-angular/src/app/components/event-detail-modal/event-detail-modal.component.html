@@ -434,7 +434,10 @@
             
             <div *ngIf="event.recurrence.count">
               <label class="block text-sm font-medium text-gray-700">Number of occurrences</label>
-              <p class="mt-1 text-sm text-gray-900">{{ event.recurrence.count }}</p>
+              <p class="mt-1 text-sm text-gray-900">
+                {{ getRemainingOccurrences() }} remaining 
+                <span class="text-gray-500">(originally {{ event.recurrence.count }})</span>
+              </p>
             </div>
             
             <div *ngIf="event.recurrence.until">
@@ -450,6 +453,15 @@
             <div *ngIf="event.recurrence.byMonthDay && event.recurrence.byMonthDay.length > 0">
               <label class="block text-sm font-medium text-gray-700">Days of month</label>
               <p class="mt-1 text-sm text-gray-900">{{ event.recurrence.byMonthDay.join(', ') }}</p>
+            </div>
+            
+            <div *ngIf="event.exdate && getExdateArray().length > 0">
+              <label class="block text-sm font-medium text-gray-700">Excluded dates</label>
+              <div class="mt-1 space-y-1">
+                <div *ngFor="let exdate of getExdateArray()" class="text-sm text-gray-900">
+                  {{ formatExdate(exdate) }}
+                </div>
+              </div>
             </div>
           </div>
         </div>
