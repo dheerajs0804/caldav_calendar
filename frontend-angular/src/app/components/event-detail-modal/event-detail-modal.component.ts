@@ -4,65 +4,7 @@ import { FormsModule } from '@angular/forms';
 import * as dayjs from 'dayjs';
 import { EmailService } from '../../services/email.service';
 
-interface Calendar {
-  id: number;
-  name: string;
-  color: string;
-  url?: string;
-  userId: number;
-  isActive: boolean;
-  syncToken?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface Event {
-  id: string;
-  uid?: string;
-  title: string;
-  description?: string;
-  location?: string;
-  start_time: string;
-  end_time: string;
-  all_day: boolean;
-  calendar_id: number;
-  calendar_name?: string;
-  calendar_url?: string;
-  calendar_color?: string;
-  color?: string;
-  availability?: 'free' | 'busy' | 'tentative';
-  status?: 'confirmed' | 'tentative' | 'cancelled';
-  recurrence?: {
-    frequency: 'never' | 'daily' | 'weekly' | 'monthly' | 'annually' | 'ondates';
-    interval?: number;
-    count?: number;
-    until?: string;
-    byDay?: string[];
-    byMonth?: number[];
-    byMonthDay?: number[];
-    bySetPos?: number;
-    specificDates?: string[];
-  };
-  exdate?: string | string[]; // Excluded dates in UTC format (can be single string or array)
-  reminder?: {
-    enabled: boolean;
-    type: string;
-    time: number;
-    unit: string;
-    relativeTo: string;
-  };
-  valarm?: {
-    trigger: string;
-    action: string;
-    description: string;
-  };
-  attendees?: {
-    email: string;
-    name: string;
-    response: string;
-    role: string;
-  }[];
-}
+import { CalendarEvent, Calendar } from '../../interfaces/calendar-event.interface';
 
 @Component({
   selector: 'app-event-detail-modal',
@@ -72,16 +14,17 @@ interface Event {
   styleUrls: ['./event-detail-modal.component.scss']
 })
 export class EventDetailModalComponent {
-  @Input() event: Event | null = null;
+  @Input() event: CalendarEvent | null = null;
   @Input() calendars: Calendar[] = [];
   @Input() isVisible: boolean = false;
   
   @Output() closeModal = new EventEmitter<void>();
-  @Output() editEvent = new EventEmitter<Event>();
-  @Output() deleteEvent = new EventEmitter<Event>();
+  @Output() editEvent = new EventEmitter<CalendarEvent>();
+  @Output() deleteEvent = new EventEmitter<CalendarEvent>();
 
   isEditMode: boolean = false;
-  editedEvent: Event | null = null;
+  editedEvent: CalendarEvent | null = null;
+  editScope: 'this' | 'all' = 'this'; // Default to editing only this occurrence
   
   // Recurrence UI state properties
   endType: 'never' | 'count' | 'until' = 'never';
@@ -99,8 +42,37 @@ export class EventDetailModalComponent {
 
   constructor(private emailService: EmailService) {}
 
+  // Check if the current event is a recurring event
+  isRecurringEvent(): boolean {
+    return this.editedEvent?.recurrence?.frequency !== 'never' && 
+           this.editedEvent?.recurrence?.frequency !== undefined;
+  }
+
+  // Check if we should show recurrence editing options
+  shouldShowRecurrenceEditing(): boolean {
+    // Don't show recurrence editing for:
+    // 1. Occurrences of recurring events (isRecurringInstance = true)
+    // 2. Events that already have recurrence (when editing "all occurrences")
+    return !this.editedEvent?.isRecurringInstance && 
+           !(this.isRecurringEvent() && this.editScope === 'all');
+  }
+
+  // Check if we should show the recurrence info message
+  shouldShowRecurrenceInfo(): boolean {
+    return !this.shouldShowRecurrenceEditing() && 
+           this.editedEvent?.isRecurringInstance === true;
+  }
+
   ngOnChanges(): void {
     if (this.event) {
+      // Always use the event data as-is for editing
+      // The event already contains the correct occurrence data (either original or individually modified)
+      console.log('🔄 Event detail modal initialized with event:', this.event);
+      console.log('🕐 Event start_time:', this.event.start_time);
+      console.log('🕐 Event end_time:', this.event.end_time);
+      console.log('🔄 Is recurring instance:', this.event.isRecurringInstance);
+      console.log('🔄 Has individual modifications:', this.event.hasIndividualModifications);
+      
       // Create a copy of the event for editing with default values for new fields
       this.editedEvent = { 
         ...this.event,
@@ -123,23 +95,9 @@ export class EventDetailModalComponent {
       // Initialize recurrence UI state
       this.initializeRecurrenceProperties();
       
-      console.log('🔄 Event detail modal initialized with event:', this.event);
       console.log('🔄 Edited event created:', this.editedEvent);
-      console.log('🗑️ EXDATE data in event:', this.event.exdate);
-      console.log('🗑️ EXDATE data type:', typeof this.event.exdate, Array.isArray(this.event.exdate) ? 'array' : 'not array');
-      if (this.event.exdate) {
-        if (Array.isArray(this.event.exdate)) {
-          console.log('🗑️ EXDATE array length:', this.event.exdate.length);
-        } else {
-          console.log('🗑️ EXDATE single value:', this.event.exdate);
-        }
-      }
-      console.log('🔄 Event recurrence data:', {
-        originalRecurrence: this.event.recurrence,
-        editedRecurrence: this.editedEvent.recurrence,
-        hasOriginalRecurrence: !!this.event.recurrence,
-        hasEditedRecurrence: !!this.editedEvent.recurrence
-      });
+      console.log('🕐 Edited event start_time:', this.editedEvent.start_time);
+      console.log('🕐 Edited event end_time:', this.editedEvent.end_time);
       console.log('📅 Initial calendar_id:', this.editedEvent.calendar_id);
     }
   }
@@ -151,6 +109,25 @@ export class EventDetailModalComponent {
 
   formatDateTime(dateTime: string): string {
     return dayjs(dateTime).format('DD MMMM YYYY HH:mm');
+  }
+
+  formatDateTimeForInput(dateTime: string): string {
+    // Convert ISO string to datetime-local format (YYYY-MM-DDTHH:mm)
+    const date = new Date(dateTime);
+    console.log('🕐 formatDateTimeForInput - Input:', dateTime);
+    console.log('🕐 formatDateTimeForInput - Parsed date:', date.toISOString());
+    
+    // Format for datetime-local input (YYYY-MM-DDTHH:mm)
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    
+    const formatted = `${year}-${month}-${day}T${hours}:${minutes}`;
+    console.log('🕐 formatDateTimeForInput - Formatted:', formatted);
+    
+    return formatted;
   }
 
   onClose(): void {
@@ -168,13 +145,16 @@ export class EventDetailModalComponent {
     console.log('📅 Available calendars:', this.calendars.map(cal => ({ id: cal.id, name: cal.name, type: typeof cal.id })));
     
     if (this.editedEvent) {
-      // Convert to number to ensure type consistency
-      this.editedEvent.calendar_id = Number(selectedCalendarId);
+      // Keep the original type (URL or number) for consistency
+      this.editedEvent.calendar_id = selectedCalendarId;
       console.log('📅 Calendar changed to:', selectedCalendarId, 'Type:', typeof selectedCalendarId);
       console.log('📅 Updated editedEvent.calendar_id:', this.editedEvent.calendar_id, 'Type:', typeof this.editedEvent.calendar_id);
       
       // Also update calendar-related fields
-      const selectedCalendar = this.calendars.find(cal => Number(cal.id) === Number(selectedCalendarId));
+      // Handle both URL-based IDs and numeric IDs for backward compatibility
+      const selectedCalendar = this.calendars.find(cal => 
+        cal.id === selectedCalendarId || Number(cal.id) === Number(selectedCalendarId)
+      );
       if (selectedCalendar) {
         this.editedEvent.calendar_name = selectedCalendar.name;
         this.editedEvent.calendar_url = selectedCalendar.url;
@@ -201,8 +181,47 @@ export class EventDetailModalComponent {
       console.log('🕐 End time:', this.editedEvent.end_time);
       console.log('📅 Calendar ID being saved:', this.editedEvent.calendar_id);
       console.log('📅 Calendar ID type:', typeof this.editedEvent.calendar_id);
+      console.log('🔄 Edit scope:', this.editScope);
       console.log('📤 Emitting editEvent with data:', this.editedEvent);
-      this.editEvent.emit(this.editedEvent);
+      
+      // For "edit all occurrences", we need to be careful about what data we send
+      let eventDataToSend = { ...this.editedEvent };
+      
+      if (this.editScope === 'all' && this.editedEvent.isRecurringInstance) {
+        console.log('🔄 Edit all occurrences - adjusting data for recurring event');
+        console.log('🔄 Original event ID:', this.editedEvent.originalEventId);
+        
+        // For "edit all occurrences", we need to get the original recurring event data
+        // and only apply the user's changes to the base event, not the occurrence times
+        eventDataToSend = {
+          ...this.editedEvent,
+          // Keep the original recurring event's ID and UID
+          id: this.editedEvent.originalEventId || this.editedEvent.id,
+          uid: this.editedEvent.uid?.replace(/_\d+$/, '') || this.editedEvent.uid,
+          // 🔧 FIX: Don't send occurrence times for "edit all occurrences"
+          // The backend should preserve the original recurring event times
+          // Only send times if the user explicitly changed them in the form
+          start_time: this.editedEvent.start_time, // This will be the occurrence time, backend will handle comparison
+          end_time: this.editedEvent.end_time,     // This will be the occurrence time, backend will handle comparison
+          // Keep the calendar info as-is (user might want to change calendar for all occurrences)
+          calendar_id: this.editedEvent.calendar_id,
+          editScope: this.editScope
+        };
+        
+        console.log('🔄 Adjusted event data for edit all occurrences:', eventDataToSend);
+        console.log('🕐 Sending occurrence times (backend will compare with original):', {
+          start_time: this.editedEvent.start_time,
+          end_time: this.editedEvent.end_time
+        });
+      } else {
+        // For single occurrence edits or non-recurring events, send as-is
+        eventDataToSend = {
+          ...this.editedEvent,
+          editScope: this.editScope
+        };
+      }
+      
+      this.editEvent.emit(eventDataToSend);
       this.isEditMode = false;
     } else {
       console.error('❌ No editedEvent found!');

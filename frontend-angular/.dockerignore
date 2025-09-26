@@ -1,0 +1,22 @@
+# Docker ignore file for Angular app
+node_modules
+npm-debug.log
+dist
+.angular
+.git
+.gitignore
+README.md
+Dockerfile*
+docker-compose*
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+coverage
+.nyc_output
+.vscode
+.idea
+*.log
+.DS_Store
+Thumbs.db

@@ -114,21 +114,42 @@ function getCalendarById($calendarId) {
                 $calendarColors = json_decode(file_get_contents($calendarColorsFile), true) ?? [];
             }
             
-            // Find calendar by ID (calendars are indexed starting from 1)
-            $calendarIndex = intval($calendarId) - 1;
-            if (isset($calendars[$calendarIndex])) {
-                $calendar = $calendars[$calendarIndex];
-                $calendarUrl = $calendar['href'];
-                $storedColor = $calendarColors[$calendarUrl] ?? null;
-                $caldavColor = $calendar['color'] ?? null;
-                $finalColor = $storedColor ?? $caldavColor ?? '#4285f4';
-                
-                return [
-                    'id' => $calendarId,
-                    'name' => $calendar['name'],
-                    'url' => $calendarUrl,
-                    'color' => $finalColor
-                ];
+            // 🔧 FIX: Use stable calendar lookup by URL instead of array index
+            // First, try to find calendar by URL if calendarId looks like a URL
+            if (strpos($calendarId, 'http') === 0) {
+                // calendarId is actually a URL, find by URL
+                foreach ($calendars as $calendar) {
+                    if ($calendar['href'] === $calendarId) {
+                        $calendarUrl = $calendar['href'];
+                        $storedColor = $calendarColors[$calendarUrl] ?? null;
+                        $caldavColor = $calendar['color'] ?? null;
+                        $finalColor = $storedColor ?? $caldavColor ?? '#4285f4';
+                        
+                        return [
+                            'id' => $calendarId, // Use URL as ID for stability
+                            'name' => $calendar['name'],
+                            'url' => $calendarUrl,
+                            'color' => $finalColor
+                        ];
+                    }
+                }
+            } else {
+                // Fallback to array index for backward compatibility
+                $calendarIndex = intval($calendarId) - 1;
+                if (isset($calendars[$calendarIndex])) {
+                    $calendar = $calendars[$calendarIndex];
+                    $calendarUrl = $calendar['href'];
+                    $storedColor = $calendarColors[$calendarUrl] ?? null;
+                    $caldavColor = $calendar['color'] ?? null;
+                    $finalColor = $storedColor ?? $caldavColor ?? '#4285f4';
+                    
+                    return [
+                        'id' => $calendarId,
+                        'name' => $calendar['name'],
+                        'url' => $calendarUrl,
+                        'color' => $finalColor
+                    ];
+                }
             }
         }
         
@@ -408,8 +429,9 @@ function getUserCalendars() {
             // Add ID and other properties to each calendar
             $processedCalendars = [];
             foreach ($calendars as $index => $calendar) {
-                $calendarId = $index + 1;
+                // 🔧 FIX: Use calendar URL as stable ID instead of array index
                 $calendarUrl = $calendar['href'];
+                $calendarId = $calendarUrl; // Use URL as ID for stability
                 
                 // Get stored color for this calendar URL, or use CalDAV color, or default
                 $storedColor = $calendarColors[$calendarUrl] ?? null;
@@ -420,7 +442,7 @@ function getUserCalendars() {
                 error_log("Stored color: " . ($storedColor ?? 'null') . ", CalDAV color: " . ($caldavColor ?? 'null') . ", Final color: " . $finalColor);
                 
                 $processedCalendars[] = [
-                    'id' => $calendarId, // Simple numeric ID
+                    'id' => $calendarId, // Use URL as stable ID
                     'name' => $calendar['name'],
                     'url' => $calendarUrl,
                     'color' => $finalColor, // Use stored color or fallback
@@ -1444,6 +1466,8 @@ function updateCalendar($id) {
 function updateEvent($id) {
     try {
         error_log("=== updateEvent called with ID: " . $id . " ===");
+        error_log("🔍 ID type: " . gettype($id));
+        error_log("🔍 ID length: " . strlen($id));
         
         // Get the request body
         $input = json_decode(file_get_contents('php://input'), true);
@@ -1454,6 +1478,7 @@ function updateEvent($id) {
         error_log("Calendar ID type: " . gettype($input['calendar_id'] ?? null));
         error_log("Recurrence data in input: " . json_encode($input['recurrence'] ?? 'null'));
         error_log("Reminder data in input: " . json_encode($input['reminder'] ?? 'null'));
+        error_log("Edit scope in input: " . ($input['editScope'] ?? 'not set'));
         
         if (!$input) {
             throw new Exception('Invalid JSON input');
@@ -1484,6 +1509,7 @@ function updateEvent($id) {
             error_log("Total events in local storage: " . count($storedEvents));
             error_log("Looking for event with ID: " . $id);
             error_log("Available event IDs: " . json_encode(array_map(function($e) { return $e['id'] ?? 'no-id'; }, $storedEvents)));
+            error_log("Available event UIDs: " . json_encode(array_map(function($e) { return $e['uid'] ?? 'no-uid'; }, $storedEvents)));
             
             // Find the event by ID or UID
             $eventToUpdate = null;
@@ -1499,6 +1525,27 @@ function updateEvent($id) {
                     error_log("Original event calendar info: ID=" . ($event['calendar_id'] ?? 'null') . ", Name=" . ($event['calendar_name'] ?? 'null') . ", URL=" . ($event['calendar_url'] ?? 'null'));
                     error_log("🔍 FULL ORIGINAL EVENT DATA: " . json_encode($event));
                     break;
+                }
+                
+                // Check for recurring event occurrence match (UID with occurrence index)
+                // If the search ID contains an underscore followed by a number, it's likely an occurrence
+                if (preg_match('/^(.+)_(\d+)$/', $id, $matches)) {
+                    $baseUid = $matches[1];
+                    $occurrenceIndex = $matches[2];
+                    
+                    error_log("🔍 Checking occurrence pattern - ID: " . $id . ", Base UID: " . $baseUid . ", Occurrence: " . $occurrenceIndex);
+                    error_log("🔍 Comparing against event UID: " . ($event['uid'] ?? 'null'));
+                    
+                    if (($event['uid'] ?? null) == $baseUid) {
+                        $eventToUpdate = $event;
+                        $originalEvent = json_decode(json_encode($event), true); // Deep copy for comparison
+                        error_log("✅ Found recurring event occurrence match! Base UID: " . $baseUid . ", Occurrence: " . $occurrenceIndex);
+                        error_log("Original event calendar info: ID=" . ($event['calendar_id'] ?? 'null') . ", Name=" . ($event['calendar_name'] ?? 'null') . ", URL=" . ($event['calendar_url'] ?? 'null'));
+                        error_log("🔍 FULL ORIGINAL EVENT DATA: " . json_encode($event));
+                        break;
+                    } else {
+                        error_log("❌ UID mismatch - Expected: " . $baseUid . ", Found: " . ($event['uid'] ?? 'null'));
+                    }
                 }
                 
                 // Check for partial match (in case of ID format differences)
@@ -1564,53 +1611,104 @@ function updateEvent($id) {
             error_log("Original event calendar_id: " . ($originalEvent['calendar_id'] ?? 'not set'));
             error_log("Input calendar_id: " . ($input['calendar_id'] ?? 'not set'));
             
-            // Update event properties
-            $eventToUpdate['title'] = $input['title'];
-            $eventToUpdate['description'] = $input['description'] ?? $eventToUpdate['description'];
-            $eventToUpdate['location'] = $input['location'] ?? $eventToUpdate['location'];
-            $eventToUpdate['start_time'] = $input['start_time'];
-            $eventToUpdate['end_time'] = $input['end_time'];
-            $eventToUpdate['all_day'] = $input['all_day'] ?? $eventToUpdate['all_day'];
-            $eventToUpdate['availability'] = $input['availability'] ?? $eventToUpdate['availability'] ?? 'busy';
-            $eventToUpdate['status'] = $input['status'] ?? $eventToUpdate['status'] ?? 'confirmed';
+            // Handle recurring event edit scope
+            $editScope = $input['editScope'] ?? 'all';
+            error_log("Edit scope: " . $editScope);
+            error_log("Event recurrence frequency: " . ($eventToUpdate['recurrence']['frequency'] ?? 'none'));
+            
+            // For single occurrence edits, don't update the original recurring event
+            // Only create the new single occurrence event
+            if ($editScope === 'this' && !empty($eventToUpdate['recurrence']) && $eventToUpdate['recurrence']['frequency'] !== 'never') {
+                error_log("🔄 Single occurrence edit - preserving original recurring event unchanged");
+                // Don't update the original event properties - just add EXDATE
+            } else {
+                // Update event properties for regular edits or non-recurring events
+                $eventToUpdate['title'] = $input['title'];
+                $eventToUpdate['description'] = $input['description'] ?? $eventToUpdate['description'];
+                $eventToUpdate['location'] = $input['location'] ?? $eventToUpdate['location'];
+                
+                // Only update times if they were explicitly changed (not just passed from the occurrence)
+                // For "edit all occurrences", we need to be careful about time updates
+                if ($editScope === 'all' && !empty($eventToUpdate['recurrence']) && $eventToUpdate['recurrence']['frequency'] !== 'never') {
+                    // For "edit all occurrences" of recurring events, only update times if they're different from the original
+                    $originalStartTime = $eventToUpdate['start_time'];
+                    $originalEndTime = $eventToUpdate['end_time'];
+                    
+                    error_log("🔍 Time change debugging for edit all occurrences of recurring event:");
+                    error_log("🔍 Original recurring event start time: " . $originalStartTime);
+                    error_log("🔍 Input start time (from occurrence): " . $input['start_time']);
+                    error_log("🔍 Original recurring event end time: " . $originalEndTime);
+                    error_log("🔍 Input end time (from occurrence): " . $input['end_time']);
+                    error_log("🔍 Start times equal? " . ($originalStartTime == $input['start_time'] ? 'YES' : 'NO'));
+                    error_log("🔍 End times equal? " . ($originalEndTime == $input['end_time'] ? 'YES' : 'NO'));
+                    
+                    // 🔧 FIX: Only update times if they're actually different from the original recurring event times
+                    // This prevents accidental time changes when editing occurrences
+                    if ($input['start_time'] !== $originalStartTime || $input['end_time'] !== $originalEndTime) {
+                        $eventToUpdate['start_time'] = $input['start_time'];
+                        $eventToUpdate['end_time'] = $input['end_time'];
+                        error_log("🕐 Updated start/end times for all occurrences: " . $input['start_time'] . " to " . $input['end_time']);
+                    } else {
+                        error_log("🕐 Times unchanged for all occurrences - keeping original recurring event times");
+                    }
+                } else {
+                    // For regular edits (non-recurring events) or single occurrence edits, always update times
+                    $eventToUpdate['start_time'] = $input['start_time'];
+                    $eventToUpdate['end_time'] = $input['end_time'];
+                    error_log("🕐 Updated start/end times for regular edit: " . $input['start_time'] . " to " . $input['end_time']);
+                }
+                
+                $eventToUpdate['all_day'] = $input['all_day'] ?? $eventToUpdate['all_day'];
+                $eventToUpdate['availability'] = $input['availability'] ?? $eventToUpdate['availability'] ?? 'busy';
+                $eventToUpdate['status'] = $input['status'] ?? $eventToUpdate['status'] ?? 'confirmed';
+                
+                // 🔧 FIX: Update recurrence data for non-recurring events
+                if (isset($input['recurrence'])) {
+                    $eventToUpdate['recurrence'] = $input['recurrence'];
+                    error_log("🔄 Updated recurrence data: " . json_encode($input['recurrence']));
+                }
+            }
             
             // 🔧 FIX: Check for calendar change BEFORE updating calendar_id
             $originalCalendarId = $eventToUpdate['calendar_id'];
             $newCalendarId = $input['calendar_id'] ?? $eventToUpdate['calendar_id'];
             
-            // Handle attendees - convert null string to empty array if needed
-            $attendees = $input['attendees'] ?? $eventToUpdate['attendees'];
-            if ($attendees === 'null' || $attendees === null) {
-                $attendees = [];
-            }
-            $eventToUpdate['attendees'] = $attendees;
-            $eventToUpdate['recurrence'] = $input['recurrence'] ?? $eventToUpdate['recurrence'];
-            
-            error_log("Updated attendees: " . json_encode($eventToUpdate['attendees']));
-            error_log("Updated recurrence: " . json_encode($eventToUpdate['recurrence']));
-            error_log("Original calendar ID: " . $originalCalendarId);
-            error_log("New calendar ID: " . $newCalendarId);
+            error_log("🔍 Calendar change debugging:");
+            error_log("🔍 Original calendar ID: " . $originalCalendarId . " (type: " . gettype($originalCalendarId) . ")");
+            error_log("🔍 Input calendar ID: " . ($input['calendar_id'] ?? 'not set') . " (type: " . gettype($input['calendar_id'] ?? null) . ")");
+            error_log("🔍 New calendar ID: " . $newCalendarId . " (type: " . gettype($newCalendarId) . ")");
+            error_log("🔍 Edit scope: " . $editScope);
+            error_log("🔍 Calendar IDs equal? " . ($originalCalendarId == $newCalendarId ? 'YES' : 'NO'));
+            error_log("🔍 Calendar IDs strict equal? " . ($originalCalendarId === $newCalendarId ? 'YES' : 'NO'));
             
             // Update calendar information if calendar_id changed
+            // Only update calendar for "edit all occurrences" or non-recurring events
             if (isset($input['calendar_id']) && $input['calendar_id'] != $originalCalendarId) {
-                error_log("🔧 Calendar ID changed from " . $originalCalendarId . " to " . $input['calendar_id']);
-                
-                // Get calendar information by ID
-                $calendarInfo = getCalendarById($input['calendar_id']);
-                
-                if ($calendarInfo) {
-                    // Update calendar-related fields
-                    $eventToUpdate['calendar_id'] = $input['calendar_id'];
-                    $eventToUpdate['calendar_url'] = $calendarInfo['url'];
-                    $eventToUpdate['calendar_name'] = $calendarInfo['name'];
-                    $eventToUpdate['calendar_color'] = $calendarInfo['color'];
-                    $eventToUpdate['color'] = $calendarInfo['color']; // Update event color too
+                if ($editScope === 'all' || empty($eventToUpdate['recurrence']) || $eventToUpdate['recurrence']['frequency'] === 'never') {
+                    error_log("🔧 Calendar ID changed from " . $originalCalendarId . " to " . $input['calendar_id'] . " (editScope: " . $editScope . ")");
                     
-                    error_log("✅ Updated calendar info: Name=" . $calendarInfo['name'] . ", URL=" . $calendarInfo['url'] . ", Color=" . $calendarInfo['color']);
+                    // Get calendar information by ID
+                    error_log("🔍 Looking up calendar info for ID: " . $input['calendar_id']);
+                    $calendarInfo = getCalendarById($input['calendar_id']);
+                    error_log("🔍 Calendar lookup result: " . json_encode($calendarInfo));
+                    
+                    if ($calendarInfo) {
+                        // Update calendar-related fields
+                        $eventToUpdate['calendar_id'] = $input['calendar_id'];
+                        $eventToUpdate['calendar_url'] = $calendarInfo['url'];
+                        $eventToUpdate['calendar_name'] = $calendarInfo['name'];
+                        $eventToUpdate['calendar_color'] = $calendarInfo['color'];
+                        $eventToUpdate['color'] = $calendarInfo['color']; // Update event color too
+                        
+                        error_log("✅ Updated calendar info: Name=" . $calendarInfo['name'] . ", URL=" . $calendarInfo['url'] . ", Color=" . $calendarInfo['color']);
+                    } else {
+                        error_log("❌ Warning: Could not find calendar info for ID " . $input['calendar_id']);
+                        error_log("❌ This might indicate a calendar ID mismatch issue");
+                        // Fallback: just update the calendar_id
+                        $eventToUpdate['calendar_id'] = $input['calendar_id'];
+                    }
                 } else {
-                    error_log("❌ Warning: Could not find calendar info for ID " . $input['calendar_id']);
-                    // Fallback: just update the calendar_id
-                    $eventToUpdate['calendar_id'] = $input['calendar_id'];
+                    error_log("🔧 Calendar change ignored for single occurrence edit (editScope: " . $editScope . ")");
                 }
             } else {
                 // No calendar change, just ensure calendar_id is set
@@ -1649,6 +1747,69 @@ function updateEvent($id) {
                 $eventToUpdate['valarm'] = null;
             }
             
+            // Handle recurring event edit scope
+            $editScope = $input['editScope'] ?? 'all';
+            error_log("Edit scope: " . $editScope);
+            error_log("Event recurrence frequency: " . ($eventToUpdate['recurrence']['frequency'] ?? 'none'));
+            
+            // Handle single occurrence edits using individual modifications approach
+            if ($editScope === 'this' && !empty($eventToUpdate['recurrence']) && $eventToUpdate['recurrence']['frequency'] !== 'never') {
+                error_log("🔄 Editing single occurrence using individual modifications approach");
+                
+                // Get occurrence index from the request
+                $occurrenceIndex = $_GET['occurrence_index'] ?? '0';
+                error_log("🔍 Occurrence index from request: " . $occurrenceIndex);
+                
+                // Initialize individualOccurrences array if it doesn't exist
+                if (!isset($eventToUpdate['individualOccurrences'])) {
+                    $eventToUpdate['individualOccurrences'] = [];
+                }
+                
+                // Calculate the specific occurrence date for the modification
+                $occurrenceStartTime = $input['start_time'];
+                $occurrenceKey = date('Ymd\THis\Z', strtotime($occurrenceStartTime));
+                
+                error_log("🔍 Creating individual occurrence modification:");
+                error_log("🔍 Occurrence start time: " . $occurrenceStartTime);
+                error_log("🔍 Occurrence key: " . $occurrenceKey);
+                error_log("🔍 Input title: " . $input['title']);
+                error_log("🔍 Input description: " . ($input['description'] ?? 'null'));
+                
+                // Store individual modification for this occurrence
+                $individualModification = [
+                    'date' => $occurrenceKey,
+                    'title' => $input['title'],
+                    'description' => $input['description'] ?? '',
+                    'location' => $input['location'] ?? '',
+                    'start_time' => $input['start_time'],
+                    'end_time' => $input['end_time'],
+                    'all_day' => $input['all_day'] ?? false,
+                    'availability' => $input['availability'] ?? 'busy',
+                    'status' => $input['status'] ?? 'confirmed',
+                    'calendar_id' => $input['calendar_id'] ?? $eventToUpdate['calendar_id'] ?? 1,
+                    'attendees' => $input['attendees'] ?? [],
+                    'reminder' => $input['reminder'] ?? null,
+                    'modified_at' => date('c')
+                ];
+                
+                // Store the individual modification
+                $eventToUpdate['individualOccurrences'][$occurrenceKey] = $individualModification;
+                
+                error_log("✅ Stored individual modification for occurrence: " . $occurrenceKey);
+                error_log("✅ Individual modification data: " . json_encode($individualModification));
+                error_log("✅ Total individual modifications: " . count($eventToUpdate['individualOccurrences']));
+                
+                // Don't update the main event properties for single occurrence edits
+                error_log("🔄 Single occurrence edit - preserving original recurring event properties");
+                
+                // Mark that this event has individual modifications
+                $eventToUpdate['hasIndividualModifications'] = true;
+                
+                // Skip the regular property updates for single occurrence edits
+                goto skipRegularUpdates;
+            }
+            
+            skipRegularUpdates:
             // Update updated_at timestamp
             $eventToUpdate['updated_at'] = date('c');
             
@@ -1726,25 +1887,23 @@ function updateEvent($id) {
                             error_log("❌ Failed to create in new calendar: " . $createError->getMessage());
                         }
                     } else {
-                        // Same calendar - just update the event
+                        // Same calendar - handle based on edit scope
                         $eventCalendarUrl = $eventToUpdate['calendar_url'] ?? $calendars[0]['href'];
                         error_log("Using event calendar URL for update: " . $eventCalendarUrl);
                         
-                        // Generate updated iCalendar content
-                        $updatedICal = generateICalEvent($eventToUpdate);
-                        error_log("Generated updated iCalendar content for CalDAV update");
-                        error_log("Event attendees being sent to CalDAV: " . json_encode($eventToUpdate['attendees'] ?? []));
+                        // For all edits (both single occurrence and all occurrences), update the recurring event
+                        error_log("🔄 CalDAV: Updating recurring event");
                         
-                        // Update the event on CalDAV server
+                        $updatedICal = generateICalEvent($eventToUpdate);
+                        error_log("Generated updated iCalendar content for recurring event");
+                        
                         $response = $caldavClient->updateEvent($eventCalendarUrl, $eventToUpdate['uid'], $updatedICal);
-                        error_log("CalDAV update response: " . json_encode($response));
+                        error_log("CalDAV recurring event update response: " . json_encode($response));
                         
                         if ($response['success']) {
-                            error_log("✅ Event updated successfully on CalDAV server");
+                            error_log("✅ Recurring event updated on CalDAV server");
                         } else {
-                            error_log("❌ CalDAV update failed: " . $response['body']);
-                            error_log("❌ CalDAV update status: " . ($response['status'] ?? 'unknown'));
-                            // Don't fail the entire update if CalDAV sync fails, but log it
+                            error_log("❌ CalDAV recurring event update failed: " . $response['body']);
                         }
                     }
                 } else {
@@ -1756,9 +1915,18 @@ function updateEvent($id) {
             }
             
             // Update the stored events array with the updated event
+            // For single occurrence edits, we need to find the original recurring event by its original UID
+            $searchId = $id;
+            if ($editScope === 'this' && !empty($eventToUpdate['recurrence']) && $eventToUpdate['recurrence']['frequency'] !== 'never') {
+                // For single occurrence edits, find the original recurring event
+                $searchId = $originalEvent['uid'] ?? $originalEvent['id'];
+                error_log("🔍 Single occurrence edit - searching for original event with ID/UID: " . $searchId);
+            }
+            
             foreach ($storedEvents as $key => $event) {
-                if (($event['id'] ?? null) == $id || ($event['uid'] ?? null) == $id) {
+                if (($event['id'] ?? null) == $searchId || ($event['uid'] ?? null) == $searchId) {
                     $storedEvents[$key] = $eventToUpdate;
+                    error_log("✅ Updated stored event at index " . $key . " with ID/UID: " . $searchId);
                     break;
                 }
             }
@@ -1778,6 +1946,10 @@ function updateEvent($id) {
             
             error_log("Sending success response: " . json_encode($successResponse));
             error_log("Response attendees data: " . json_encode($successResponse['data']['attendees'] ?? 'not set'));
+            
+            // Clear any PHP warnings/notices that might corrupt JSON
+            ob_clean();
+            header('Content-Type: application/json');
             echo json_encode($successResponse);
             
         } else {

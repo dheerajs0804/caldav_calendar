@@ -36,7 +36,7 @@ interface NewEvent {
   end_date: string;
   end_time: string;
   all_day: boolean;
-  calendar_id?: number;
+  calendar_id?: number | string;
   availability: 'free' | 'busy' | 'tentative';
   status: 'confirmed' | 'tentative' | 'cancelled';
   recurrence: {
@@ -1490,7 +1490,10 @@ export class CalendarComponent implements OnInit, OnDestroy {
       
       // 🔧 FIX: Get the new calendar from the edited event (from the modal)
       const newCalendarId = event.calendar_id; // The event parameter already contains the updated calendar_id from the modal
-      const newCalendar = this.calendars.find(cal => Number(cal.id) === Number(newCalendarId));
+      // Handle both URL-based IDs and numeric IDs for backward compatibility
+      const newCalendar = this.calendars.find(cal => 
+        cal.id === newCalendarId || Number(cal.id) === Number(newCalendarId)
+      );
       
       if (!newCalendar || !newCalendar.url) {
         console.error('❌ No calendar found for ID:', newCalendarId);
@@ -1512,22 +1515,23 @@ export class CalendarComponent implements OnInit, OnDestroy {
         all_day: event.all_day,
         availability: event.availability || 'busy',
         status: event.status || 'confirmed',
-        calendar_id: newCalendarId,  // ✅ Use the new calendar ID
+            calendar_id: newCalendarId,  // ✅ Use the new calendar ID
         attendees: event.attendees,
         recurrence: event.recurrence,
         reminder: event.reminder,
-        calendar_url: newCalendar.url  // ✅ Use the new calendar URL
+            calendar_url: newCalendar.url,  // ✅ Use the new calendar URL
+            editScope: (event as any).editScope || 'all'  // ✅ Include edit scope for recurring events
       };
       
       console.log('✏️ Edit data being sent to backend:', editData);
       console.log('📅 New calendar ID in edit data:', editData.calendar_id);
       console.log('📅 New calendar URL in edit data:', editData.calendar_url);
       
-      // 🔧 FIX: Use the new calendar URL for the edit request
-      const editUrl = `http://localhost:8000/events/${eventIdentifier}`;
-      
-      console.log('🌐 Making PUT request to:', editUrl);
-      console.log('🌐 Request data:', editData);
+          // 🔧 FIX: Use the new calendar URL for the edit request
+          const editUrl = `http://localhost:8000/events/${eventIdentifier}?occurrence_index=${event.occurrenceIndex || 0}`;
+          
+          console.log('🌐 Making PUT request to:', editUrl);
+          console.log('🌐 Request data:', editData);
       
       const response = await this.http.put<any>(editUrl, editData, {
         withCredentials: true
@@ -1535,20 +1539,28 @@ export class CalendarComponent implements OnInit, OnDestroy {
       
       console.log('📥 Backend edit response:', response);
       
-      if (response.success) {
-        console.log('✅ Event updated successfully');
-        console.log('✅ Updated event data:', response.data);
-        this.closeEventDetailModal();
-        console.log('🔄 Calling fetchEvents to refresh the display...');
-        await this.fetchEvents(); // Refresh events
-        console.log('✅ fetchEvents completed');
-        alert('Event updated successfully!');
-      } else {
+          if (response.success) {
+            console.log('✅ Event updated successfully');
+            console.log('✅ Updated event data:', response.data);
+            this.closeEventDetailModal();
+            
+            // For single occurrence edits, refresh events to get updated data
+            if (editData.editScope === 'this') {
+              console.log('🔄 Single occurrence edit - refreshing events...');
+              await this.fetchEvents();
+            } else {
+              console.log('🔄 All occurrences edit - refreshing events...');
+              await this.fetchEvents();
+            }
+            
+            console.log('✅ fetchEvents completed');
+            alert('Event updated successfully!');
+          } else {
         console.error('❌ Failed to update event:', response.message);
         alert('Failed to update event: ' + (response.message || 'Unknown error'));
       }
       } catch (error: any) {
-        console.error('❌ Error updating event:', error);
+      console.error('❌ Error updating event:', error);
         console.error('❌ Error details:', {
           message: error?.message || 'Unknown error',
           status: error?.status || 'No status',
@@ -1556,8 +1568,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
           url: error?.url || 'No URL',
           name: error?.name || 'Unknown error type'
         });
-        alert('Error updating event. Please try again.');
-      }
+      alert('Error updating event. Please try again.');
+    }
   }
 
   // Print functionality

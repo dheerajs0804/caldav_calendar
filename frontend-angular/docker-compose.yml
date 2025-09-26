@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # Angular Frontend - Development
+  angular-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "4200:4200"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+    networks:
+      - caldev-network
+
+  # Angular Frontend - Production
+  angular-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    networks:
+      - caldev-network
+    profiles:
+      - production
+
+  # PHP Backend
+  php-backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../backend:/var/www/html
+      - ../data:/var/www/html/data
+    environment:
+      - PHP_ENV=development
+    networks:
+      - caldev-network
+
+networks:
+  caldev-network:
+    driver: bridge

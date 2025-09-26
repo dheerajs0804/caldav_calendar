@@ -19,7 +19,7 @@ export interface CalendarEvent {
   start_time: string;
   end_time: string;
   all_day: boolean;
-  calendar_id: number;
+  calendar_id: number | string;
   calendar_name?: string;
   calendar_color?: string;
   calendar_url?: string; // Add calendar URL for proper deletion
@@ -48,14 +48,46 @@ export interface CalendarEvent {
   }[];
   created_at?: string;
   updated_at?: string;
+  editScope?: 'this' | 'all'; // For recurring event edits
   // Properties for expanded recurring events
   isRecurringInstance?: boolean;
   originalEventId?: string;
   occurrenceIndex?: number;
+  // Properties for modified occurrences (using individual modifications approach)
+  hasIndividualModifications?: boolean;
+  // Individual occurrence modifications
+  individualOccurrences?: {
+    [dateKey: string]: {
+      date: string;
+      title: string;
+      description: string;
+      location: string;
+      start_time: string;
+      end_time: string;
+      all_day: boolean;
+      availability: 'free' | 'busy' | 'tentative';
+      status: 'confirmed' | 'tentative' | 'cancelled';
+      calendar_id: number | string;
+      attendees: {
+        email: string;
+        name: string;
+        response: string;
+        role: string;
+      }[];
+      reminder?: {
+        enabled: boolean;
+        type: string;
+        time: number;
+        unit: string;
+        relativeTo: string;
+      };
+      modified_at: string;
+    };
+  };
 }
 
 export interface Calendar {
-  id: number;
+  id: number | string;
   name: string;
   color: string;
   url?: string;

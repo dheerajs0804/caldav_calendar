@@ -20,6 +20,12 @@ export class RecurrenceExpansionService {
     const originalStart = new Date(event.start_time);
     const originalEnd = new Date(event.end_time);
     
+    console.log('🔄 Expanding recurring event:', event.title);
+    console.log('🕐 Original event start_time:', event.start_time);
+    console.log('🕐 Original event end_time:', event.end_time);
+    console.log('🕐 Parsed originalStart:', originalStart.toISOString());
+    console.log('🕐 Parsed originalEnd:', originalEnd.toISOString());
+    
     // Calculate duration of the original event
     const duration = originalEnd.getTime() - originalStart.getTime();
     
@@ -27,6 +33,9 @@ export class RecurrenceExpansionService {
     let occurrenceCount = 0;
     const maxOccurrences = event.recurrence.count || 1000; // Default to 1000 if no count specified
     const untilDate = event.recurrence.until ? new Date(event.recurrence.until) : null;
+    
+    console.log('🕐 Initial currentDate:', currentDate.toISOString());
+    console.log('🕐 Duration in ms:', duration);
     
     // Parse EXDATE exceptions
     const exceptionDates = this.parseExceptionDates(event.exdate);
@@ -42,6 +51,8 @@ export class RecurrenceExpansionService {
         const isException = this.isDateInExceptions(currentDate, exceptionDates);
         
         if (!isException) {
+          console.log(`🔄 Creating expanded event for occurrence ${occurrenceCount}`);
+          console.log(`🕐 currentDate being passed:`, currentDate.toISOString());
           const expandedEvent = this.createExpandedEvent(event, currentDate, duration, occurrenceCount);
           expandedEvents.push(expandedEvent);
         } else {
@@ -53,7 +64,9 @@ export class RecurrenceExpansionService {
       }
       
       // Move to next occurrence
+      const previousDate = new Date(currentDate);
       currentDate = this.getNextOccurrence(currentDate, event.recurrence!);
+      console.log(`🕐 Moved from ${previousDate.toISOString()} to ${currentDate.toISOString()}`);
       occurrenceCount++;
       
       // Stop if we've reached the until date
@@ -102,17 +115,70 @@ export class RecurrenceExpansionService {
   private createExpandedEvent(originalEvent: CalendarEvent, startDate: Date, duration: number, occurrenceIndex: number): CalendarEvent {
     const endDate = new Date(startDate.getTime() + duration);
     
-    return {
-      ...originalEvent,
-      id: `${originalEvent.id}_${occurrenceIndex}`,
-      uid: `${originalEvent.uid}_${occurrenceIndex}`,
-      start_time: startDate.toISOString(),
-      end_time: endDate.toISOString(),
-      // Mark this as an expanded instance
-      isRecurringInstance: true,
-      originalEventId: originalEvent.id,
-      occurrenceIndex: occurrenceIndex
-    };
+    // Preserve the original time from the recurring event
+    const originalStart = new Date(originalEvent.start_time);
+    const originalEnd = new Date(originalEvent.end_time);
+    
+    // Create new dates with the occurrence date but original time
+    const occurrenceStart = new Date(startDate);
+    occurrenceStart.setHours(originalStart.getHours(), originalStart.getMinutes(), originalStart.getSeconds(), originalStart.getMilliseconds());
+    
+    const occurrenceEnd = new Date(startDate);
+    occurrenceEnd.setHours(originalEnd.getHours(), originalEnd.getMinutes(), originalEnd.getSeconds(), originalEnd.getMilliseconds());
+    
+    // Check if this occurrence has individual modifications
+    const occurrenceKey = occurrenceStart.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+    const individualModification = originalEvent.individualOccurrences?.[occurrenceKey];
+    
+    console.log('🕐 Creating expanded event for occurrence', occurrenceIndex);
+    console.log('🕐 Original start time:', originalEvent.start_time);
+    console.log('🕐 Original end time:', originalEvent.end_time);
+    console.log('🕐 Occurrence date:', startDate.toISOString().split('T')[0]);
+    console.log('🕐 Calculated occurrence start:', occurrenceStart.toISOString());
+    console.log('🕐 Calculated occurrence end:', occurrenceEnd.toISOString());
+    console.log('🔍 Checking individual modification for:', occurrenceKey);
+    console.log('🔍 Available individual modifications:', Object.keys(originalEvent.individualOccurrences || {}));
+    console.log('🔍 Individual modification data:', individualModification);
+    
+    if (individualModification) {
+      // Use individual modification data if available
+      console.log('✅ Using individual modification for occurrence', occurrenceIndex);
+      return {
+        ...originalEvent,
+        id: `${originalEvent.id}_${occurrenceIndex}`,
+        uid: `${originalEvent.uid}_${occurrenceIndex}`,
+        title: individualModification.title,
+        description: individualModification.description,
+        location: individualModification.location,
+        start_time: individualModification.start_time,
+        end_time: individualModification.end_time,
+        all_day: individualModification.all_day,
+        availability: individualModification.availability,
+        status: individualModification.status,
+        calendar_id: individualModification.calendar_id,
+        attendees: individualModification.attendees,
+        reminder: individualModification.reminder,
+        // Mark this as an expanded instance with individual modifications
+        isRecurringInstance: true,
+        originalEventId: originalEvent.id,
+        occurrenceIndex: occurrenceIndex,
+        hasIndividualModifications: true
+      };
+    } else {
+      // Use original event data
+      console.log('🕐 Using original event data for occurrence', occurrenceIndex);
+      return {
+        ...originalEvent,
+        id: `${originalEvent.id}_${occurrenceIndex}`,
+        uid: `${originalEvent.uid}_${occurrenceIndex}`,
+        start_time: occurrenceStart.toISOString(),
+        end_time: occurrenceEnd.toISOString(),
+        // Mark this as an expanded instance
+        isRecurringInstance: true,
+        originalEventId: originalEvent.id,
+        occurrenceIndex: occurrenceIndex
+      };
+    }
   }
 
   /**
