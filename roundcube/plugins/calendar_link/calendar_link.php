@@ -42,8 +42,8 @@ class calendar_link extends rcube_plugin
     {
         $rcmail = rcmail::get_instance();
         
-        // Get configuration values
-        $calendar_url = $rcmail->config->get('calendar_app_url', 'http://localhost:4200');
+        // Get configuration values - use environment variable or config
+        $calendar_url = $rcmail->config->get('calendar_app_url', $_ENV['CALENDAR_APP_URL'] ?? 'http://localhost:4200');
         $calendar_text = $rcmail->config->get('calendar_link_text', '📅 Calendar App');
         
         // Get current user credentials from Roundcube session (same as IMAP uses)
@@ -90,7 +90,7 @@ class calendar_link extends rcube_plugin
         
         if (!$rcmail->output->framed && method_exists($rcmail->output, 'add_header')) {
             // Add meta tag with calendar URL for JavaScript
-            $calendar_url = $rcmail->config->get('calendar_app_url', 'http://localhost:4200');
+            $calendar_url = $rcmail->config->get('calendar_app_url', $_ENV['CALENDAR_APP_URL'] ?? 'http://localhost:4200');
             $rcmail->output->add_header('<meta name="calendar-app-url" content="' . htmlspecialchars($calendar_url) . '">');
             
             // Check if we have stored password for auto-login
@@ -106,7 +106,7 @@ class calendar_link extends rcube_plugin
     {
         if (isset($args['content'])) {
             $rcmail = rcmail::get_instance();
-            $calendar_url = $rcmail->config->get('calendar_app_url', 'http://localhost:4200');
+            $calendar_url = $rcmail->config->get('calendar_app_url', $_ENV['CALENDAR_APP_URL'] ?? 'http://localhost:4200');
             $calendar_text = $rcmail->config->get('calendar_link_text', '📅 Calendar App');
             
             // Get current user username for auto-login

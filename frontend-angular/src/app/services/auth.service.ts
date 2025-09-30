@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 import { Router } from '@angular/router';
 
 export interface User {
@@ -41,7 +42,7 @@ export class AuthService {
   }
 
   login(username: string, password: string): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>('http://localhost:8000/auth/login', {
+    return this.http.post<LoginResponse>(`${environment.apiUrl}/auth/login`, {
       username,
       password
     }, { withCredentials: true }).pipe(
@@ -104,7 +105,7 @@ export class AuthService {
    * Login using SSO token
    */
   loginWithSSOToken(token: string): Observable<SSOLoginResponse> {
-    return this.http.post<SSOLoginResponse>('http://localhost:8000/auth/sso-login', {
+    return this.http.post<SSOLoginResponse>(`${environment.apiUrl}/auth/sso-login`, {
       token: token
     }, { withCredentials: true }).pipe(
       map(response => {

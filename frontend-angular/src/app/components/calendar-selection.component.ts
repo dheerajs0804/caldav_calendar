@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { ColorRegistryService } from '../services/color-registry.service';
+import { environment } from '../../environments/environment';
 
 interface Calendar {
   id: number;
@@ -709,7 +710,7 @@ export class CalendarSelectionComponent implements OnInit {
     this.loading = true;
     this.error = '';
 
-    this.http.get<CalendarResponse>('http://localhost:8000/calendars/user', { withCredentials: true }).subscribe({
+    this.http.get<CalendarResponse>(`${environment.apiUrl}/calendars/user`, { withCredentials: true }).subscribe({
       next: (response) => {
         this.loading = false;
         if (response.success && response.data) {
@@ -751,7 +752,7 @@ export class CalendarSelectionComponent implements OnInit {
   }
 
   updateCalendarState(calendar: Calendar): void {
-    this.http.put(`http://localhost:8000/calendars/${calendar.id}/toggle`, {
+    this.http.put(`${environment.apiUrl}/calendars/${calendar.id}/toggle`, {
       enabled: calendar.enabled
     }, { withCredentials: true }).subscribe({
       next: (response) => {
@@ -815,7 +816,7 @@ export class CalendarSelectionComponent implements OnInit {
 
     this.creatingCalendar = true;
 
-    this.http.post<CreateCalendarResponse>('http://localhost:8000/calendars', {
+    this.http.post<CreateCalendarResponse>(`${environment.apiUrl}/calendars`, {
       name: this.newCalendar.name.trim(),
       description: this.newCalendar.description?.trim() || '',
       color: this.newCalendar.color
@@ -854,7 +855,7 @@ export class CalendarSelectionComponent implements OnInit {
     
     this.deletingCalendarId = calendar.id;
     
-    this.http.delete<DeleteCalendarResponse>(`http://localhost:8000/calendars/${calendar.id}`, { 
+    this.http.delete<DeleteCalendarResponse>(`${environment.apiUrl}/calendars/${calendar.id}`, { 
       withCredentials: true 
     }).subscribe({
       next: (response) => {

@@ -9171,5 +9171,172 @@
             }
         },
         "hasIndividualModifications": true
+    },
+    {
+        "id": "event_68da2ebcba523",
+        "title": "new day new test",
+        "description": "",
+        "location": "",
+        "start_time": "2025-09-29T12:31:00+05:30",
+        "end_time": "2025-09-29T13:31:00+05:30",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/A7595227-BB7A-90A6-F0B1-AB941E2CA801\/",
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/A7595227-BB7A-90A6-F0B1-AB941E2CA801\/",
+        "color": "#4285f4",
+        "uid": "uid_68da2ebcba52a",
+        "etag": "etag_68da2ebcba52b",
+        "created_at": "2025-09-29T09:01:16+02:00",
+        "updated_at": "2025-09-29T09:01:49+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "never",
+            "interval": 1
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null,
+        "calendar_name": "yellowcal",
+        "calendar_color": "#4285f4"
+    },
+    {
+        "id": "event_68da2fd996b97",
+        "title": "sep29",
+        "description": "akdhkjad",
+        "location": "loc",
+        "start_time": "2025-10-30T10:35:00",
+        "end_time": "2025-10-30T11:35:00",
+        "all_day": false,
+        "availability": "free",
+        "status": "tentative",
+        "calendar_id": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+        "color": "#4285f4",
+        "uid": "uid_68da2fd996ba1",
+        "etag": "etag_68da2fd996ba2",
+        "created_at": "2025-09-29T09:06:01+02:00",
+        "updated_at": "2025-09-29T09:14:28+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "daily",
+            "interval": 1,
+            "count": 3
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null,
+        "calendar_name": "calendar2",
+        "calendar_color": "#4285f4",
+        "individualOccurrences": {
+            "20250928T070500Z": {
+                "date": "20250928T070500Z",
+                "title": "sep29",
+                "description": "akdhkjad",
+                "location": "loc",
+                "start_time": "2025-09-28T05:05:00.000Z",
+                "end_time": "2025-09-28T06:05:00.000Z",
+                "all_day": false,
+                "availability": "free",
+                "status": "tentative",
+                "calendar_id": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+                "attendees": [],
+                "reminder": {
+                    "enabled": false,
+                    "type": "message",
+                    "time": 15,
+                    "unit": "minutes",
+                    "relativeTo": "start"
+                },
+                "modified_at": "2025-09-29T09:08:08+02:00"
+            },
+            "20250928T060500Z": {
+                "date": "20250928T060500Z",
+                "title": "sep29",
+                "description": "akdhkjad",
+                "location": "loc",
+                "start_time": "2025-09-28T06:05:00",
+                "end_time": "2025-09-28T07:05:00",
+                "all_day": false,
+                "availability": "free",
+                "status": "tentative",
+                "calendar_id": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+                "attendees": [],
+                "reminder": {
+                    "enabled": false,
+                    "type": "message",
+                    "time": 15,
+                    "unit": "minutes",
+                    "relativeTo": "start"
+                },
+                "modified_at": "2025-09-29T09:11:56+02:00"
+            },
+            "20250929T103500Z": {
+                "date": "20250929T103500Z",
+                "title": "sep29",
+                "description": "akdhkjad",
+                "location": "loc",
+                "start_time": "2025-09-29T10:35:00",
+                "end_time": "2025-09-29T11:35:00",
+                "all_day": false,
+                "availability": "free",
+                "status": "tentative",
+                "calendar_id": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
+                "attendees": [],
+                "reminder": {
+                    "enabled": false,
+                    "type": "message",
+                    "time": 15,
+                    "unit": "minutes",
+                    "relativeTo": "start"
+                },
+                "modified_at": "2025-09-29T09:13:09+02:00"
+            }
+        },
+        "hasIndividualModifications": true
+    },
+    {
+        "id": "event_68da32ddd5ae1",
+        "title": "sep29 returns",
+        "description": "only this",
+        "location": "",
+        "start_time": "2025-09-30T11:48:00",
+        "end_time": "2025-09-30T12:48:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/3EF21428-B7B0-90D9-6DB4-6A1A91FD3E54\/",
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/3EF21428-B7B0-90D9-6DB4-6A1A91FD3E54\/",
+        "color": "#4285f4",
+        "uid": "uid_68da32ddd5af4",
+        "etag": "etag_68da32ddd5af5",
+        "created_at": "2025-09-29T09:18:53+02:00",
+        "updated_at": "2025-09-30T07:02:47+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "daily",
+            "interval": 1,
+            "count": 3
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null,
+        "calendar_name": "calcchangetest",
+        "calendar_color": "#4285f4"
     }
 ]

@@ -16,7 +16,7 @@ ini_set('error_log', 'php://stderr'); // Send errors to stderr so they appear in
 
 // Also log to file for debugging
 function logToFile($message) {
-    file_put_contents('../debug.log', $message . "\n", FILE_APPEND | LOCK_EX);
+    @file_put_contents('../debug.log', $message . "\n", FILE_APPEND | LOCK_EX);
 }
 
 // Debug: Log all incoming requests
@@ -27,24 +27,49 @@ $requestLog .= "Path Info: " . ($_SERVER['PATH_INFO'] ?? 'none') . "\n";
 $requestLog .= "Request Time: " . date('Y-m-d H:i:s') . "\n";
 $requestLog .= "========================";
 
-error_log($requestLog);
-logToFile($requestLog);
+// error_log($requestLog); // Commented out to prevent headers already sent
 
 // Force immediate logging for PUT requests
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'PUT') {
     $putLog = "🚨 PUT REQUEST DETECTED IMMEDIATELY!\n🚨 PUT URI: " . ($_SERVER['REQUEST_URI'] ?? 'unknown');
-    error_log($putLog);
-    logToFile($putLog);
+    // error_log($putLog); // Commented out to prevent headers already sent
 }
+
+// Load server configuration
+$serverConfig = require_once __DIR__ . '/config/server.php';
 
 // Enable CORS for cross-origin requests with credentials
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-$allowedOrigins = ['http://localhost:4200', 'http://localhost:8000', 'null']; // Allow Angular, Roundcube, and file:// origins
+$allowedOrigins = $serverConfig['cors']['allowed_origins'];
+
+// Add dynamic origins based on server IP if enabled
+if ($serverConfig['cors']['allow_dynamic_origins']) {
+    $serverIp = $serverConfig['server_ip'];
+    $serverDomain = $serverConfig['server_domain'];
+    
+    // Add server IP origins
+    if ($serverIp !== 'localhost') {
+        $allowedOrigins[] = "http://{$serverIp}:4200";
+        $allowedOrigins[] = "http://{$serverIp}:8000";
+    }
+    
+    // Add server domain origins if configured
+    if ($serverDomain) {
+        $allowedOrigins[] = "http://{$serverDomain}:4200";
+        $allowedOrigins[] = "http://{$serverDomain}:8000";
+        $allowedOrigins[] = "https://{$serverDomain}:4200";
+        $allowedOrigins[] = "https://{$serverDomain}:8000";
+    }
+}
+
+// Log CORS configuration for debugging
+error_log("CORS Configuration - Allowed Origins: " . json_encode($allowedOrigins));
+error_log("CORS Configuration - Request Origin: " . $origin);
 
 if (in_array($origin, $allowedOrigins)) {
     header("Access-Control-Allow-Origin: $origin");
 } else {
-    header('Access-Control-Allow-Origin: http://localhost:4200'); // Default fallback
+    header("Access-Control-Allow-Origin: " . $serverConfig['cors']['fallback_origin']);
 }
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
@@ -75,8 +100,8 @@ $mainLog .= "Path: " . ($_SERVER['PATH_INFO'] ?? $_SERVER['REQUEST_URI'] ?? 'unk
 $mainLog .= "Request URI: " . ($_SERVER['REQUEST_URI'] ?? 'unknown') . "\n";
 $mainLog .= "DEBUG: Server is loading updated index.php at " . date('Y-m-d H:i:s');
 
-error_log($mainLog);
-logToFile($mainLog);
+// error_log($mainLog); // Commented out to prevent headers already sent
+// logToFile($mainLog); // Commented out to prevent headers already sent
 
 header('Content-Type: application/json');
 
@@ -195,6 +220,11 @@ $path = trim($path, '/');
 // Remove 'backend' from path if present
 if (strpos($path, 'backend/') === 0) {
     $path = substr($path, 8);
+}
+
+// Remove 'api' from path if present
+if (strpos($path, 'api/') === 0) {
+    $path = substr($path, 4);
 }
 
 // Route the request
@@ -1630,7 +1660,8 @@ function updateEvent($id) {
                 // Only update times if they were explicitly changed (not just passed from the occurrence)
                 // For "edit all occurrences", we need to be careful about time updates
                 if ($editScope === 'all' && !empty($eventToUpdate['recurrence']) && $eventToUpdate['recurrence']['frequency'] !== 'never') {
-                    // For "edit all occurrences" of recurring events, only update times if they're different from the original
+                    // For "edit all occurrences" of recurring events, preserve the original times
+                    // The frontend sends occurrence times, but we should ignore them unless explicitly changed
                     $originalStartTime = $eventToUpdate['start_time'];
                     $originalEndTime = $eventToUpdate['end_time'];
                     
@@ -1639,17 +1670,19 @@ function updateEvent($id) {
                     error_log("🔍 Input start time (from occurrence): " . $input['start_time']);
                     error_log("🔍 Original recurring event end time: " . $originalEndTime);
                     error_log("🔍 Input end time (from occurrence): " . $input['end_time']);
-                    error_log("🔍 Start times equal? " . ($originalStartTime == $input['start_time'] ? 'YES' : 'NO'));
-                    error_log("🔍 End times equal? " . ($originalEndTime == $input['end_time'] ? 'YES' : 'NO'));
                     
-                    // 🔧 FIX: Only update times if they're actually different from the original recurring event times
-                    // This prevents accidental time changes when editing occurrences
-                    if ($input['start_time'] !== $originalStartTime || $input['end_time'] !== $originalEndTime) {
+                    // 🔧 FIX: For "edit all occurrences", always preserve the original recurring event times
+                    // Only update times if the user explicitly changed them in the form
+                    // Since the frontend sends occurrence times, we need to detect if times were actually changed
+                    // by checking if the input times match the original recurring event times
+                    if ($input['start_time'] === $originalStartTime && $input['end_time'] === $originalEndTime) {
+                        // Times match the original - user didn't change times, keep original
+                        error_log("🕐 Times match original recurring event - preserving original times");
+                    } else {
+                        // Times are different - user explicitly changed them, update all occurrences
                         $eventToUpdate['start_time'] = $input['start_time'];
                         $eventToUpdate['end_time'] = $input['end_time'];
-                        error_log("🕐 Updated start/end times for all occurrences: " . $input['start_time'] . " to " . $input['end_time']);
-                    } else {
-                        error_log("🕐 Times unchanged for all occurrences - keeping original recurring event times");
+                        error_log("🕐 Times changed by user - updating all occurrences: " . $input['start_time'] . " to " . $input['end_time']);
                     }
                 } else {
                     // For regular edits (non-recurring events) or single occurrence edits, always update times

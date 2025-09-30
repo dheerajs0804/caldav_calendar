@@ -1623,5 +1623,19 @@
         "deleted_at": "2025-09-26T08:40:07+02:00",
         "deleted_by": "user",
         "action": "all"
+    },
+    {
+        "uid": "uid_68da2ebcba52a",
+        "title": "Event marked for deletion",
+        "deleted_at": "2025-09-29T09:06:11+02:00",
+        "deleted_by": "user",
+        "action": "all"
+    },
+    {
+        "uid": "uid_68da32ddd5af4",
+        "title": "Event marked for deletion",
+        "deleted_at": "2025-09-30T08:59:29+02:00",
+        "deleted_by": "user",
+        "action": "all"
     }
 ]

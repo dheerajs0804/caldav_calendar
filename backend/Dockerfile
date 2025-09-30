@@ -32,8 +32,8 @@ RUN chown -R www-data:www-data /var/www/html \
 RUN mkdir -p /var/www/html/data \
     && chown -R www-data:www-data /var/www/html/data
 
-# Expose port 8000
-EXPOSE 8000
+# Expose port 80
+EXPOSE 80
 
-# Start PHP built-in server
-CMD ["php", "-S", "0.0.0.0:8000", "-t", "/var/www/html"]
+# Start Apache web server
+CMD ["apache2-foreground"]

@@ -1,25 +1,13 @@
 version: '3.8'
 
 services:
-  # Nginx Reverse Proxy
-  nginx-proxy:
-    build: ./nginx-proxy
-    ports:
-      - "9443:9443"
-    depends_on:
-      - angular-dev
-      - php-backend
-    networks:
-      - caldev-network
-
   # Angular Frontend - Development
   angular-dev:
     image: 248189916187.dkr.ecr.us-west-2.amazonaws.com/caldev-frontend:latest
-    expose:
-      - "80"
+    ports:
+      - "4200:4200"
     environment:
       - NODE_ENV=development
-      - API_URL=/api
     networks:
       - caldev-network
 
@@ -28,8 +16,6 @@ services:
     image: 248189916187.dkr.ecr.us-west-2.amazonaws.com/caldev-frontend:latest
     ports:
       - "8080:80"
-    environment:
-      - API_URL=/api
     networks:
       - caldev-network
     profiles:
@@ -38,15 +24,10 @@ services:
   # PHP Backend
   php-backend:
     image: 248189916187.dkr.ecr.us-west-2.amazonaws.com/caldev-backend:latest
-    expose:
-      - "80"
+    ports:
+      - "8000:80"
     environment:
       - PHP_ENV=development
-      - SERVER_IP=${SERVER_IP:-localhost}
-      - SERVER_DOMAIN=${SERVER_DOMAIN:-}
-      - CALDAV_SERVER_URL=${CALDAV_SERVER_URL:-http://rc.mithi.com:8008}
-      - APP_DEBUG=${APP_DEBUG:-false}
-      - APP_ENV=${APP_ENV:-production}
     networks:
       - caldev-network
 

@@ -32,6 +32,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Get calendar URL from configuration or use default
     var calendarUrl = 'http://localhost:4200'; // Default fallback
     
+    // Try to get URL from meta tag (set by PHP)
+    var metaTag = document.querySelector('meta[name="calendar-app-url"]');
+    if (metaTag) {
+        calendarUrl = metaTag.getAttribute('content');
+    }
+    
     // Try to get URL from data attribute or configuration
     var configElement = document.querySelector('meta[name="calendar-app-url"]');
     if (configElement) {
@@ -119,7 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Test function for debugging
     window.testOpenCalendar = function() {
-        var testUrl = 'http://localhost:4200/login?username=test&password=test';
+        var testUrl = calendarUrl + '/login?username=test&password=test';
         console.log('🧪 Testing window.open with URL:', testUrl);
         var result = window.open(testUrl, '_blank');
         console.log('🧪 window.open result:', result);

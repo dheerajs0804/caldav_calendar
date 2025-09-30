@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Observable, interval, Subscription } from 'rxjs';
+import { environment } from '../../environments/environment';
 import * as dayjs from 'dayjs';
 import { DayViewComponent } from './day-view/day-view.component';
 import { WeekViewComponent } from './week-view/week-view.component';
@@ -265,7 +266,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   }
 
   updateCalendarState(calendar: Calendar): void {
-    this.http.put(`http://localhost:8000/calendars/${calendar.id}/toggle`, {
+    this.http.put(`${environment.apiUrl}/calendars/${calendar.id}/toggle`, {
       enabled: calendar.enabled
     }, { withCredentials: true }).subscribe({
       next: (response) => {
@@ -289,7 +290,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
       return;
     }
     
-    this.http.delete(`http://localhost:8000/calendars/${calendar.id}`, { 
+    this.http.delete(`${environment.apiUrl}/calendars/${calendar.id}`, { 
       withCredentials: true 
     }).subscribe({
       next: (response: any) => {
@@ -354,7 +355,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   async fetchCalendars(): Promise<void> {
     try {
       this.loading = true;
-      const response = await this.http.get<any>('http://localhost:8000/calendars/user', { withCredentials: true }).toPromise();
+      const response = await this.http.get<any>(`${environment.apiUrl}/calendars/user`, { withCredentials: true }).toPromise();
       
       if (response.success && response.data) {
         this.calendars = response.data.calendars.map((cal: any) => ({
@@ -412,7 +413,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
         for (const calendar of this.calendars) {
           if (calendar.enabled && calendar.url) {
             try {
-              const eventsUrl = `http://localhost:8000/events?calendar_url=${encodeURIComponent(calendar.url)}`;
+              const eventsUrl = `${environment.apiUrl}/events?calendar_url=${encodeURIComponent(calendar.url)}`;
       const response = await this.http.get<any>(eventsUrl, { withCredentials: true }).toPromise();
       
               if (response.success && response.data) {
@@ -503,7 +504,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
         }
       } else if (this.selectedCalendar && this.selectedCalendar.url) {
         // Fallback to single calendar mode
-        const eventsUrl = `http://localhost:8000/events?calendar_url=${encodeURIComponent(this.selectedCalendar.url)}`;
+        const eventsUrl = `${environment.apiUrl}/events?calendar_url=${encodeURIComponent(this.selectedCalendar.url)}`;
         const response = await this.http.get<any>(eventsUrl, { withCredentials: true }).toPromise();
         
         if (response.success) {
@@ -852,7 +853,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   // Delete master event from CalDAV server (legacy method)
   private async deleteMasterEventFromServer(masterUid: string, calendarUrl: string): Promise<void> {
     try {
-      const deleteUrl = `http://localhost:8000/events/${masterUid}?calendar_url=${encodeURIComponent(calendarUrl)}&action=all`;
+      const deleteUrl = `${environment.apiUrl}/events/${masterUid}?calendar_url=${encodeURIComponent(calendarUrl)}&action=all`;
       
       console.log('🗑️ Deleting master event from server:', deleteUrl);
       
@@ -1215,9 +1216,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
       };
 
       console.log('📤 Sending event data to backend:', eventData);
-      console.log('🔍 About to make POST request to:', 'http://localhost:8000/events');
+      console.log('🔍 About to make POST request to:', `${environment.apiUrl}/events`);
       
-      const response = await this.http.post<any>('http://localhost:8000/events', eventData, {
+      const response = await this.http.post<any>(`${environment.apiUrl}/events`, eventData, {
         withCredentials: true
       }).toPromise();
       
@@ -1414,7 +1415,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
       }
       
       // Build the delete URL with action parameter
-      let deleteUrl = `http://localhost:8000/events/${eventIdentifier}?calendar_url=${encodeURIComponent(event.calendar_url)}&action=${action}`;
+      let deleteUrl = `${environment.apiUrl}/events/${eventIdentifier}?calendar_url=${encodeURIComponent(event.calendar_url)}&action=${action}`;
       
       // For current deletion, add occurrence index parameter
       if (action === 'current' && event.isRecurringInstance && event.occurrenceIndex !== undefined) {
@@ -1528,7 +1529,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
       console.log('📅 New calendar URL in edit data:', editData.calendar_url);
       
           // 🔧 FIX: Use the new calendar URL for the edit request
-          const editUrl = `http://localhost:8000/events/${eventIdentifier}?occurrence_index=${event.occurrenceIndex || 0}`;
+          const editUrl = `${environment.apiUrl}/events/${eventIdentifier}?occurrence_index=${event.occurrenceIndex || 0}`;
           
           console.log('🌐 Making PUT request to:', editUrl);
           console.log('🌐 Request data:', editData);
@@ -2136,7 +2137,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
             calendar_url: options.calendar
           };
           
-          const response = await this.http.post<any>('http://localhost:8000/events', eventData, {
+          const response = await this.http.post<any>(`${environment.apiUrl}/events`, eventData, {
             withCredentials: true
           }).toPromise();
           

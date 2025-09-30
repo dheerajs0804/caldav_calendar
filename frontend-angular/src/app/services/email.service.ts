@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface EmailInvitation {
   to: string[];
@@ -22,7 +23,7 @@ export interface EmailInvitation {
   providedIn: 'root'
 })
 export class EmailService {
-  private apiUrl = 'http://localhost:8001'; // Backend API URL
+  private apiUrl = environment.apiUrl; // Use dynamic API URL from environment
 
   constructor(private http: HttpClient) {}
 

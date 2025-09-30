@@ -14,8 +14,8 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build the Angular app for production
-RUN npm run build
+# Build the Angular app for Docker containers
+RUN npm run build --configuration=docker
 
 # Stage 2: Serve the app with nginx
 FROM nginx:alpine
@@ -25,6 +25,10 @@ COPY --from=build /app/dist/caldev-calendar-angular /usr/share/nginx/html
 
 # Copy custom nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
+
+# Copy environment injection script
+COPY inject-env.sh /docker-entrypoint.d/99-inject-env.sh
+RUN chmod +x /docker-entrypoint.d/99-inject-env.sh
 
 # Expose port 80
 EXPOSE 80
