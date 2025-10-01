@@ -38,6 +38,9 @@ services:
   # PHP Backend
   php-backend:
     image: 248189916187.dkr.ecr.us-west-2.amazonaws.com/caldev-backend:latest
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
     expose:
       - "80"
     environment:

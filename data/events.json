@@ -9338,5 +9338,63 @@
         "valarm": null,
         "calendar_name": "calcchangetest",
         "calendar_color": "#4285f4"
+    },
+    {
+        "id": "event_68dcc61606c49",
+        "title": "normal add event",
+        "description": "hadfohlaf",
+        "location": "alfhjdaf",
+        "start_time": "2025-10-01T13:41:00+05:30",
+        "end_time": "2025-10-01T14:41:00+05:30",
+        "all_day": false,
+        "availability": "free",
+        "status": "cancelled",
+        "calendar_id": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/EA9945C2-31D9-276A-019B-83110B58F23B\/",
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/EA9945C2-31D9-276A-019B-83110B58F23B\/",
+        "color": "#4285f4",
+        "uid": "uid_68dcc61606c50",
+        "etag": "etag_68dcc61606c51",
+        "created_at": "2025-10-01T08:11:34+02:00",
+        "updated_at": "2025-10-01T08:14:03+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "daily",
+            "interval": 1,
+            "count": 3
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null,
+        "calendar_name": "adding from container",
+        "calendar_color": "#4285f4",
+        "individualOccurrences": {
+            "20251001T101100Z": {
+                "date": "20251001T101100Z",
+                "title": "normal add event",
+                "description": "hadfohlaf",
+                "location": "alfhjdaf",
+                "start_time": "2025-10-01T13:41:00+05:30",
+                "end_time": "2025-10-01T14:41:00+05:30",
+                "all_day": false,
+                "availability": "free",
+                "status": "cancelled",
+                "calendar_id": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/E47E18DE-A458-5EE3-5E45-82BCDBD09596\/",
+                "attendees": [],
+                "reminder": {
+                    "enabled": false,
+                    "type": "message",
+                    "time": 15,
+                    "unit": "minutes",
+                    "relativeTo": "start"
+                },
+                "modified_at": "2025-10-01T08:14:03+02:00"
+            }
+        },
+        "hasIndividualModifications": true
     }
 ]
