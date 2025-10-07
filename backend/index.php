@@ -324,11 +324,11 @@ function handleGetRequest($path) {
             getRawCalDAVData();
             break;
         default:
-            if (preg_match('/^calendars\/(\d+)$/', $path, $matches)) {
+            if (preg_match('/^calendars\/(.+)$/', $path, $matches)) {
                 getCalendar($matches[1]);
-            } elseif (preg_match('/^calendars\/(\d+)\/events$/', $path, $matches)) {
+            } elseif (preg_match('/^calendars\/(.+)\/events$/', $path, $matches)) {
                 getCalendarEvents($matches[1]);
-            } elseif (preg_match('/^calendars\/(\d+)\/sync$/', $path, $matches)) {
+            } elseif (preg_match('/^calendars\/(.+)\/sync$/', $path, $matches)) {
                 syncCalendar($matches[1]);
             } else {
                 http_response_code(404);
@@ -395,7 +395,7 @@ function handlePutRequest($path) {
     if (preg_match('/^events\/(.+)$/', $path, $matches)) {
         error_log("🔧 PUT request matches events pattern, calling updateEvent with: " . $matches[1]);
         updateEvent($matches[1]);
-    } elseif (preg_match('/^calendars\/(\d+)\/toggle$/', $path, $matches)) {
+    } elseif (preg_match('/^calendars\/(.+)\/toggle$/', $path, $matches)) {
         error_log("🔧 PUT request matches calendars toggle pattern, calling toggleCalendar with: " . $matches[1]);
         toggleCalendar($matches[1]);
     } else {
@@ -2190,10 +2190,14 @@ function deleteCalendar($id) {
 
 function toggleCalendar($id) {
     try {
-        // Validate calendar ID
-        if (!is_numeric($id)) {
-            throw new Exception('Invalid calendar ID');
-        }
+        error_log("=== CALENDAR TOGGLE DEBUG ===");
+        error_log("Received calendar ID: $id");
+        error_log("ID type: " . gettype($id));
+        error_log("ID length: " . strlen($id));
+        
+        // Decode the URL-encoded calendar ID
+        $decodedId = urldecode($id);
+        error_log("Decoded calendar ID: $decodedId");
         
         // Get the request body to get the enabled state
         $input = json_decode(file_get_contents('php://input'), true);
@@ -2202,6 +2206,7 @@ function toggleCalendar($id) {
         }
         
         $enabled = (bool)$input['enabled'];
+        error_log("Calendar state to set: " . ($enabled ? 'enabled' : 'disabled'));
         
         // Store calendar state in session or file
         $calendarStatesFile = 'data/calendar_states.json';
@@ -2211,8 +2216,8 @@ function toggleCalendar($id) {
             $calendarStates = json_decode(file_get_contents($calendarStatesFile), true) ?? [];
         }
         
-        // Update the calendar state
-        $calendarStates[$id] = $enabled;
+        // Update the calendar state using the decoded ID
+        $calendarStates[$decodedId] = $enabled;
         
         // Save the updated states
         if (!file_exists('data')) {
@@ -2221,13 +2226,13 @@ function toggleCalendar($id) {
         
         file_put_contents($calendarStatesFile, json_encode($calendarStates, JSON_PRETTY_PRINT));
         
-        error_log("Calendar $id toggled to: " . ($enabled ? 'enabled' : 'disabled'));
+        error_log("Calendar $decodedId toggled to: " . ($enabled ? 'enabled' : 'disabled'));
         
         sendJsonResponse([
             'success' => true,
             'message' => 'Calendar state updated successfully',
             'data' => [
-                'id' => intval($id),
+                'id' => $decodedId,
                 'enabled' => $enabled
             ]
         ]);

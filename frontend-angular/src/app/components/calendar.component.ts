@@ -312,7 +312,17 @@ export class CalendarComponent implements OnInit, OnDestroy {
   }
 
   updateCalendarState(calendar: Calendar): void {
-    this.http.put(`${environment.apiUrl}/calendars/${calendar.id}/toggle`, {
+    console.log('🔄 Updating calendar state:', calendar.name, 'Enabled:', calendar.enabled);
+    console.log('🔄 Calendar ID:', calendar.id, 'Type:', typeof calendar.id);
+    
+    // Properly encode the calendar ID for URL
+    const encodedCalendarId = encodeURIComponent(calendar.id);
+    const toggleUrl = `${environment.apiUrl}/calendars/${encodedCalendarId}/toggle`;
+    
+    console.log('🔄 Encoded Calendar ID:', encodedCalendarId);
+    console.log('🔄 Toggle URL:', toggleUrl);
+    
+    this.http.put(toggleUrl, {
       enabled: calendar.enabled
     }, { withCredentials: true }).subscribe({
       next: (response) => {
@@ -321,9 +331,16 @@ export class CalendarComponent implements OnInit, OnDestroy {
         this.fetchEvents();
       },
       error: (error) => {
-        console.error('Failed to update calendar state:', error);
+        console.error('❌ Failed to update calendar state:', error);
+        console.error('❌ Error details:', {
+          status: error.status,
+          statusText: error.statusText,
+          message: error.message,
+          url: error.url
+        });
         // Revert the change on error
         calendar.enabled = !calendar.enabled;
+        console.log('🔄 Reverted calendar state due to error');
       }
     });
   }
