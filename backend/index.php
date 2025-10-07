@@ -1,26 +1,35 @@
 <?php
-// IMMEDIATE PUT REQUEST DETECTION - BEFORE ANYTHING ELSE
-error_log("🔥🔥🔥 SERVER STARTED WITH UPDATED INDEX.PHP! 🔥🔥🔥");
-
-if (($_SERVER['REQUEST_METHOD'] ?? '') === 'PUT') {
-    error_log("🚨🚨🚨 PUT REQUEST DETECTED AT VERY START! 🚨🚨🚨");
-    error_log("🚨 PUT URI: " . ($_SERVER['REQUEST_URI'] ?? 'unknown'));
-    error_log("🚨 PUT Time: " . date('Y-m-d H:i:s'));
+// Simple professional logging function
+function simpleLog($level, $message, $context = []) {
+    $timestamp = date('Y-m-d H:i:s');
+    $logMessage = "[{$timestamp}] {$level}: {$message}";
+    if (!empty($context)) {
+        $logMessage .= " " . json_encode($context);
+    }
+    error_log($logMessage);
 }
 
-// Enable error reporting and logging to terminal
+// Initialize logging
+simpleLog('INFO', 'Server started', [
+    'timestamp' => date('Y-m-d H:i:s'),
+    'php_version' => PHP_VERSION
+]);
+
+// Log incoming requests
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'PUT') {
+    simpleLog('INFO', 'PUT request detected', [
+        'uri' => $_SERVER['REQUEST_URI'] ?? 'unknown',
+        'timestamp' => date('Y-m-d H:i:s')
+    ]);
+}
+
+// Enable error reporting
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 ini_set('log_errors', 1);
-ini_set('error_log', 'php://stderr'); // Send errors to stderr so they appear in terminal
 
 // Set execution time limit to prevent hanging
 set_time_limit(60); // 60 seconds max execution time
-
-// Also log to file for debugging
-function logToFile($message) {
-    @file_put_contents('../debug.log', $message . "\n", FILE_APPEND | LOCK_EX);
-}
 
 // Debug: Log all incoming requests
 $requestLog = "=== INCOMING REQUEST ===\n";
@@ -66,10 +75,15 @@ if ($serverConfig['cors']['allow_dynamic_origins']) {
 }
 
 // Log CORS configuration for debugging
-error_log("CORS Configuration - Allowed Origins: " . json_encode($allowedOrigins));
-error_log("CORS Configuration - Request Origin: " . $origin);
+simpleLog('DEBUG', 'CORS configuration', [
+    'allowed_origins' => $allowedOrigins,
+    'request_origin' => $origin
+]);
 
-if (in_array($origin, $allowedOrigins)) {
+// For development, allow all origins from localhost
+if (strpos($origin, 'localhost') !== false || strpos($origin, '127.0.0.1') !== false) {
+    header("Access-Control-Allow-Origin: $origin");
+} elseif (in_array($origin, $allowedOrigins)) {
     header("Access-Control-Allow-Origin: $origin");
 } else {
     header("Access-Control-Allow-Origin: " . $serverConfig['cors']['fallback_origin']);
@@ -81,7 +95,10 @@ header('Access-Control-Max-Age: 86400'); // 24 hours
 
 // Handle preflight OPTIONS request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    error_log("🔍 OPTIONS preflight request received");
+    simpleLog('INFO', 'OPTIONS preflight request received', [
+        'method' => $_SERVER['REQUEST_METHOD'],
+        'uri' => $_SERVER['REQUEST_URI'] ?? 'unknown'
+    ]);
     http_response_code(200);
     exit();
 }
@@ -183,7 +200,10 @@ function getCalendarById($calendarId) {
         
         return null;
     } catch (Exception $e) {
-        error_log("Error getting calendar by ID: " . $e->getMessage());
+        simpleLog('ERROR', 'Failed to get calendar by ID', [
+            'calendar_id' => $calendarId,
+            'error' => $e->getMessage()
+        ]);
         return null;
     }
 }

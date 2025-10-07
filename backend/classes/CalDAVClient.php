@@ -1,5 +1,46 @@
 <?php
 
+// Simple professional logging function (no external dependencies)
+function caldavLog($level, $message, $context = []) {
+    $timestamp = date('Y-m-d H:i:s');
+    
+    // Sanitize sensitive data
+    $sensitiveFields = ['password', 'passwd', 'pwd', 'secret', 'token', 'key', 'auth', 'authorization', 'cookie', 'session', 'csrf', 'api_key', 'private_key'];
+    $sanitizedContext = [];
+    
+    foreach ($context as $key => $value) {
+        $lowerKey = strtolower($key);
+        $isSensitive = false;
+        foreach ($sensitiveFields as $sensitiveField) {
+            if (strpos($lowerKey, $sensitiveField) !== false) {
+                $isSensitive = true;
+                break;
+            }
+        }
+        $sanitizedContext[$key] = $isSensitive ? '[REDACTED]' : $value;
+    }
+    
+    $logEntry = [
+        'timestamp' => $timestamp,
+        'level' => $level,
+        'message' => $message,
+        'context' => $sanitizedContext,
+        'framework' => 'professional-simple'
+    ];
+    
+    $logLine = json_encode($logEntry) . PHP_EOL;
+    
+    // Write to log file
+    $logDir = __DIR__ . '/../logs';
+    if (!is_dir($logDir)) {
+        mkdir($logDir, 0755, true);
+    }
+    file_put_contents($logDir . '/app.log', $logLine, FILE_APPEND | LOCK_EX);
+    
+    // Also log to error_log for immediate visibility
+    error_log("[{$timestamp}] {$level}: {$message} " . json_encode($sanitizedContext));
+}
+
 class CalDAVClient {
     private $serverUrl;
     private $username;
@@ -31,7 +72,11 @@ class CalDAVClient {
         $config = include __DIR__ . '/../config/caldav.php';
         $this->developmentMode = $config['environment'] === 'development' || $_ENV['APP_ENV'] === 'development';
         
-        error_log("CalDAVClient initialized with server: " . $this->serverUrl . ", username: " . ($this->username ? 'provided' : 'not provided') . ", development mode: " . ($this->developmentMode ? 'enabled' : 'disabled'));
+        caldavLog('INFO', 'CalDAV client initialized', [
+            'server_url' => $this->serverUrl,
+            'username_provided' => !empty($this->username),
+            'development_mode' => $this->developmentMode
+        ]);
     }
     
     private function loadEnvVariables() {
@@ -44,7 +89,7 @@ class CalDAVClient {
         // Also check for test environment file
         $testEnvFile = __DIR__ . '/../test.env';
         if (file_exists($testEnvFile)) {
-            error_log("Loading test environment variables from: " . $testEnvFile);
+            caldavLog('DEBUG', 'Loading test environment variables', ['file' => $testEnvFile]);
             $this->loadEnvFromFile($testEnvFile);
         }
     }
@@ -64,7 +109,7 @@ class CalDAVClient {
     }
     
     private function checkServerCapabilities() {
-        error_log("=== Checking CalDAV Server Capabilities ===");
+        caldavLog('DEBUG', 'Checking CalDAV server capabilities');
         
         try {
             // Make an OPTIONS request to check server capabilities
@@ -89,9 +134,10 @@ class CalDAVClient {
             $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
             $headers = substr($response, 0, $headerSize);
             
-            error_log("OPTIONS Response Code: " . $httpCode);
-            error_log("OPTIONS Response Headers:");
-            error_log($headers);
+            caldavLog('DEBUG', 'CalDAV server capabilities check', [
+                'response_code' => $httpCode,
+                'headers' => $headers
+            ]);
             
             // Check for CalDAV-specific headers
             $capabilities = [];
@@ -105,17 +151,17 @@ class CalDAVClient {
                 $capabilities['ms_author_via'] = $matches[1];
             }
             
-            error_log("Server Capabilities: " . json_encode($capabilities));
+            caldavLog('INFO', 'CalDAV server capabilities discovered', $capabilities);
             
             curl_close($ch);
             
         } catch (Exception $e) {
-            error_log("Error checking server capabilities: " . $e->getMessage());
+            caldavLog('ERROR', 'Failed to check server capabilities', ['error' => $e->getMessage()]);
         }
     }
     
     private function testRRULESupport() {
-        error_log("=== Testing RRULE Support ===");
+        caldavLog('DEBUG', 'Testing RRULE support');
         
         try {
             // Create a test event with RRULE to see if it gets stored

@@ -3,9 +3,13 @@ import './App.css';
 import DayView from './components/Calendar/DayView.js';
 import WeekView from './components/Calendar/WeekView.tsx';
 import MonthView from './components/Calendar/MonthView.tsx';
+import LoggingService from './services/LoggingService';
 
 function App() {
-  console.log('App component is loading...'); // Debug log
+  LoggingService.info('App component initialized', { 
+    view: 'React Calendar App',
+    timestamp: new Date().toISOString()
+  });
   
   const views = [
     { type: 'day', label: 'Day', icon: '📅' },

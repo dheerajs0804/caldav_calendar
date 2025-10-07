@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { ColorRegistryService } from '../services/color-registry.service';
+import { LoglevelLoggingService } from '../services/loglevel-logging.service';
 import { environment } from '../../environments/environment';
 
 interface Calendar {
@@ -762,7 +763,8 @@ export class CalendarSelectionComponent implements OnInit {
   constructor(
     private http: HttpClient,
     private router: Router,
-    private colorRegistry: ColorRegistryService
+    private colorRegistry: ColorRegistryService,
+    private loggingService: LoglevelLoggingService
   ) {}
 
   ngOnInit(): void {
@@ -809,7 +811,11 @@ export class CalendarSelectionComponent implements OnInit {
           'Try refreshing the page',
           'Contact your administrator if the problem persists'
         ];
-        console.error('Calendar loading error:', error);
+        this.loggingService.error('Calendar loading failed', {
+          error: error.message,
+          status: error.status,
+          url: error.url
+        });
       }
     });
   }
