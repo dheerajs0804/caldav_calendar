@@ -487,7 +487,7 @@ div[style*="background: #4285f4"] * {
 }
 
 /* Loading and Error States */
-.loading, .error {
+.loading {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -496,8 +496,80 @@ div[style*="background: #4285f4"] * {
   color: #495057;
 }
 
-.error {
+.error-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  padding: 2rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.error-header {
+  font-size: 1.2rem;
+  font-weight: 600;
   color: #dc3545;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.error-suggestions {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+  width: 100%;
+}
+
+.error-suggestions h4 {
+  margin: 0 0 0.5rem 0;
+  color: #856404;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.error-suggestions ul {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+
+.error-suggestions li {
+  margin-bottom: 0.25rem;
+  color: #856404;
+  font-size: 0.9rem;
+}
+
+.error-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.retry-btn, .refresh-btn {
+  padding: 0.5rem 1rem;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.retry-btn:hover, .refresh-btn:hover {
+  background: #0056b3;
+}
+
+.refresh-btn {
+  background: #6c757d;
+}
+
+.refresh-btn:hover {
+  background: #545b62;
 }
 
 /* Add Event Button */

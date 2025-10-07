@@ -93,6 +93,7 @@ function App() {
   const fetchCalendars = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await fetch('http://localhost:8000/calendars');
       const data = await response.json();
       
@@ -100,11 +101,33 @@ function App() {
         setCalendars(data.data);
         console.log('Calendars loaded:', data.data);
       } else {
-        setError('Failed to load calendars');
+        // Enhanced error message with suggestions
+        const errorMessage = data.message || 'Failed to load calendars';
+        const suggestions = data.suggestions || [
+          'Check if the CalDAV server is running and accessible',
+          'Verify your login credentials are correct',
+          'Contact your server administrator for assistance'
+        ];
+        
+        setError({
+          message: errorMessage,
+          suggestions: suggestions,
+          type: data.error_type || 'unknown'
+        });
+        console.error('Calendar loading failed:', errorMessage);
       }
     } catch (error) {
       console.error('Error fetching calendars:', error);
-      setError('Error connecting to backend');
+      setError({
+        message: 'Connection error. Please try again.',
+        suggestions: [
+          'Check if the backend server is running',
+          'Verify your network connection',
+          'Try refreshing the page',
+          'Contact your administrator if the problem persists'
+        ],
+        type: 'connection_error'
+      });
     } finally {
       setLoading(false);
     }
@@ -1110,7 +1133,29 @@ function App() {
   if (error) {
     return (
       <div className="app">
-        <div className="error">Error: {error}</div>
+        <div className="error-container">
+          <div className="error-header">
+            ❌ {typeof error === 'string' ? error : error.message}
+          </div>
+          {typeof error === 'object' && error.suggestions && error.suggestions.length > 0 && (
+            <div className="error-suggestions">
+              <h4>💡 Suggestions:</h4>
+              <ul>
+                {error.suggestions.map((suggestion, index) => (
+                  <li key={index}>{suggestion}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div className="error-actions">
+            <button onClick={fetchCalendars} className="retry-btn">
+              🔄 Retry
+            </button>
+            <button onClick={() => window.location.reload()} className="refresh-btn">
+              🔄 Refresh Page
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

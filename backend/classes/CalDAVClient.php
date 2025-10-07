@@ -273,11 +273,8 @@ class CalDAVClient {
             error_log("Server URL: " . $this->serverUrl);
             error_log("Username: " . $this->username);
             
-            // Return mock calendars immediately in development mode if server is localhost or unreachable
-            if ($this->developmentMode && (strpos($this->serverUrl, 'localhost') !== false || strpos($this->serverUrl, '127.0.0.1') !== false)) {
-                error_log("Development mode detected with localhost server - returning mock calendars");
-                return $this->getMockCalendars();
-            }
+            // No longer return mock calendars - let the error handling work properly
+            // This ensures users get proper error messages when CalDAV server is unreachable
             
             // Skip diagnostic methods to prevent timeout
             // These can be called separately if needed for debugging
@@ -298,9 +295,9 @@ class CalDAVClient {
             if (!$response) {
                 error_log("Resource \"{$this->serverUrl}\" has no collections");
                 error_log("This might be due to server being unreachable or authentication issues");
-                error_log("Falling back to mock calendars for development/testing");
+                error_log("Returning false to trigger proper error handling");
                 
-                return $this->getMockCalendars();
+                return false;
             }
             
             // Check if the URL itself is a calendar
@@ -394,31 +391,13 @@ class CalDAVClient {
             
         } catch (Exception $e) {
             error_log("Error discovering calendars: " . $e->getMessage());
-            error_log("Falling back to mock calendars for development/testing");
+            error_log("Returning false to trigger proper error handling");
             
-            return $this->getMockCalendars();
+            return false;
         }
     }
     
-    /**
-     * Get mock calendars for development/testing when CalDAV server is not available
-     */
-    private function getMockCalendars() {
-        return [
-            [
-                'name' => 'Personal Calendar',
-                'href' => $this->serverUrl . '/calendars/personal/',
-            ],
-            [
-                'name' => 'Work Calendar', 
-                'href' => $this->serverUrl . '/calendars/work/',
-            ],
-            [
-                'name' => 'Family Calendar',
-                'href' => $this->serverUrl . '/calendars/family/',
-            ]
-        ];
-    }
+    // Mock calendar method removed - now using proper error handling instead
     
     private function discoverUserPrincipal($authToken) {
         $principalXml = '<?xml version="1.0" encoding="utf-8" ?>

@@ -500,98 +500,36 @@ function getUserCalendars() {
                 'message' => 'Calendars discovered successfully'
             ]);
         } else {
-            // In development mode, return mock calendars instead of error
-            $config = include __DIR__ . '/config/caldav.php';
-            if ($config['environment'] === 'development') {
-                error_log("Development mode: returning mock calendars");
-                
-                $mockCalendars = [
-                    'Personal Calendar',
-                    'Work Calendar', 
-                    'Family Calendar'
-                ];
-                
-                $processedCalendars = [];
-                foreach ($mockCalendars as $index => $name) {
-                    $calendarUrl = 'http://localhost:8000/calendars/' . strtolower(str_replace(' ', '_', $name)) . '/';
-                    $processedCalendars[] = [
-                        'id' => $calendarUrl,
-                        'name' => $name,
-                        'url' => $calendarUrl,
-                        'color' => ['#4285f4', '#ea4335', '#34a853'][$index % 3], // Google calendar colors
-                        'description' => 'Mock calendar for development',
-                        'enabled' => true,
-                        'created_at' => date('c'),
-                        'updated_at' => date('c')
-                    ];
-                }
-                
-                sendJsonResponse([
-                    'success' => true,
-                    'data' => [
-                        'calendars' => $processedCalendars
-                    ],
-                    'message' => 'Mock calendars loaded for development'
-                ]);
-            } else {
-                // Check if it's a server configuration issue
-                sendJsonResponse([
-                    'success' => false,
-                    'message' => 'Unable to discover calendars. The CalDAV server may have configuration issues or the endpoint may be different.',
-                    'error_type' => 'server_configuration',
-                    'suggestions' => [
-                        'Contact your server administrator to enable CalDAV protocol support',
-                        'Check if the CalDAV endpoint is at a different URL path',
-                        'Verify that WebDAV methods (PROPFIND, REPORT) are allowed'
-                    ]
-                ]);
-            }
+            // Always return proper error message instead of mock calendars
+            sendJsonResponse([
+                'success' => false,
+                'message' => 'Unable to discover calendars. The CalDAV server may have configuration issues or the endpoint may be different.',
+                'error_type' => 'server_configuration',
+                'suggestions' => [
+                    'Contact your server administrator to enable CalDAV protocol support',
+                    'Check if the CalDAV endpoint is at a different URL path',
+                    'Verify that WebDAV methods (PROPFIND, REPORT) are allowed',
+                    'Ensure the CalDAV server is running and accessible'
+                ]
+            ]);
         }
         
     } catch (Exception $e) {
         error_log("Error in getUserCalendars: " . $e->getMessage());
         error_log("Stack trace: " . $e->getTraceAsString());
         
-        // In development mode, return mock calendars instead of error
-        $config = include __DIR__ . '/config/caldav.php';
-        if ($config['environment'] === 'development') {
-            error_log("Development mode: returning mock calendars after exception");
-            
-            $mockCalendars = [
-                'Personal Calendar',
-                'Work Calendar', 
-                'Family Calendar'
-            ];
-            
-            $processedCalendars = [];
-            foreach ($mockCalendars as $index => $name) {
-                $calendarUrl = 'http://localhost:8000/calendars/' . strtolower(str_replace(' ', '_', $name)) . '/';
-                $processedCalendars[] = [
-                    'id' => $calendarUrl,
-                    'name' => $name,
-                    'url' => $calendarUrl,
-                    'color' => ['#4285f4', '#ea4335', '#34a853'][$index % 3], // Google calendar colors
-                    'description' => 'Mock calendar for development',
-                    'enabled' => true,
-                    'created_at' => date('c'),
-                    'updated_at' => date('c')
-                ];
-            }
-            
-            sendJsonResponse([
-                'success' => true,
-                'data' => [
-                    'calendars' => $processedCalendars
-                ],
-                'message' => 'Mock calendars loaded for development (after error)'
-            ]);
-        } else {
-            sendJsonResponse([
-                'success' => false,
-                'message' => 'Error discovering calendars: ' . $e->getMessage(),
-                'error_type' => 'discovery_error'
-            ]);
-        }
+        // Always return proper error message instead of mock calendars
+        sendJsonResponse([
+            'success' => false,
+            'message' => 'Error discovering calendars: ' . $e->getMessage(),
+            'error_type' => 'discovery_error',
+            'suggestions' => [
+                'Check if the CalDAV server is running and accessible',
+                'Verify your login credentials are correct',
+                'Contact your server administrator for assistance',
+                'Check network connectivity to the CalDAV server'
+            ]
+        ]);
     }
 }
 

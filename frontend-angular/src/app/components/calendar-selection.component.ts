@@ -66,7 +66,23 @@ interface DeleteCalendarResponse {
         </div>
         
         <div *ngIf="error" class="error">
-          ❌ {{ error }}
+          <div class="error-header">
+            ❌ {{ error }}
+          </div>
+          <div *ngIf="errorSuggestions && errorSuggestions.length > 0" class="error-suggestions">
+            <h4>💡 Suggestions:</h4>
+            <ul>
+              <li *ngFor="let suggestion of errorSuggestions">{{ suggestion }}</li>
+            </ul>
+          </div>
+          <div class="error-actions">
+            <button (click)="retryLoadCalendars()" class="retry-btn">
+              🔄 Retry
+            </button>
+            <button (click)="goBack()" class="back-btn">
+              ← Back to Login
+            </button>
+          </div>
         </div>
         
         <div *ngIf="!loading && !error && filteredCalendars.length > 0" class="calendar-list">
@@ -276,6 +292,61 @@ interface DeleteCalendarResponse {
       background: #fed7d7;
       border-radius: 8px;
       padding: 20px;
+      margin: 20px;
+    }
+
+    .error-header {
+      font-weight: 600;
+      margin-bottom: 15px;
+      font-size: 16px;
+    }
+
+    .error-suggestions {
+      margin: 15px 0;
+      padding: 15px;
+      background: #fef5e7;
+      border-radius: 6px;
+      border-left: 4px solid #f6ad55;
+    }
+
+    .error-suggestions h4 {
+      margin: 0 0 10px 0;
+      color: #c05621;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .error-suggestions ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .error-suggestions li {
+      margin-bottom: 5px;
+      color: #744210;
+      font-size: 14px;
+    }
+
+    .error-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .retry-btn {
+      padding: 8px 16px;
+      background: #4299e1;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .retry-btn:hover {
+      background: #3182ce;
     }
     
     .no-calendars {
@@ -673,6 +744,7 @@ export class CalendarSelectionComponent implements OnInit {
   filteredCalendars: Calendar[] = [];
   loading: boolean = true;
   error: string = '';
+  errorSuggestions: string[] = [];
   searchTerm: string = '';
   
   // Add Calendar Modal Properties
@@ -709,6 +781,7 @@ export class CalendarSelectionComponent implements OnInit {
   loadCalendars(): void {
     this.loading = true;
     this.error = '';
+    this.errorSuggestions = [];
 
     this.http.get<CalendarResponse>(`${environment.apiUrl}/calendars/user`, { withCredentials: true }).subscribe({
       next: (response) => {
@@ -721,11 +794,21 @@ export class CalendarSelectionComponent implements OnInit {
           this.filterCalendars();
         } else {
           this.error = response.message || 'Failed to load calendars';
+          // Check if the response includes suggestions
+          if ((response as any).suggestions && Array.isArray((response as any).suggestions)) {
+            this.errorSuggestions = (response as any).suggestions;
+          }
         }
       },
       error: (error) => {
         this.loading = false;
         this.error = 'Connection error. Please try again.';
+        this.errorSuggestions = [
+          'Check if the backend server is running',
+          'Verify your network connection',
+          'Try refreshing the page',
+          'Contact your administrator if the problem persists'
+        ];
         console.error('Calendar loading error:', error);
       }
     });
@@ -787,6 +870,11 @@ export class CalendarSelectionComponent implements OnInit {
 
   goBack(): void {
     this.router.navigate(['/login']);
+  }
+
+  retryLoadCalendars(): void {
+    console.log('🔄 Retrying calendar load...');
+    this.loadCalendars();
   }
 
   // Add Calendar Modal Methods
