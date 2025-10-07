@@ -1,4 +1,12 @@
 <?php
+// Log every request at the very beginning
+error_log("=== REQUEST START ===");
+error_log("Method: " . ($_SERVER['REQUEST_METHOD'] ?? 'unknown'));
+error_log("URI: " . ($_SERVER['REQUEST_URI'] ?? 'unknown'));
+error_log("Timestamp: " . date('Y-m-d H:i:s'));
+error_log("File: " . __FILE__);
+error_log("Line: " . __LINE__);
+
 // Simple professional logging function
 function simpleLog($level, $message, $context = []) {
     $timestamp = date('Y-m-d H:i:s');
@@ -27,6 +35,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'PUT') {
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/logs/php_errors.log');
 
 // Set execution time limit to prevent hanging
 set_time_limit(60); // 60 seconds max execution time
@@ -271,6 +280,8 @@ try {
             handlePutRequest($path);
             break;
         case 'DELETE':
+            error_log("=== MAIN DELETE REQUEST HANDLER ===");
+            error_log("DELETE request path: $path");
             handleDeleteRequest($path);
             break;
         default:
@@ -395,11 +406,17 @@ function handlePutRequest($path) {
 }
 
 function handleDeleteRequest($path) {
+    error_log("=== DELETE REQUEST DEBUG ===");
+    error_log("DELETE request path: $path");
+    
     if (preg_match('/^events\/(.+)$/', $path, $matches)) {
+        error_log("DELETE request for event: " . $matches[1]);
         deleteEvent($matches[1]);
     } elseif (preg_match('/^calendars\/(.+)$/', $path, $matches)) {
+        error_log("DELETE request for calendar: " . $matches[1]);
         deleteCalendar($matches[1]);
     } else {
+        error_log("DELETE request path not matched: $path");
         http_response_code(404);
         echo json_encode(['error' => 'Endpoint not found']);
     }
@@ -2041,52 +2058,125 @@ function updateEvent($id) {
 
 function deleteCalendar($id) {
     try {
-        // Validate calendar ID
-        if (!is_numeric($id)) {
-            throw new Exception('Invalid calendar ID');
-        }
+        error_log("=== CALENDAR DELETION DEBUG ===");
+        error_log("Received calendar ID: $id");
+        error_log("ID type: " . gettype($id));
+        error_log("ID length: " . strlen($id));
+        
+        // Decode the URL-encoded calendar ID
+        $decodedId = urldecode($id);
+        error_log("Decoded calendar ID: $decodedId");
         
         // Get CalDAV client
         $caldavClient = getCalDAVClient();
         if (!$caldavClient) {
+            error_log("ERROR: CalDAV client not available");
             throw new Exception('CalDAV client not available');
         }
         
-        error_log("Deleting calendar with ID: $id");
+        error_log("CalDAV client obtained successfully");
         
         // First, get the calendar details to find the URL
+        error_log("Discovering calendars...");
         $calendars = $caldavClient->discoverCalendars();
+        error_log("Discovered " . count($calendars) . " calendars");
+        
         if (!$calendars || empty($calendars)) {
+            error_log("ERROR: No calendars found");
             throw new Exception('No calendars found');
         }
         
-        // Convert ID to array index (ID 1 = index 0, ID 2 = index 1, etc.)
-        $calendarIndex = intval($id) - 1;
+        // Log all available calendars for debugging
+        error_log("Available calendars:");
+        foreach ($calendars as $index => $calendar) {
+            error_log("  Calendar $index: " . $calendar['name'] . " (URL: " . $calendar['href'] . ")");
+        }
         
-        if ($calendarIndex < 0 || $calendarIndex >= count($calendars)) {
+        $calendarUrl = '';
+        $calendarToDelete = null;
+        
+        // 🔧 FIX: Handle both URL-based IDs and numeric IDs for backward compatibility
+        if (strpos($decodedId, 'http') === 0) {
+            // ID is a URL - find calendar by URL
+            error_log("Decoded ID is a URL, searching by URL: $decodedId");
+            foreach ($calendars as $calendar) {
+                error_log("Comparing: '" . $calendar['href'] . "' === '$decodedId'");
+                if ($calendar['href'] === $decodedId) {
+                    $calendarToDelete = $calendar;
+                    $calendarUrl = $decodedId;
+                    error_log("MATCH FOUND: " . $calendar['name']);
+                    break;
+                }
+            }
+        } else if (is_numeric($decodedId)) {
+            // ID is numeric - convert to array index (backward compatibility)
+            error_log("Decoded ID is numeric, converting to array index: $decodedId");
+            $calendarIndex = intval($decodedId) - 1;
+            
+            if ($calendarIndex < 0 || $calendarIndex >= count($calendars)) {
+                error_log("ERROR: Calendar index $calendarIndex out of range (0-" . (count($calendars)-1) . ")");
+                throw new Exception('Calendar not found');
+            }
+            
+            $calendarToDelete = $calendars[$calendarIndex];
+            $calendarUrl = $calendarToDelete['href'] ?? '';
+            error_log("Found calendar by index: " . $calendarToDelete['name']);
+        } else {
+            error_log("ERROR: Invalid calendar ID format: $decodedId");
+            throw new Exception('Invalid calendar ID format');
+        }
+        
+        if (!$calendarToDelete || empty($calendarUrl)) {
+            error_log("ERROR: Calendar not found after search");
+            error_log("Calendar to delete: " . ($calendarToDelete ? $calendarToDelete['name'] : 'null'));
+            error_log("Calendar URL: '$calendarUrl'");
             throw new Exception('Calendar not found');
         }
         
-        $calendarToDelete = $calendars[$calendarIndex];
-        
-        // Get the calendar URL
-        $calendarUrl = $calendarToDelete['href'] ?? '';
-        if (empty($calendarUrl)) {
-            throw new Exception('Calendar URL not found');
-        }
-        
-        error_log("Deleting calendar URL: $calendarUrl");
+        error_log("SUCCESS: Found calendar to delete: " . $calendarToDelete['name'] . " (URL: $calendarUrl)");
         
         // Delete the calendar using CalDAV client
+        error_log("Calling CalDAV client deleteCalendar...");
         $result = $caldavClient->deleteCalendar($calendarUrl);
+        error_log("CalDAV deleteCalendar result: " . json_encode($result));
         
         if ($result['success']) {
+            error_log("Calendar deleted successfully");
             sendJsonResponse([
                 'success' => true,
                 'message' => 'Calendar deleted successfully'
             ]);
         } else {
-            throw new Exception($result['message']);
+            error_log("CalDAV deletion failed: " . $result['message']);
+            
+            // 🔧 FALLBACK: If CalDAV deletion fails, disable the calendar locally
+            error_log("Attempting fallback: disabling calendar locally");
+            
+            // Load calendar states
+            $calendarStatesFile = 'data/calendar_states.json';
+            $calendarStates = [];
+            
+            if (file_exists($calendarStatesFile)) {
+                $calendarStates = json_decode(file_get_contents($calendarStatesFile), true) ?? [];
+            }
+            
+            // Disable the calendar
+            $calendarStates[$calendarUrl] = false;
+            
+            // Ensure directory exists
+            $dataDir = dirname($calendarStatesFile);
+            if (!is_dir($dataDir)) {
+                mkdir($dataDir, 0755, true);
+            }
+            
+            // Save updated states
+            file_put_contents($calendarStatesFile, json_encode($calendarStates, JSON_PRETTY_PRINT));
+            
+            error_log("Calendar disabled locally as fallback");
+            sendJsonResponse([
+                'success' => true,
+                'message' => 'Calendar disabled (deletion not supported by server)'
+            ]);
         }
         
     } catch (Exception $e) {

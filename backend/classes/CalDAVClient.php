@@ -2331,6 +2331,7 @@ class CalDAVClient {
             
             error_log("DELETE response code: " . $response['status']);
             error_log("DELETE response body: " . $response['body']);
+            error_log("DELETE response headers: " . json_encode($response['headers'] ?? []));
             
             if ($response['status'] == 204 || $response['status'] == 200) {
                 // Calendar deleted successfully
@@ -2338,6 +2339,20 @@ class CalDAVClient {
                 return [
                     'success' => true,
                     'message' => 'Calendar deleted successfully'
+                ];
+            } else if ($response['status'] == 403) {
+                // Forbidden - server doesn't allow deletion
+                error_log("Calendar deletion forbidden by server (403)");
+                return [
+                    'success' => false,
+                    'message' => 'Calendar deletion not allowed by server'
+                ];
+            } else if ($response['status'] == 405) {
+                // Method not allowed - server doesn't support DELETE
+                error_log("Calendar deletion method not allowed by server (405)");
+                return [
+                    'success' => false,
+                    'message' => 'Calendar deletion not supported by server'
                 ];
             } else {
                 throw new Exception('DELETE failed with HTTP code: ' . $response['status'] . '. Response: ' . $response['body']);

@@ -6,7 +6,8 @@
     </button>
     <h1>📅 Mithi Calendar</h1>
     <div *ngIf="selectedCalendar" class="calendar-info">
-      <span class="calendar-name">{{ selectedCalendar.name }}</span>
+      <span class="calendar-name">📅 {{ selectedCalendar.name }}</span>
+      <span class="calendar-status">(Default for new events)</span>
     </div>
     <div class="date-navigation">
       <button (click)="previous()" class="nav-btn">◀</button>
@@ -93,7 +94,9 @@
           *ngFor="let calendar of filteredCalendars" 
           class="calendar-item"
           [class.selected]="calendar.enabled"
+          [class.active]="selectedCalendar?.id === calendar.id"
           [style.border-left-color]="getCalendarColor(calendar.name)"
+          (click)="selectCalendar(calendar)"
         >
           <div class="calendar-icon" [style.color]="getCalendarColor(calendar.name)">
             📅

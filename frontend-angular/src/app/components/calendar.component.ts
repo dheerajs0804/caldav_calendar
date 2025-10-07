@@ -15,7 +15,8 @@ import { ExportModalComponent, ExportOptions } from './export-modal/export-modal
 import { ImportModalComponent, ImportOptions } from './import-modal/import-modal.component';
 import { EmailService } from '../services/email.service';
 import { AuthService } from '../services/auth.service';
-import { Router } from '@angular/router';
+import { Router, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import { CalendarEvent, Calendar } from '../interfaces/calendar-event.interface';
 import { ColorRegistryService } from '../services/color-registry.service';
 import { RecurrenceExpansionService } from '../services/recurrence-expansion.service';
@@ -98,6 +99,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
   searchTerm: string = ''; // For filtering calendars in sidebar
   agendaRange: number = 30; // Default agenda range in days
   showRangeDropdown: boolean = false; // Control range dropdown visibility
+  
+  private routerSubscription: Subscription = new Subscription();
+  
   newEvent: NewEvent = {
     summary: '',
     location: '',
@@ -173,6 +177,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
     // Set up periodic refresh to detect EXDATE changes from other clients
     this.setupPeriodicRefresh();
     
+    // Set up router navigation detection to refresh calendars when returning from calendar selection
+    this.setupRouterNavigationDetection();
+    
     // 🎨 Thunderbird-style: Expose color management methods to window for testing
     (window as any).calendarColorManager = {
       setColor: (calendarName: string, color: string) => this.setCalendarColor(calendarName, color),
@@ -234,6 +241,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
     if (this.reminderInterval) {
       this.reminderInterval.unsubscribe();
     }
+    if (this.routerSubscription) {
+      this.routerSubscription.unsubscribe();
+    }
   }
 
   logout(): void {
@@ -261,8 +271,44 @@ export class CalendarComponent implements OnInit, OnDestroy {
     event.stopPropagation();
     calendar.enabled = !calendar.enabled;
     
+    // Handle calendar selection logic
+    if (calendar.enabled) {
+      // If this calendar is being enabled and it's the first enabled calendar, select it
+      if (!this.selectedCalendar) {
+        this.selectCalendar(calendar);
+      }
+    } else {
+      // If the disabled calendar was selected, select another enabled calendar
+      if (this.selectedCalendar && this.selectedCalendar.id === calendar.id) {
+        const nextEnabledCalendar = this.calendars.find(cal => cal.enabled && cal.id !== calendar.id);
+        if (nextEnabledCalendar) {
+          this.selectCalendar(nextEnabledCalendar);
+        } else {
+          this.selectedCalendar = null;
+          console.log('📅 No enabled calendars remaining, cleared selection');
+        }
+      }
+    }
+    
     // Update the calendar state on the server
     this.updateCalendarState(calendar);
+  }
+
+  // Select a calendar (for event creation default)
+  selectCalendar(calendar: Calendar): void {
+    this.selectedCalendar = calendar;
+    console.log('📅 Calendar selected:', calendar.name, 'ID:', calendar.id);
+  }
+
+  // Initialize the selected calendar (first enabled calendar)
+  private initializeSelectedCalendar(): void {
+    if (!this.selectedCalendar && this.calendars.length > 0) {
+      const firstEnabledCalendar = this.calendars.find(cal => cal.enabled);
+      if (firstEnabledCalendar) {
+        this.selectedCalendar = firstEnabledCalendar;
+        console.log('📅 Initialized selected calendar:', firstEnabledCalendar.name, 'ID:', firstEnabledCalendar.id);
+      }
+    }
   }
 
   updateCalendarState(calendar: Calendar): void {
@@ -290,7 +336,17 @@ export class CalendarComponent implements OnInit, OnDestroy {
       return;
     }
     
-    this.http.delete(`${environment.apiUrl}/calendars/${calendar.id}`, { 
+    console.log('🗑️ Attempting to delete calendar:', calendar.name);
+    console.log('🗑️ Calendar ID:', calendar.id, 'Type:', typeof calendar.id);
+    
+    // Properly encode the calendar ID for URL
+    const encodedCalendarId = encodeURIComponent(calendar.id);
+    const deleteUrl = `${environment.apiUrl}/calendars/${encodedCalendarId}`;
+    
+    console.log('🗑️ Encoded Calendar ID:', encodedCalendarId);
+    console.log('🗑️ Delete URL:', deleteUrl);
+    
+    this.http.delete(deleteUrl, { 
       withCredentials: true 
     }).subscribe({
       next: (response: any) => {
@@ -303,6 +359,13 @@ export class CalendarComponent implements OnInit, OnDestroy {
           // If the deleted calendar was selected, select another one
           if (this.selectedCalendar && this.selectedCalendar.id === calendar.id) {
             this.selectedCalendar = this.calendars.find(cal => cal.enabled) || this.calendars[0] || null;
+            console.log('📅 Selected calendar updated after deletion:', this.selectedCalendar?.name, 'ID:', this.selectedCalendar?.id);
+          }
+          
+          // If the deleted calendar was the default for new events, update the newEvent
+          if (this.newEvent.calendar_id === calendar.id) {
+            this.newEvent.calendar_id = this.selectedCalendar?.id || null;
+            console.log('📅 New event calendar_id updated after deletion:', this.newEvent.calendar_id);
           }
           
           // Refresh events
@@ -315,7 +378,13 @@ export class CalendarComponent implements OnInit, OnDestroy {
         }
       },
       error: (error) => {
-        console.error('Error deleting calendar:', error);
+        console.error('❌ Error deleting calendar:', error);
+        console.error('❌ Error details:', {
+          status: error.status,
+          statusText: error.statusText,
+          message: error.message,
+          url: error.url
+        });
         alert('Error deleting calendar. Please try again.');
       }
     });
@@ -345,6 +414,27 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.router.navigate(['/calendar-selection']);
   }
 
+  // Refresh calendars from backend (useful after adding/deleting calendars)
+  async refreshCalendars(): Promise<void> {
+    console.log('🔄 Refreshing calendars from backend...');
+    await this.fetchCalendars();
+  }
+
+  // Set up router navigation detection to refresh calendars when returning from calendar selection
+  private setupRouterNavigationDetection(): void {
+    this.routerSubscription = this.router.events
+      .pipe(filter(event => event instanceof NavigationEnd))
+      .subscribe((event) => {
+        // Type assertion since we've already filtered for NavigationEnd
+        const navEvent = event as NavigationEnd;
+        // Check if we're returning from calendar selection page
+        if (navEvent.url === '/calendar' && navEvent.urlAfterRedirects === '/calendar') {
+          console.log('🔄 Detected return to calendar view, refreshing calendars...');
+          this.refreshCalendars();
+        }
+      });
+  }
+
   getWeekDateRange(): string {
     const weekStart = this.currentDate.startOf('week');
     const weekEnd = weekStart.add(6, 'day');
@@ -364,6 +454,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
         }));
         console.log('📅 Calendars loaded from backend:', this.calendars);
         console.log('📅 Calendar IDs:', this.calendars.map(cal => ({ name: cal.name, id: cal.id, type: typeof cal.id })));
+        
+        // Initialize selected calendar (first enabled calendar)
+        this.initializeSelectedCalendar();
         
         // 🎨 Register calendar colors in ColorRegistryService (preserve user colors)
         this.calendars.forEach(calendar => {
@@ -951,7 +1044,69 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   // Modal methods
   openAddEventModal(): void {
+    // Initialize the new event with default values
+    this.initializeNewEvent();
     this.showAddEventModal = true;
+  }
+
+  // Initialize new event with proper defaults
+  private initializeNewEvent(): void {
+    // Set default dates to today
+    const today = dayjs();
+    const tomorrow = today.add(1, 'day');
+    
+    this.newEvent = {
+      summary: '',
+      description: '',
+      location: '',
+      start_date: today.format('YYYY-MM-DD'),
+      start_time: '09:00',
+      end_date: tomorrow.format('YYYY-MM-DD'),
+      end_time: '10:00',
+      all_day: false,
+      calendar_id: this.getDefaultCalendarId(),
+      availability: 'busy',
+      status: 'confirmed',
+      attendees: [],
+      recurrence: {
+        frequency: 'never',
+        interval: 1
+      },
+      reminder: {
+        enabled: false,
+        type: 'message',
+        time: 15,
+        unit: 'minutes',
+        relativeTo: 'start'
+      }
+    };
+    
+    console.log('🔄 New event initialized with calendar_id:', this.newEvent.calendar_id);
+  }
+
+  // Get the default calendar ID (first enabled calendar or selected calendar)
+  private getDefaultCalendarId(): any {
+    // Priority 1: Use currently selected calendar if available
+    if (this.selectedCalendar && this.selectedCalendar.enabled) {
+      console.log('✅ Using selected calendar as default:', this.selectedCalendar.name, 'ID:', this.selectedCalendar.id);
+      return this.selectedCalendar.id;
+    }
+    
+    // Priority 2: Use first enabled calendar
+    const firstEnabledCalendar = this.calendars.find(cal => cal.enabled);
+    if (firstEnabledCalendar) {
+      console.log('✅ Using first enabled calendar as default:', firstEnabledCalendar.name, 'ID:', firstEnabledCalendar.id);
+      return firstEnabledCalendar.id;
+    }
+    
+    // Priority 3: Use first calendar (fallback)
+    if (this.calendars.length > 0) {
+      console.log('⚠️ Using first calendar as fallback:', this.calendars[0].name, 'ID:', this.calendars[0].id);
+      return this.calendars[0].id;
+    }
+    
+    console.log('❌ No calendars available for default selection');
+    return null;
   }
 
   closeAddEventModal(): void {
@@ -978,18 +1133,22 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   // Handle calendar selection change in add event modal
   onCalendarSelectionChange(event: any): void {
-    const selectedCalendarId = Number(event.target.value);
-    const selectedCalendar = this.calendars.find(cal => Number(cal.id) === selectedCalendarId);
+    const selectedCalendarId = event.target.value;
+    const selectedCalendar = this.calendars.find(cal => 
+      cal.id === selectedCalendarId || 
+      Number(cal.id) === Number(selectedCalendarId) ||
+      String(cal.id) === String(selectedCalendarId)
+    );
     
     console.log('📅 Calendar selection changed:');
     console.log('  - Raw value:', event.target.value, 'Type:', typeof event.target.value);
-    console.log('  - Parsed ID:', selectedCalendarId, 'Type:', typeof selectedCalendarId);
+    console.log('  - Selected ID:', selectedCalendarId, 'Type:', typeof selectedCalendarId);
     console.log('  - Found calendar:', selectedCalendar?.name, 'ID:', selectedCalendar?.id, 'Type:', typeof selectedCalendar?.id);
     
-    // 🔧 FIX: Actually update the newEvent.calendar_id
+    // 🔧 FIX: Actually update the newEvent.calendar_id with the original value (preserve type)
     if (selectedCalendar) {
       this.newEvent.calendar_id = selectedCalendarId;
-      console.log('✅ Updated newEvent.calendar_id to:', this.newEvent.calendar_id);
+      console.log('✅ Updated newEvent.calendar_id to:', this.newEvent.calendar_id, 'Type:', typeof this.newEvent.calendar_id);
     } else {
       console.error('❌ Calendar not found for ID:', selectedCalendarId);
     }
@@ -1160,9 +1319,13 @@ export class CalendarComponent implements OnInit, OnDestroy {
       
       // Priority 1: Use the calendar selected in the "Add Event" modal dropdown
       if (this.newEvent.calendar_id && this.calendars && this.calendars.length > 0) {
-        // Convert both to numbers for comparison to handle type mismatches
-        const selectedId = Number(this.newEvent.calendar_id);
-        targetCalendar = this.calendars.find(cal => Number(cal.id) === selectedId);
+        // Handle both string and number IDs for compatibility
+        const selectedId = this.newEvent.calendar_id;
+        targetCalendar = this.calendars.find(cal => 
+          cal.id === selectedId || 
+          Number(cal.id) === Number(selectedId) ||
+          String(cal.id) === String(selectedId)
+        );
         console.log('✅ Priority 1 - Using calendar from dropdown:', targetCalendar?.name, 'ID:', targetCalendar?.id);
         console.log('  - Selected ID:', selectedId, 'Type:', typeof selectedId);
         console.log('  - Calendar IDs:', this.calendars.map(cal => ({ name: cal.name, id: cal.id, type: typeof cal.id })));
