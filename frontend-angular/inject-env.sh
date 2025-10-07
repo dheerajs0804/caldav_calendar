@@ -1,7 +1,8 @@
 #!/bin/sh
+set -e
 
 # Environment injection script for Angular app
-# This script injects environment variables into the built Angular app at runtime
+echo "🔧 Starting environment injection..."
 
 # Get the API URL from environment variable
 API_URL=${API_URL:-"http://localhost:8000"}
@@ -19,5 +20,4 @@ EOF
 echo "✅ Environment variables injected:"
 echo "   API_URL: ${API_URL}"
 
-# Execute the original nginx entrypoint
-exec "$@"
+echo "🔧 Environment injection completed successfully"

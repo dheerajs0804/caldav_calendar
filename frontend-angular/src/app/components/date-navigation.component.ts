@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import * as dayjs from 'dayjs';
 import * as weekOfYear from 'dayjs/plugin/weekOfYear';
 import * as isoWeek from 'dayjs/plugin/isoWeek';
+import { LoglevelLoggingService } from '../services/loglevel-logging.service';
 
 // Extend dayjs with week plugins
 dayjs.extend(weekOfYear);
@@ -251,6 +252,10 @@ export class DateNavigationComponent {
     this.generateCalendarDays();
   }
   
+  constructor(private logger: LoglevelLoggingService) {
+    this.updateFromCurrentDate();
+  }
+
   ngOnChanges() {
     this.updateFromCurrentDate();
   }
@@ -310,19 +315,60 @@ export class DateNavigationComponent {
   
   
   goToToday() {
+    const startTime = performance.now();
     const today = dayjs();
+    
+    this.logger.logUserAction('Date navigation - Go to Today', {
+      previousDate: this.currentDate.format('YYYY-MM-DD'),
+      newDate: today.format('YYYY-MM-DD'),
+      previousView: 'unknown' // We don't have access to current view here
+    });
+    
     this.emitDateChange(today);
+    
+    const duration = performance.now() - startTime;
+    this.logger.logPerformance('Date navigation - Go to Today', duration, {
+      newDate: today.format('YYYY-MM-DD')
+    });
   }
   
   goToThisWeek() {
+    const startTime = performance.now();
     // Use ISO week to ensure Monday start
     const thisWeek = dayjs().startOf('isoWeek');
+    
+    this.logger.logUserAction('Date navigation - Go to This Week', {
+      previousDate: this.currentDate.format('YYYY-MM-DD'),
+      newDate: thisWeek.format('YYYY-MM-DD'),
+      weekStart: thisWeek.format('YYYY-MM-DD'),
+      weekEnd: thisWeek.add(6, 'day').format('YYYY-MM-DD')
+    });
+    
     this.emitDateChange(thisWeek);
+    
+    const duration = performance.now() - startTime;
+    this.logger.logPerformance('Date navigation - Go to This Week', duration, {
+      newDate: thisWeek.format('YYYY-MM-DD')
+    });
   }
   
   goToThisMonth() {
+    const startTime = performance.now();
     const thisMonth = dayjs().startOf('month');
+    
+    this.logger.logUserAction('Date navigation - Go to This Month', {
+      previousDate: this.currentDate.format('YYYY-MM-DD'),
+      newDate: thisMonth.format('YYYY-MM-DD'),
+      monthStart: thisMonth.format('YYYY-MM-DD'),
+      monthEnd: thisMonth.endOf('month').format('YYYY-MM-DD')
+    });
+    
     this.emitDateChange(thisMonth);
+    
+    const duration = performance.now() - startTime;
+    this.logger.logPerformance('Date navigation - Go to This Month', duration, {
+      newDate: thisMonth.format('YYYY-MM-DD')
+    });
   }
   
   private emitDateChange(newDate: dayjs.Dayjs) {
@@ -332,7 +378,22 @@ export class DateNavigationComponent {
   }
   
   selectDate(date: dayjs.Dayjs) {
+    const startTime = performance.now();
+    
+    this.logger.logUserAction('Date selection', {
+      previousDate: this.currentDate.format('YYYY-MM-DD'),
+      selectedDate: date.format('YYYY-MM-DD'),
+      selectedDay: date.format('dddd'),
+      selectedMonth: date.format('MMMM'),
+      selectedYear: date.format('YYYY')
+    });
+    
     this.emitDateChange(date);
+    
+    const duration = performance.now() - startTime;
+    this.logger.logPerformance('Date selection', duration, {
+      selectedDate: date.format('YYYY-MM-DD')
+    });
   }
   
   private generateCalendarDays() {

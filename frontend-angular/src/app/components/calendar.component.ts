@@ -25,6 +25,7 @@ import { CalendarEvent, Calendar } from '../interfaces/calendar-event.interface'
 import { ColorRegistryService } from '../services/color-registry.service';
 import { RecurrenceExpansionService } from '../services/recurrence-expansion.service';
 import { RecurringEventDeleteModalComponent, RecurringDeleteAction } from './recurring-event-delete-modal/recurring-event-delete-modal.component';
+import { LoglevelLoggingService } from '../services/loglevel-logging.service';
 
 
 interface View {
@@ -166,7 +167,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
     private router: Router,
     private colorRegistry: ColorRegistryService,
     private cdr: ChangeDetectorRef,
-    private recurrenceExpansion: RecurrenceExpansionService
+    private recurrenceExpansion: RecurrenceExpansionService,
+    private logger: LoglevelLoggingService
   ) {}
 
   ngOnInit(): void {
@@ -300,8 +302,30 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   // Select a calendar (for event creation default)
   selectCalendar(calendar: Calendar): void {
+    const startTime = performance.now();
+    
+    this.logger.logUserAction('Calendar selection', {
+      calendarName: calendar.name,
+      calendarId: calendar.id,
+      calendarUrl: calendar.url,
+      calendarEnabled: calendar.enabled,
+      previousSelectedCalendar: this.selectedCalendar?.name || null,
+      previousSelectedId: this.selectedCalendar?.id || null
+    });
+    
     this.selectedCalendar = calendar;
-    console.log('📅 Calendar selected:', calendar.name, 'ID:', calendar.id);
+    
+    const duration = performance.now() - startTime;
+    this.logger.logPerformance('Calendar selection', duration, {
+      calendarName: calendar.name,
+      calendarId: calendar.id
+    });
+    
+    this.logger.logUserAction('Calendar selection completed', {
+      selectedCalendar: calendar.name,
+      selectedId: calendar.id,
+      duration: `${duration.toFixed(2)}ms`
+    }, true);
   }
 
   // Initialize the selected calendar (first enabled calendar)
@@ -316,63 +340,131 @@ export class CalendarComponent implements OnInit, OnDestroy {
   }
 
   updateCalendarState(calendar: Calendar): void {
-    console.log('🔄 Updating calendar state:', calendar.name, 'Enabled:', calendar.enabled);
-    console.log('🔄 Calendar ID:', calendar.id, 'Type:', typeof calendar.id);
+    const startTime = performance.now();
+    
+    this.logger.logUserAction('Calendar toggle initiated', {
+      calendarName: calendar.name,
+      calendarId: calendar.id,
+      calendarUrl: calendar.url,
+      newState: calendar.enabled ? 'enabled' : 'disabled',
+      previousState: !calendar.enabled ? 'enabled' : 'disabled'
+    });
     
     // Properly encode the calendar ID for URL
     const encodedCalendarId = encodeURIComponent(calendar.id);
     const toggleUrl = `${environment.apiUrl}/calendars/${encodedCalendarId}/toggle`;
     
-    console.log('🔄 Encoded Calendar ID:', encodedCalendarId);
-    console.log('🔄 Toggle URL:', toggleUrl);
+    this.logger.logRequestProcessing('Calendar toggle API request', {
+      calendarName: calendar.name,
+      calendarId: calendar.id,
+      encodedCalendarId: encodedCalendarId,
+      toggleUrl: toggleUrl,
+      requestMethod: 'PUT',
+      requestBody: { enabled: calendar.enabled }
+    });
     
     this.http.put(toggleUrl, {
       enabled: calendar.enabled
     }, { withCredentials: true }).subscribe({
       next: (response) => {
-        console.log('Calendar state updated:', calendar.name, calendar.enabled);
+        const duration = performance.now() - startTime;
+        
+        this.logger.logApiOperation('Calendar toggle', {
+          calendarName: calendar.name,
+          calendarId: calendar.id,
+          newState: calendar.enabled ? 'enabled' : 'disabled',
+          response: response,
+          duration: `${duration.toFixed(2)}ms`
+        }, true);
+        
+        this.logger.logUserAction('Calendar toggle completed', {
+          calendarName: calendar.name,
+          calendarId: calendar.id,
+          finalState: calendar.enabled ? 'enabled' : 'disabled',
+          duration: `${duration.toFixed(2)}ms`
+        }, true);
+        
         // Refresh events after calendar state change
         this.fetchEvents();
       },
       error: (error) => {
-        console.error('❌ Failed to update calendar state:', error);
-        console.error('❌ Error details:', {
-          status: error.status,
-          statusText: error.statusText,
-          message: error.message,
-          url: error.url
-        });
+        const duration = performance.now() - startTime;
+        
+        this.logger.logApiOperation('Calendar toggle', {
+          calendarName: calendar.name,
+          calendarId: calendar.id,
+          newState: calendar.enabled ? 'enabled' : 'disabled',
+          error: {
+            status: error.status,
+            statusText: error.statusText,
+            message: error.message,
+            url: error.url
+          },
+          duration: `${duration.toFixed(2)}ms`
+        }, false);
+        
         // Revert the change on error
         calendar.enabled = !calendar.enabled;
-        console.log('🔄 Reverted calendar state due to error');
+        
+        this.logger.logUserAction('Calendar toggle failed and reverted', {
+          calendarName: calendar.name,
+          calendarId: calendar.id,
+          revertedState: calendar.enabled ? 'enabled' : 'disabled',
+          error: error.message,
+          duration: `${duration.toFixed(2)}ms`
+        }, false);
       }
     });
   }
 
   deleteCalendar(calendar: Calendar, event: MouseEvent): void {
     event.stopPropagation();
+    const startTime = performance.now();
+    
+    this.logger.logUserAction('Calendar deletion initiated', {
+      calendarName: calendar.name,
+      calendarId: calendar.id,
+      calendarUrl: calendar.url,
+      calendarEnabled: calendar.enabled,
+      selectedCalendar: this.selectedCalendar?.name || null,
+      selectedId: this.selectedCalendar?.id || null,
+      newEventCalendarId: this.newEvent.calendar_id
+    });
     
     // Confirm deletion
     if (!confirm(`Are you sure you want to delete the calendar "${calendar.name}"? This action cannot be undone.`)) {
+      this.logger.logUserAction('Calendar deletion cancelled by user', {
+        calendarName: calendar.name,
+        calendarId: calendar.id
+      }, false);
       return;
     }
-    
-    console.log('🗑️ Attempting to delete calendar:', calendar.name);
-    console.log('🗑️ Calendar ID:', calendar.id, 'Type:', typeof calendar.id);
     
     // Properly encode the calendar ID for URL
     const encodedCalendarId = encodeURIComponent(calendar.id);
     const deleteUrl = `${environment.apiUrl}/calendars/${encodedCalendarId}`;
     
-    console.log('🗑️ Encoded Calendar ID:', encodedCalendarId);
-    console.log('🗑️ Delete URL:', deleteUrl);
+    this.logger.logRequestProcessing('Calendar deletion API request', {
+      calendarName: calendar.name,
+      calendarId: calendar.id,
+      encodedCalendarId: encodedCalendarId,
+      deleteUrl: deleteUrl,
+      requestMethod: 'DELETE'
+    });
     
     this.http.delete(deleteUrl, { 
       withCredentials: true 
     }).subscribe({
       next: (response: any) => {
+        const duration = performance.now() - startTime;
+        
         if (response.success) {
-          console.log('Calendar deleted successfully:', calendar.name);
+          this.logger.logApiOperation('Calendar deletion', {
+            calendarName: calendar.name,
+            calendarId: calendar.id,
+            response: response,
+            duration: `${duration.toFixed(2)}ms`
+          }, true);
           
           // Remove calendar from local array
           this.calendars = this.calendars.filter(cal => cal.id !== calendar.id);
@@ -380,32 +472,73 @@ export class CalendarComponent implements OnInit, OnDestroy {
           // If the deleted calendar was selected, select another one
           if (this.selectedCalendar && this.selectedCalendar.id === calendar.id) {
             this.selectedCalendar = this.calendars.find(cal => cal.enabled) || this.calendars[0] || null;
-            console.log('📅 Selected calendar updated after deletion:', this.selectedCalendar?.name, 'ID:', this.selectedCalendar?.id);
+            this.logger.logUserAction('Calendar selection updated after deletion', {
+              deletedCalendar: calendar.name,
+              newSelectedCalendar: this.selectedCalendar?.name || null,
+              newSelectedId: this.selectedCalendar?.id || null
+            });
           }
           
           // If the deleted calendar was the default for new events, update the newEvent
           if (this.newEvent.calendar_id === calendar.id) {
             this.newEvent.calendar_id = this.selectedCalendar?.id || null;
-            console.log('📅 New event calendar_id updated after deletion:', this.newEvent.calendar_id);
+            this.logger.logUserAction('New event calendar_id updated after deletion', {
+              deletedCalendar: calendar.name,
+              newEventCalendarId: this.newEvent.calendar_id
+            });
           }
           
           // Refresh events
           this.fetchEvents();
           
+          this.logger.logUserAction('Calendar deletion completed', {
+            calendarName: calendar.name,
+            calendarId: calendar.id,
+            remainingCalendars: this.calendars.length,
+            duration: `${duration.toFixed(2)}ms`
+          }, true);
+          
           alert('Calendar deleted successfully!');
         } else {
-          console.error('Failed to delete calendar:', response.message);
+          this.logger.logApiOperation('Calendar deletion', {
+            calendarName: calendar.name,
+            calendarId: calendar.id,
+            response: response,
+            duration: `${duration.toFixed(2)}ms`
+          }, false);
+          
+          this.logger.logUserAction('Calendar deletion failed', {
+            calendarName: calendar.name,
+            calendarId: calendar.id,
+            error: response.message,
+            duration: `${duration.toFixed(2)}ms`
+          }, false);
+          
           alert('Failed to delete calendar: ' + (response.message || 'Unknown error'));
         }
       },
       error: (error) => {
-        console.error('❌ Error deleting calendar:', error);
-        console.error('❌ Error details:', {
-          status: error.status,
-          statusText: error.statusText,
-          message: error.message,
-          url: error.url
-        });
+        const duration = performance.now() - startTime;
+        
+        this.logger.logApiOperation('Calendar deletion', {
+          calendarName: calendar.name,
+          calendarId: calendar.id,
+          error: {
+            status: error.status,
+            statusText: error.statusText,
+            message: error.message,
+            url: error.url
+          },
+          duration: `${duration.toFixed(2)}ms`
+        }, false);
+        
+        this.logger.logUserAction('Calendar deletion failed with error', {
+          calendarName: calendar.name,
+          calendarId: calendar.id,
+          error: error.message,
+          duration: `${duration.toFixed(2)}ms`
+        }, false);
+        
         alert('Error deleting calendar. Please try again.');
       }
     });
@@ -1061,7 +1194,29 @@ export class CalendarComponent implements OnInit, OnDestroy {
   }
 
   changeView(view: View): void {
+    const startTime = performance.now();
+    
+    this.logger.logUserAction('View change initiated', {
+      newView: view.type,
+      newViewLabel: view.label,
+      previousView: this.currentView?.type || 'none',
+      previousViewLabel: this.currentView?.label || 'none',
+      currentDate: this.currentDate.format('YYYY-MM-DD')
+    });
+    
     this.currentView = view;
+    
+    const duration = performance.now() - startTime;
+    this.logger.logPerformance('View change', duration, {
+      newView: view.type,
+      newViewLabel: view.label
+    });
+    
+    this.logger.logUserAction('View change completed', {
+      newView: view.type,
+      newViewLabel: view.label,
+      duration: `${duration.toFixed(2)}ms`
+    }, true);
   }
 
   // Modal methods
@@ -1325,16 +1480,32 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   // Event creation
   async createEvent(): Promise<void> {
+    const startTime = performance.now();
+    
     try {
-      console.log('🚀 Starting event creation...');
-      console.log('📋 New event data:', this.newEvent);
-      console.log('📅 Selected calendar_id from dropdown:', this.newEvent.calendar_id);
-      console.log('📅 Available calendars:', this.calendars.map(cal => ({ 
-        name: cal.name, 
-        id: cal.id, 
-        enabled: cal.enabled, 
-        url: cal.url 
-      })));
+      this.logger.logUserAction('Event creation initiated', {
+        eventTitle: this.newEvent.summary,
+        startDate: this.newEvent.start_date,
+        startTime: this.newEvent.start_time,
+        endDate: this.newEvent.end_date,
+        endTime: this.newEvent.end_time,
+        allDay: this.newEvent.all_day,
+        calendarId: this.newEvent.calendar_id,
+        location: this.newEvent.location,
+        attendees: this.newEvent.attendees?.length || 0,
+        selectedCalendar: this.selectedCalendar?.name || null
+      });
+      
+      this.logger.logRequestProcessing('Event creation validation', {
+        newEventData: this.newEvent,
+        selectedCalendarId: this.newEvent.calendar_id,
+        availableCalendars: this.calendars.map(cal => ({ 
+          name: cal.name, 
+          id: cal.id, 
+          enabled: cal.enabled, 
+          url: cal.url 
+        }))
+      });
       
       // Determine which calendar to use for event creation
       let targetCalendar = null;
@@ -1348,38 +1519,81 @@ export class CalendarComponent implements OnInit, OnDestroy {
           Number(cal.id) === Number(selectedId) ||
           String(cal.id) === String(selectedId)
         );
-        console.log('✅ Priority 1 - Using calendar from dropdown:', targetCalendar?.name, 'ID:', targetCalendar?.id);
-        console.log('  - Selected ID:', selectedId, 'Type:', typeof selectedId);
-        console.log('  - Calendar IDs:', this.calendars.map(cal => ({ name: cal.name, id: cal.id, type: typeof cal.id })));
+        
+        this.logger.logRequestProcessing('Calendar selection - Priority 1 (dropdown)', {
+          selectedId: selectedId,
+          selectedIdType: typeof selectedId,
+          targetCalendar: targetCalendar ? {
+            name: targetCalendar.name,
+            id: targetCalendar.id,
+            enabled: targetCalendar.enabled
+          } : null,
+          availableCalendars: this.calendars.map(cal => ({ 
+            name: cal.name, 
+            id: cal.id, 
+            type: typeof cal.id 
+          }))
+        });
       } else {
-        console.log('❌ Priority 1 - No calendar_id in newEvent or no calendars available');
-        console.log('  - calendar_id:', this.newEvent.calendar_id, 'Type:', typeof this.newEvent.calendar_id);
-        console.log('  - calendars length:', this.calendars?.length);
+        this.logger.logRequestProcessing('Calendar selection - Priority 1 failed', {
+          calendarId: this.newEvent.calendar_id,
+          calendarIdType: typeof this.newEvent.calendar_id,
+          calendarsLength: this.calendars?.length
+        });
       }
       
       // Priority 2: If no calendar selected in dropdown, use the currently selected calendar
       if (!targetCalendar && this.selectedCalendar) {
         targetCalendar = this.selectedCalendar;
-        console.log('✅ Priority 2 - Using currently selected calendar:', targetCalendar?.name, 'ID:', targetCalendar?.id);
+        this.logger.logRequestProcessing('Calendar selection - Priority 2 (selected calendar)', {
+          selectedCalendar: {
+            name: targetCalendar.name,
+            id: targetCalendar.id,
+            enabled: targetCalendar.enabled
+          }
+        });
       } else if (!targetCalendar) {
-        console.log('❌ Priority 2 - No currently selected calendar');
+        this.logger.logRequestProcessing('Calendar selection - Priority 2 failed', {
+          reason: 'No currently selected calendar'
+        });
       }
       
       // Priority 3: Fallback to the first enabled calendar
       if (!targetCalendar && this.calendars && this.calendars.length > 0) {
         targetCalendar = this.calendars.find(cal => cal.enabled);
-        console.log('✅ Priority 3 - Using first enabled calendar:', targetCalendar?.name, 'ID:', targetCalendar?.id);
+        this.logger.logRequestProcessing('Calendar selection - Priority 3 (first enabled)', {
+          targetCalendar: targetCalendar ? {
+            name: targetCalendar.name,
+            id: targetCalendar.id,
+            enabled: targetCalendar.enabled
+          } : null
+        });
       } else if (!targetCalendar) {
-        console.log('❌ Priority 3 - No enabled calendars found');
+        this.logger.logRequestProcessing('Calendar selection - Priority 3 failed', {
+          reason: 'No enabled calendars found'
+        });
       }
       
       if (!targetCalendar || !targetCalendar.url) {
-        console.error('❌ No calendar available for event creation');
+        this.logger.logUserAction('Event creation failed - no calendar available', {
+          eventTitle: this.newEvent.summary,
+          targetCalendar: targetCalendar ? {
+            name: targetCalendar.name,
+            hasUrl: !!targetCalendar.url
+          } : null
+        }, false);
         alert('No calendar available for event creation. Please select a calendar.');
         return;
       }
       
-      console.log('🎯 Final target calendar:', targetCalendar.name, 'URL:', targetCalendar.url);
+      this.logger.logRequestProcessing('Calendar selection completed', {
+        finalTargetCalendar: {
+          name: targetCalendar.name,
+          id: targetCalendar.id,
+          url: targetCalendar.url,
+          enabled: targetCalendar.enabled
+        }
+      });
 
       const eventData = {
         title: this.newEvent.summary, // Map summary to title for backend
@@ -1400,22 +1614,48 @@ export class CalendarComponent implements OnInit, OnDestroy {
         calendar_url: targetCalendar.url  // Pass the target calendar URL
       };
 
-      console.log('📤 Sending event data to backend:', eventData);
-      console.log('🔍 About to make POST request to:', `${environment.apiUrl}/events`);
+      this.logger.logRequestProcessing('Event creation API request', {
+        eventData: eventData,
+        targetCalendar: {
+          name: targetCalendar.name,
+          id: targetCalendar.id,
+          url: targetCalendar.url
+        },
+        requestMethod: 'POST',
+        requestUrl: `${environment.apiUrl}/events`
+      });
       
       const response = await this.http.post<any>(`${environment.apiUrl}/events`, eventData, {
         withCredentials: true
       }).toPromise();
       
-      console.log('🔍 POST request completed successfully');
-      console.log('📥 Backend response:', response);
-      console.log('🔍 Response type:', typeof response);
-      console.log('🔍 Response success:', response?.success);
-      console.log('🔍 Response message:', response?.message);
+      const duration = performance.now() - startTime;
+      
+      this.logger.logRequestProcessing('Event creation API response received', {
+        response: response,
+        responseType: typeof response,
+        responseSuccess: response?.success,
+        responseMessage: response?.message,
+        duration: `${duration.toFixed(2)}ms`
+      });
       
       if (response.success) {
-        console.log('✅ Event created successfully in calendar:', targetCalendar.name);
-        console.log('Event response:', response.data);
+        this.logger.logApiOperation('Event creation', {
+          eventTitle: this.newEvent.summary,
+          calendarName: targetCalendar.name,
+          calendarId: targetCalendar.id,
+          eventId: response.data?.id || 'unknown',
+          response: response,
+          duration: `${duration.toFixed(2)}ms`
+        }, true);
+        
+        this.logger.logUserAction('Event creation completed', {
+          eventTitle: this.newEvent.summary,
+          calendarName: targetCalendar.name,
+          calendarId: targetCalendar.id,
+          eventId: response.data?.id || 'unknown',
+          duration: `${duration.toFixed(2)}ms`
+        }, true);
         
         // Close the modal (this also resets the form)
         this.closeAddEventModal();
@@ -1426,18 +1666,45 @@ export class CalendarComponent implements OnInit, OnDestroy {
         // Show success message
         alert('Event created successfully!');
       } else {
-        console.error('❌ Failed to create event:', response.message);
+        this.logger.logApiOperation('Event creation', {
+          eventTitle: this.newEvent.summary,
+          calendarName: targetCalendar.name,
+          calendarId: targetCalendar.id,
+          response: response,
+          duration: `${duration.toFixed(2)}ms`
+        }, false);
+        
+        this.logger.logUserAction('Event creation failed', {
+          eventTitle: this.newEvent.summary,
+          calendarName: targetCalendar.name,
+          calendarId: targetCalendar.id,
+          error: response.message,
+          duration: `${duration.toFixed(2)}ms`
+        }, false);
+        
         alert('Failed to create event: ' + (response.message || 'Unknown error'));
       }
     } catch (error: any) {
-      console.error('❌ Error creating event:', error);
-      console.error('🔍 Error details:', {
-        message: error?.message,
-        status: error?.status,
-        statusText: error?.statusText,
-        url: error?.url,
-        error: error?.error
-      });
+      const duration = performance.now() - startTime;
+      
+      this.logger.logApiOperation('Event creation', {
+        eventTitle: this.newEvent.summary,
+        error: {
+          message: error?.message,
+          status: error?.status,
+          statusText: error?.statusText,
+          url: error?.url,
+          error: error?.error
+        },
+        duration: `${duration.toFixed(2)}ms`
+      }, false);
+      
+      this.logger.logUserAction('Event creation failed with exception', {
+        eventTitle: this.newEvent.summary,
+        error: error?.message || 'Unknown error',
+        duration: `${duration.toFixed(2)}ms`
+      }, false);
+      
       alert('Error creating event. Please try again.');
     }
   }

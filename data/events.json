@@ -9839,5 +9839,36 @@
             "relativeTo": "start"
         },
         "valarm": null
+    },
+    {
+        "id": "event_68e507b8702f1",
+        "title": "logging test",
+        "description": "",
+        "location": "",
+        "start_time": "2025-10-08T09:00:00",
+        "end_time": "2025-10-08T10:00:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/A7595227-BB7A-90A6-F0B1-AB941E2CA801\/",
+        "color": "#4285f4",
+        "uid": "uid_68e507b8702f7",
+        "etag": "etag_68e507b8702f8",
+        "created_at": "2025-10-07T14:29:44+02:00",
+        "updated_at": "2025-10-07T14:29:44+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "never",
+            "interval": 1
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
     }
 ]
