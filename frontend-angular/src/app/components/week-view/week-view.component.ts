@@ -1,8 +1,12 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import * as dayjs from 'dayjs';
+import * as isoWeek from 'dayjs/plugin/isoWeek';
 import { CalendarEvent, Calendar } from '../../interfaces/calendar-event.interface';
 import { ColorRegistryService } from '../../services/color-registry.service';
+
+// Configure dayjs to use ISO week (Monday as first day)
+dayjs.extend(isoWeek);
 
 
 @Component({
@@ -266,7 +270,8 @@ export class WeekViewComponent {
   }
 
   getWeekDays(): dayjs.Dayjs[] {
-    const weekStart = this.date.startOf('week');
+    // Use ISO week to ensure Monday start
+    const weekStart = this.date.startOf('isoWeek');
     return Array.from({ length: 7 }, (_, i) => weekStart.add(i, 'day'));
   }
 

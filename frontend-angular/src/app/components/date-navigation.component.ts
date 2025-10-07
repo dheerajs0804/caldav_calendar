@@ -315,7 +315,8 @@ export class DateNavigationComponent {
   }
   
   goToThisWeek() {
-    const thisWeek = dayjs().startOf('week');
+    // Use ISO week to ensure Monday start
+    const thisWeek = dayjs().startOf('isoWeek');
     this.emitDateChange(thisWeek);
   }
   
@@ -337,8 +338,9 @@ export class DateNavigationComponent {
   private generateCalendarDays() {
     const startOfMonth = dayjs().year(this.selectedYear).month(this.selectedMonth - 1).startOf('month');
     const endOfMonth = startOfMonth.endOf('month');
-    const startOfCalendar = startOfMonth.startOf('week');
-    const endOfCalendar = endOfMonth.endOf('week');
+    // Use ISO week to ensure Monday start
+    const startOfCalendar = startOfMonth.startOf('isoWeek');
+    const endOfCalendar = endOfMonth.endOf('isoWeek');
     
     this.calendarDays = [];
     let currentDay = startOfCalendar;

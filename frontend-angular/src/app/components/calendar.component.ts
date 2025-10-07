@@ -5,6 +5,10 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, interval, Subscription } from 'rxjs';
 import { environment } from '../../environments/environment';
 import * as dayjs from 'dayjs';
+import * as isoWeek from 'dayjs/plugin/isoWeek';
+
+// Configure dayjs to use ISO week (Monday as first day)
+dayjs.extend(isoWeek);
 import { DayViewComponent } from './day-view/day-view.component';
 import { WeekViewComponent } from './week-view/week-view.component';
 import { MonthViewComponent } from './month-view/month-view.component';
@@ -453,7 +457,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
   }
 
   getWeekDateRange(): string {
-    const weekStart = this.currentDate.startOf('week');
+    // Use ISO week to ensure Monday start
+    const weekStart = this.currentDate.startOf('isoWeek');
     const weekEnd = weekStart.add(6, 'day');
     return `${weekStart.format('MMM D')} - ${weekEnd.format('MMM D, YYYY')}`;
   }

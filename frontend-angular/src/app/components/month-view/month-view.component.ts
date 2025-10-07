@@ -1,8 +1,12 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import * as dayjs from 'dayjs';
+import * as isoWeek from 'dayjs/plugin/isoWeek';
 import { CalendarEvent, Calendar } from '../../interfaces/calendar-event.interface';
 import { ColorRegistryService } from '../../services/color-registry.service';
+
+// Configure dayjs to use ISO week (Monday as first day)
+dayjs.extend(isoWeek);
 
 
 @Component({
@@ -21,8 +25,8 @@ export class MonthViewComponent {
 
   constructor(private colorRegistry: ColorRegistryService) {}
 
-  getMonthStart(): Date {
-    return this.date.startOf('month').toDate();
+  getMonthStart(): dayjs.Dayjs {
+    return this.date.startOf('month');
   }
 
   getMonthEnd(): dayjs.Dayjs {
@@ -30,11 +34,13 @@ export class MonthViewComponent {
   }
 
   getStartDate(): dayjs.Dayjs {
-    return dayjs(this.getMonthStart()).startOf('week');
+    // Ensure week starts on Monday (ISO week)
+    return dayjs(this.getMonthStart()).startOf('isoWeek');
   }
 
   getEndDate(): dayjs.Dayjs {
-    return this.getMonthEnd().endOf('week');
+    // Ensure week ends on Sunday (ISO week)
+    return this.getMonthEnd().endOf('isoWeek');
   }
 
   getDays(): dayjs.Dayjs[] {
@@ -43,10 +49,23 @@ export class MonthViewComponent {
     const endDate = this.getEndDate();
     let current = startDate;
     
+    console.log('📅 Month View Date Debug:', {
+      currentDate: this.date.format('YYYY-MM-DD'),
+      monthStart: this.getMonthStart().format('YYYY-MM-DD'),
+      weekStart: startDate.format('YYYY-MM-DD'),
+      weekEnd: endDate.format('YYYY-MM-DD'),
+      weekStartDay: startDate.format('dddd'),
+      weekEndDay: endDate.format('dddd')
+    });
+    
     while (current.isBefore(endDate) || current.isSame(endDate, 'day')) {
       days.push(current);
       current = current.add(1, 'day');
     }
+    
+    console.log('📅 Generated days count:', days.length);
+    console.log('📅 First day:', days[0]?.format('YYYY-MM-DD dddd'));
+    console.log('📅 Last day:', days[days.length - 1]?.format('YYYY-MM-DD dddd'));
     
     return days;
   }
@@ -140,7 +159,7 @@ export class MonthViewComponent {
   }
 
   isCurrentMonth(date: dayjs.Dayjs): boolean {
-    return date.isSame(this.getMonthStart(), 'month');
+    return date.isSame(this.date, 'month');
   }
 
   trackByDay(index: number, day: dayjs.Dayjs): string {
