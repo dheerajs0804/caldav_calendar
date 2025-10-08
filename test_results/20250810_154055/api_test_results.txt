@@ -1,0 +1,11 @@
+API Test Results:
+Test User: caltest71025@mithi.com
+Base URL: http://localhost:8000
+Test Date: 2025-10-08 12:11:00
+
+1. Testing Health Endpoint...
+   ERROR: Health check failed (HTTP 0)
+2. Testing Login Endpoint...
+   ERROR: Login test failed (HTTP 0)
+3. Testing Calendar Discovery...
+^C

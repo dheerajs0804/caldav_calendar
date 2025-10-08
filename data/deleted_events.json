@@ -1700,5 +1700,19 @@
         "deleted_at": "2025-10-07T10:53:35+02:00",
         "deleted_by": "user",
         "action": "all"
+    },
+    {
+        "uid": "event_68e63e13a7843",
+        "title": "Event marked for deletion",
+        "deleted_at": "2025-10-08T12:33:56+02:00",
+        "deleted_by": "user",
+        "action": "all"
+    },
+    {
+        "uid": "uid_68e507b8702f7",
+        "title": "Event marked for deletion",
+        "deleted_at": "2025-10-08T13:50:06+02:00",
+        "deleted_by": "user",
+        "action": "all"
     }
 ]

@@ -1,0 +1,28 @@
+Comprehensive API Test Results:
+Test User: caltest71025@mithi.com
+Base URL: http://localhost:8000
+Test Date: 2025-10-08 12:09:22
+
+1. Testing Health Endpoint...
+   ERROR: Health check failed (HTTP 0)
+2. Testing Login Endpoint...
+   ERROR: Login test failed (HTTP 0)
+3. Testing Calendar Discovery...
+   ERROR: Calendar discovery test failed (HTTP 0)
+4. Testing Events Endpoint...
+   ERROR: Events endpoint test failed (HTTP 0)
+
+=== API Test Summary ===
+Total Tests: 4
+Passed Tests: 0
+Failed Tests: 4
+Success Rate: 0%
+
+Detailed Results:
+- Health Check: FAILED (HTTP 0)
+- Login: FAILED (HTTP 0)
+- Calendar Discovery: FAILED (HTTP 0)
+- Events Endpoint: FAILED (HTTP 0)
+
+API Tests completed
+ 
