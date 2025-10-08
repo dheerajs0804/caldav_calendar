@@ -7,14 +7,96 @@ error_log("Timestamp: " . date('Y-m-d H:i:s'));
 error_log("File: " . __FILE__);
 error_log("Line: " . __LINE__);
 
-// Simple professional logging function
+// Simple professional logging function with sensitive data sanitization
 function simpleLog($level, $message, $context = []) {
     $timestamp = date('Y-m-d H:i:s');
     $logMessage = "[{$timestamp}] {$level}: {$message}";
     if (!empty($context)) {
-        $logMessage .= " " . json_encode($context);
+        $sanitizedContext = sanitizeLogContext($context);
+        $logMessage .= " " . json_encode($sanitizedContext);
     }
     error_log($logMessage);
+}
+
+// Enhanced sensitive data sanitization function
+function sanitizeLogContext($context) {
+    if (!is_array($context)) {
+        return $context;
+    }
+    
+    $sensitiveFields = [
+        'password', 'passwd', 'pwd', 'secret', 'token', 'key', 'auth', 'authorization', 
+        'cookie', 'session', 'csrf', 'api_key', 'private_key', 'client_secret', 
+        'access_token', 'refresh_token', 'bearer_token', 'username', 'user', 'email',
+        'credit_card', 'ssn', 'social_security', 'phone', 'ip_address', 'ip',
+        'caldav_credentials', 'credentials', 'auth_token', 'session_id', 'server_url',
+        'serverUrl', 'authenticated_at', 'caldav_server', 'caldav_url'
+    ];
+    
+    $sanitized = [];
+    foreach ($context as $key => $value) {
+        $lowerKey = strtolower($key);
+        $isSensitive = false;
+        
+        // Check if key contains sensitive field names
+        foreach ($sensitiveFields as $sensitiveField) {
+            if (strpos($lowerKey, $sensitiveField) !== false) {
+                $isSensitive = true;
+                break;
+            }
+        }
+        
+        if ($isSensitive) {
+            $sanitized[$key] = '[REDACTED]';
+        } elseif (is_array($value)) {
+            $sanitized[$key] = sanitizeLogContext($value);
+        } else {
+            $sanitized[$key] = $value;
+        }
+    }
+    
+    return $sanitized;
+}
+
+// Enhanced error_log wrapper that sanitizes sensitive data
+function safeErrorLog($message) {
+    // Sanitize common sensitive patterns in log messages
+    $sanitizedMessage = sanitizeLogMessage($message);
+    error_log($sanitizedMessage);
+}
+
+// Function to sanitize log messages containing sensitive data
+function sanitizeLogMessage($message) {
+    // List of sensitive patterns to redact
+    $sensitivePatterns = [
+        '/password[:\s]*[^\s,}\]]+/i' => 'password: [REDACTED]',
+        '/username[:\s]*[^\s,}\]]+/i' => 'username: [REDACTED]',
+        '/user[:\s]*[^\s,}\]]+/i' => 'user: [REDACTED]',
+        '/email[:\s]*[^\s,}\]]+/i' => 'email: [REDACTED]',
+        '/token[:\s]*[^\s,}\]]+/i' => 'token: [REDACTED]',
+        '/auth[:\s]*[^\s,}\]]+/i' => 'auth: [REDACTED]',
+        '/session[:\s]*[^\s,}\]]+/i' => 'session: [REDACTED]',
+        '/credentials[:\s]*[^\s,}\]]+/i' => 'credentials: [REDACTED]',
+        '/\[password\]\s*=>\s*[^\s,}\]]+/i' => '[password] => [REDACTED]',
+        '/\[username\]\s*=>\s*[^\s,}\]]+/i' => '[username] => [REDACTED]',
+        '/\[user\]\s*=>\s*[^\s,}\]]+/i' => '[user] => [REDACTED]',
+        '/\[email\]\s*=>\s*[^\s,}\]]+/i' => '[email] => [REDACTED]',
+        '/\[token\]\s*=>\s*[^\s,}\]]+/i' => '[token] => [REDACTED]',
+        '/\[auth\]\s*=>\s*[^\s,}\]]+/i' => '[auth] => [REDACTED]',
+        '/\[session\]\s*=>\s*[^\s,}\]]+/i' => '[session] => [REDACTED]',
+        '/\[credentials\]\s*=>\s*[^\s,}\]]+/i' => '[credentials] => [REDACTED]',
+        '/\[caldav_credentials\]\s*=>\s*Array[^}]+}/s' => '[caldav_credentials] => [REDACTED]',
+        '/Getting user calendars for:\s*[^\s,}\]]+/i' => 'Getting user calendars for: [REDACTED]',
+        '/Username:\s*[^\s,}\]]+/i' => 'Username: [REDACTED]',
+        '/Server URL:\s*[^\s,}\]]+/i' => 'Server URL: [REDACTED]'
+    ];
+    
+    $sanitized = $message;
+    foreach ($sensitivePatterns as $pattern => $replacement) {
+        $sanitized = preg_replace($pattern, $replacement, $sanitized);
+    }
+    
+    return $sanitized;
 }
 
 // Initialize logging
@@ -457,19 +539,19 @@ function getCalendars() {
 
 function getUserCalendars() {
     try {
-        error_log("=== getUserCalendars() called ===");
-        error_log("Session ID: " . session_id());
-        error_log("Session data: " . print_r($_SESSION, true));
+        safeErrorLog("=== getUserCalendars() called ===");
+        safeErrorLog("Session ID: " . session_id());
+        safeErrorLog("Session data: " . print_r($_SESSION, true));
         
         // Check if user is authenticated via session
         if (isset($_SESSION['caldav_credentials']) && !empty($_SESSION['caldav_credentials']['username'])) {
             $credentials = $_SESSION['caldav_credentials'];
-            error_log("Getting user calendars for: " . $credentials['username']);
+            safeErrorLog("Getting user calendars for: " . $credentials['username']);
             $caldavClient = new CalDAVClient($credentials['serverUrl'], $credentials['username'], $credentials['password']);
         } else {
             // Fall back to environment variables
-            error_log("No session credentials found, using environment variables for calendar discovery");
-            error_log("Available session keys: " . implode(', ', array_keys($_SESSION)));
+            safeErrorLog("No session credentials found, using environment variables for calendar discovery");
+            safeErrorLog("Available session keys: " . implode(', ', array_keys($_SESSION)));
             $caldavClient = new CalDAVClient();
         }
         
@@ -4167,26 +4249,93 @@ function handleLogin() {
         // Test CalDAV connection with provided credentials
         $caldavClient = new CalDAVClient($serverUrl, $username, $password);
         
-        // Test basic authentication first (simpler than full calendar discovery)
+        // Test basic authentication by making a real CalDAV request
         $authToken = $caldavClient->getAuthToken();
         if (!$authToken) {
+            simpleLog('WARN', 'Authentication failed - missing credentials', [
+                'username' => $username,
+                'server_url' => $serverUrl,
+                'error_type' => 'missing_credentials'
+            ]);
             http_response_code(401);
-            sendJsonResponse(['success' => false, 'message' => 'Invalid CalDAV credentials']);
+            sendJsonResponse(['success' => false, 'message' => 'Username and password are required.']);
             return;
         }
         
-        // Try to test server connectivity (but don't fail login if server has issues)
+        // Actually test the credentials by making a CalDAV request
         try {
             $testResponse = $caldavClient->makeCalDAVRequest($serverUrl, 'PROPFIND', $authToken, [
                 'Depth: 0',
                 'Content-Type: application/xml; charset=utf-8'
             ], '<?xml version="1.0" encoding="utf-8" ?><propfind xmlns="DAV:"><prop><current-user-principal/></prop></propfind>');
             
-            if ($testResponse['status'] >= 400) {
-                error_log("CalDAV server returned status " . $testResponse['status'] . " - server may have configuration issues");
+            simpleLog('DEBUG', 'CalDAV authentication test response', [
+                'username' => $username,
+                'server_url' => $serverUrl,
+                'http_status' => $testResponse['status'],
+                'response_length' => strlen($testResponse['body'] ?? ''),
+                'has_error' => !empty($testResponse['error'] ?? '')
+            ]);
+            
+            // Check if authentication failed
+            if ($testResponse['status'] === 401) {
+                simpleLog('WARN', 'Authentication failed - invalid credentials', [
+                    'username' => $username,
+                    'server_url' => $serverUrl,
+                    'error_type' => 'invalid_credentials',
+                    'http_status' => $testResponse['status']
+                ]);
+                http_response_code(401);
+                sendJsonResponse(['success' => false, 'message' => 'Invalid username or password. Please check your credentials and try again.']);
+                return;
+            } elseif ($testResponse['status'] === 403) {
+                simpleLog('WARN', 'Authentication failed - access denied', [
+                    'username' => $username,
+                    'server_url' => $serverUrl,
+                    'error_type' => 'access_denied',
+                    'http_status' => $testResponse['status']
+                ]);
+                http_response_code(401);
+                sendJsonResponse(['success' => false, 'message' => 'Access denied. Your account may not have permission to access the calendar server.']);
+                return;
+            } elseif ($testResponse['status'] >= 400) {
+                simpleLog('WARN', 'Authentication failed - server error', [
+                    'username' => $username,
+                    'server_url' => $serverUrl,
+                    'error_type' => 'server_error',
+                    'http_status' => $testResponse['status']
+                ]);
+                http_response_code(401);
+                sendJsonResponse(['success' => false, 'message' => 'Calendar server error. Please try again later or contact your administrator.']);
+                return;
+            } elseif ($testResponse['status'] === 0) {
+                simpleLog('WARN', 'Authentication failed - connection error', [
+                    'username' => $username,
+                    'server_url' => $serverUrl,
+                    'error_type' => 'connection_error',
+                    'curl_error' => $testResponse['error'] ?? 'unknown'
+                ]);
+                http_response_code(401);
+                sendJsonResponse(['success' => false, 'message' => 'Unable to connect to the calendar server. Please check your internet connection and try again.']);
+                return;
             }
+            
+            // If we get here, authentication was successful (status 200-299)
+            simpleLog('INFO', 'Authentication successful', [
+                'username' => $username,
+                'server_url' => $serverUrl,
+                'http_status' => $testResponse['status']
+            ]);
+            
         } catch (Exception $e) {
-            error_log("CalDAV server test failed: " . $e->getMessage() . " - but continuing with login");
+            simpleLog('ERROR', 'Authentication test failed with exception', [
+                'username' => $username,
+                'server_url' => $serverUrl,
+                'error_message' => $e->getMessage()
+            ]);
+            http_response_code(401);
+            sendJsonResponse(['success' => false, 'message' => 'Authentication failed. Please check your credentials and try again.']);
+            return;
         }
         
         // Store credentials in session (in production, use more secure storage)
@@ -4208,9 +4357,31 @@ function handleLogin() {
         ]);
         
     } catch (Exception $e) {
-        error_log("Login error: " . $e->getMessage());
+        $errorMessage = $e->getMessage();
+        $userFriendlyMessage = 'Authentication failed. Please check your credentials and try again.';
+        
+        // Provide more specific error messages based on the type of error
+        if (strpos($errorMessage, '401') !== false || strpos($errorMessage, 'Unauthorized') !== false) {
+            $userFriendlyMessage = 'Invalid username or password. Please check your credentials and try again.';
+        } elseif (strpos($errorMessage, '403') !== false || strpos($errorMessage, 'Forbidden') !== false) {
+            $userFriendlyMessage = 'Access denied. Your account may not have permission to access the calendar server.';
+        } elseif (strpos($errorMessage, '404') !== false || strpos($errorMessage, 'Not Found') !== false) {
+            $userFriendlyMessage = 'Calendar server not found. Please check the server configuration.';
+        } elseif (strpos($errorMessage, '500') !== false || strpos($errorMessage, 'Internal Server Error') !== false) {
+            $userFriendlyMessage = 'Calendar server error. Please try again later or contact your administrator.';
+        } elseif (strpos($errorMessage, 'timeout') !== false || strpos($errorMessage, 'Connection') !== false) {
+            $userFriendlyMessage = 'Unable to connect to the calendar server. Please check your internet connection and try again.';
+        }
+        
+        simpleLog('ERROR', 'Login authentication failed', [
+            'username' => $username ?? 'unknown',
+            'server_url' => $serverUrl ?? 'unknown',
+            'error_message' => $errorMessage,
+            'user_friendly_message' => $userFriendlyMessage
+        ]);
+        
         http_response_code(401);
-        sendJsonResponse(['success' => false, 'message' => 'Authentication failed: ' . $e->getMessage()]);
+        sendJsonResponse(['success' => false, 'message' => $userFriendlyMessage]);
     }
 }
 

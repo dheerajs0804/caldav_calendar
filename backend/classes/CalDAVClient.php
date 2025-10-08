@@ -1,24 +1,11 @@
 <?php
 
-// Simple professional logging function (no external dependencies)
+// Enhanced CalDAV logging function with comprehensive sensitive data sanitization
 function caldavLog($level, $message, $context = []) {
     $timestamp = date('Y-m-d H:i:s');
     
-    // Sanitize sensitive data
-    $sensitiveFields = ['password', 'passwd', 'pwd', 'secret', 'token', 'key', 'auth', 'authorization', 'cookie', 'session', 'csrf', 'api_key', 'private_key'];
-    $sanitizedContext = [];
-    
-    foreach ($context as $key => $value) {
-        $lowerKey = strtolower($key);
-        $isSensitive = false;
-        foreach ($sensitiveFields as $sensitiveField) {
-            if (strpos($lowerKey, $sensitiveField) !== false) {
-                $isSensitive = true;
-                break;
-            }
-        }
-        $sanitizedContext[$key] = $isSensitive ? '[REDACTED]' : $value;
-    }
+    // Use the same sanitization function as the main logging
+    $sanitizedContext = sanitizeLogContext($context);
     
     $logEntry = [
         'timestamp' => $timestamp,
@@ -37,9 +24,10 @@ function caldavLog($level, $message, $context = []) {
     }
     file_put_contents($logDir . '/app.log', $logLine, FILE_APPEND | LOCK_EX);
     
-    // Also log to error_log for immediate visibility
+    // Also log to error_log for immediate visibility (with sanitized context)
     error_log("[{$timestamp}] {$level}: {$message} " . json_encode($sanitizedContext));
 }
+
 
 class CalDAVClient {
     private $serverUrl;
@@ -315,9 +303,9 @@ class CalDAVClient {
     
     public function discoverCalendars() {
         try {
-            error_log("=== Discovering Calendars (Roundcube Method) ===");
-            error_log("Server URL: " . $this->serverUrl);
-            error_log("Username: " . $this->username);
+            safeErrorLog("=== Discovering Calendars (Roundcube Method) ===");
+            safeErrorLog("Server URL: " . $this->serverUrl);
+            safeErrorLog("Username: " . $this->username);
             
             // No longer return mock calendars - let the error handling work properly
             // This ensures users get proper error messages when CalDAV server is unreachable
@@ -1544,14 +1532,14 @@ class CalDAVClient {
     public function getAuthToken() {
         try {
             if ($this->username && $this->password) {
-                error_log("Using Basic Authentication for CalDAV server");
+                // Create Basic Auth token (Base64 encoded username:password)
+                // Note: This does NOT validate credentials - it just creates the token
+                // Actual validation happens when we make a CalDAV request with this token
                 return base64_encode($this->username . ':' . $this->password);
             } else {
-                error_log("Username or password missing for CalDAV authentication");
                 return null;
             }
         } catch (Exception $e) {
-            error_log("Error getting authentication token: " . $e->getMessage());
             return null;
         }
     }

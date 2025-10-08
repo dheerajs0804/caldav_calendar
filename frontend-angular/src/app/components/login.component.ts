@@ -45,7 +45,8 @@ import { AuthService } from '../services/auth.service';
           </div>
           
           <div *ngIf="error" class="error-message">
-            {{ error }}
+            <span class="error-icon">⚠️</span>
+            <span>{{ error }}</span>
           </div>
           
           <div *ngIf="loading" class="loading-message">
@@ -166,7 +167,17 @@ import { AuthService } from '../services/auth.service';
       padding: 12px 16px;
       border-radius: 8px;
       font-size: 14px;
-      text-align: center;
+      border: 1px solid #feb2b2;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-align: left;
+    }
+    
+    .error-icon {
+      font-size: 16px;
+      flex-shrink: 0;
     }
     
     .loading-message {
@@ -308,12 +319,30 @@ export class LoginComponent {
         if (response.success) {
           this.router.navigate(['/calendar']);
         } else {
-          this.error = response.message || 'Login failed';
+          // Show the specific error message from the backend
+          this.error = response.message || 'Login failed. Please check your credentials and try again.';
         }
       },
       error: (error) => {
         this.loading = false;
-        this.error = 'Connection error. Please check your credentials and try again.';
+        
+        // Handle different types of HTTP errors
+        if (error.status === 401) {
+          this.error = 'Invalid username or password. Please check your credentials and try again.';
+        } else if (error.status === 403) {
+          this.error = 'Access denied. Your account may not have permission to access the calendar server.';
+        } else if (error.status === 404) {
+          this.error = 'Calendar server not found. Please check the server configuration.';
+        } else if (error.status === 500) {
+          this.error = 'Calendar server error. Please try again later or contact your administrator.';
+        } else if (error.status === 0) {
+          this.error = 'Unable to connect to the server. Please check your internet connection and try again.';
+        } else {
+          // Try to extract error message from response
+          const errorMessage = error.error?.message || error.message || 'Connection error. Please check your credentials and try again.';
+          this.error = errorMessage;
+        }
+        
         console.error('Login error:', error);
       }
     });
