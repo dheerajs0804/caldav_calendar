@@ -1795,6 +1795,40 @@ class CalDAVClient {
         }
     }
 
+    public function getEventRaw($eventUrl, $authToken = null) {
+        try {
+            error_log("=== Getting CalDAV Event (Raw) ===");
+            error_log("Event URL: " . $eventUrl);
+            
+            // Use provided auth token or get from instance
+            if (!$authToken) {
+                $authToken = $this->getAuthToken();
+            }
+            
+            if (!$authToken) {
+                throw new Exception('Failed to get authentication token');
+            }
+            
+            // Make GET request to retrieve the event
+            $response = $this->makeCalDAVRequest($eventUrl, 'GET', $authToken);
+            
+            error_log("CalDAV GET Response Status: " . $response['status']);
+            error_log("CalDAV GET Response Body Length: " . strlen($response['body']));
+            
+            if ($response['status'] >= 200 && $response['status'] < 300) {
+                // Return raw iCalendar content
+                return $response['body'];
+            } else {
+                error_log("Failed to get event: " . $response['status']);
+                return null;
+            }
+            
+        } catch (Exception $e) {
+            error_log("Error getting CalDAV event: " . $e->getMessage());
+            return null;
+        }
+    }
+
     public function updateEvent($calendarUrl, $uid, $icalEvent) {
         try {
             error_log("=== Updating CalDAV Event ===");

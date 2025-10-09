@@ -62,7 +62,108 @@ function sanitizeLogContext($context) {
 function safeErrorLog($message) {
     // Sanitize common sensitive patterns in log messages
     $sanitizedMessage = sanitizeLogMessage($message);
+    
+    // Ensure proper UTF-8 encoding
+    if (!mb_check_encoding($sanitizedMessage, 'UTF-8')) {
+        $sanitizedMessage = mb_convert_encoding($sanitizedMessage, 'UTF-8', 'auto');
+    }
+    
     error_log($sanitizedMessage);
+}
+
+// Function to parse original recurring event times from iCalendar content
+function parseOriginalRecurringEventTimes($icalContent) {
+    try {
+        // Parse the iCalendar content to extract DTSTART and DTEND
+        $lines = explode("\n", $icalContent);
+        $startTime = null;
+        $endTime = null;
+        
+        foreach ($lines as $line) {
+            $line = trim($line);
+            
+            // Look for DTSTART
+            if (strpos($line, 'DTSTART') === 0) {
+                $startTime = parseICalDateTime($line);
+            }
+            
+            // Look for DTEND
+            if (strpos($line, 'DTEND') === 0) {
+                $endTime = parseICalDateTime($line);
+            }
+            
+            // Stop if we found both
+            if ($startTime && $endTime) {
+                break;
+            }
+        }
+        
+        if ($startTime && $endTime) {
+            return [
+                'start_time' => $startTime,
+                'end_time' => $endTime
+            ];
+        }
+        
+        return null;
+    } catch (Exception $e) {
+        error_log("Error parsing original recurring event times: " . $e->getMessage());
+        return null;
+    }
+}
+
+// Helper function to parse iCalendar datetime
+function parseICalDateTime($line) {
+    try {
+        // Remove DTSTART: or DTEND: prefix
+        $datetime = preg_replace('/^(DTSTART|DTEND):/', '', $line);
+        
+        // Handle timezone
+        if (strpos($datetime, 'TZID=') !== false) {
+            // Format: DTSTART;TZID=Asia/Kolkata:20250601T160300
+            preg_match('/TZID=([^:]+):(.+)/', $datetime, $matches);
+            if (count($matches) === 3) {
+                $timezone = $matches[1];
+                $datetime = $matches[2];
+                
+                // Convert to ISO format
+                if (strlen($datetime) === 15) { // 20250601T160300
+                    $date = substr($datetime, 0, 8);
+                    $time = substr($datetime, 9, 6);
+                    $year = substr($date, 0, 4);
+                    $month = substr($date, 4, 2);
+                    $day = substr($date, 6, 2);
+                    $hour = substr($time, 0, 2);
+                    $minute = substr($time, 2, 2);
+                    $second = substr($time, 4, 2);
+                    
+                    return $year . '-' . $month . '-' . $day . 'T' . $hour . ':' . $minute . ':' . $second . '+05:30';
+                }
+            }
+        } else {
+            // Handle UTC format: 20250601T160300Z
+            if (substr($datetime, -1) === 'Z') {
+                $datetime = substr($datetime, 0, -1);
+                if (strlen($datetime) === 15) {
+                    $date = substr($datetime, 0, 8);
+                    $time = substr($datetime, 9, 6);
+                    $year = substr($date, 0, 4);
+                    $month = substr($date, 4, 2);
+                    $day = substr($date, 6, 2);
+                    $hour = substr($time, 0, 2);
+                    $minute = substr($time, 2, 2);
+                    $second = substr($time, 4, 2);
+                    
+                    return $year . '-' . $month . '-' . $day . 'T' . $hour . ':' . $minute . ':' . $second . 'Z';
+                }
+            }
+        }
+        
+        return null;
+    } catch (Exception $e) {
+        error_log("Error parsing iCalendar datetime: " . $e->getMessage());
+        return null;
+    }
 }
 
 // Function to sanitize log messages containing sensitive data
@@ -118,6 +219,10 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/logs/php_errors.log');
+
+// Set proper encoding for error logging
+ini_set('default_charset', 'UTF-8');
+mb_internal_encoding('UTF-8');
 
 // Set execution time limit to prevent hanging
 set_time_limit(60); // 60 seconds max execution time
@@ -620,17 +725,17 @@ function getUserCalendars() {
             ]);
         } else {
             // Always return proper error message instead of mock calendars
-            sendJsonResponse([
-                'success' => false,
-                'message' => 'Unable to discover calendars. The CalDAV server may have configuration issues or the endpoint may be different.',
-                'error_type' => 'server_configuration',
-                'suggestions' => [
-                    'Contact your server administrator to enable CalDAV protocol support',
-                    'Check if the CalDAV endpoint is at a different URL path',
+                sendJsonResponse([
+                    'success' => false,
+                    'message' => 'Unable to discover calendars. The CalDAV server may have configuration issues or the endpoint may be different.',
+                    'error_type' => 'server_configuration',
+                    'suggestions' => [
+                        'Contact your server administrator to enable CalDAV protocol support',
+                        'Check if the CalDAV endpoint is at a different URL path',
                     'Verify that WebDAV methods (PROPFIND, REPORT) are allowed',
                     'Ensure the CalDAV server is running and accessible'
-                ]
-            ]);
+                    ]
+                ]);
         }
         
     } catch (Exception $e) {
@@ -638,9 +743,9 @@ function getUserCalendars() {
         error_log("Stack trace: " . $e->getTraceAsString());
         
         // Always return proper error message instead of mock calendars
-        sendJsonResponse([
-            'success' => false,
-            'message' => 'Error discovering calendars: ' . $e->getMessage(),
+            sendJsonResponse([
+                'success' => false,
+                'message' => 'Error discovering calendars: ' . $e->getMessage(),
             'error_type' => 'discovery_error',
             'suggestions' => [
                 'Check if the CalDAV server is running and accessible',
@@ -1357,6 +1462,15 @@ function generateICalEvent($event) {
     $uid = $event['uid'];
     $dtstamp = date('Ymd\THis\Z');
     
+    simpleLog('DEBUG', 'Generating iCalendar for event', [
+        'event_uid' => $uid,
+        'event_title' => $event['title'] ?? 'unknown',
+        'has_recurrence' => !empty($event['recurrence']),
+        'recurrence_data' => $event['recurrence'] ?? null,
+        'start_time' => $event['start_time'] ?? 'unknown',
+        'end_time' => $event['end_time'] ?? 'unknown'
+    ]);
+    
     // Parse the input times and preserve local timezone
     $startTime = new DateTime($event['start_time']);
     $endTime = new DateTime($event['end_time']);
@@ -1399,6 +1513,12 @@ function generateICalEvent($event) {
     // Add recurrence rule
     if (!empty($event['recurrence'])) {
         $rrule = generateRRULE($event['recurrence']);
+        simpleLog('DEBUG', 'Generated RRULE for recurring event', [
+            'event_uid' => $uid,
+            'recurrence_data' => $event['recurrence'],
+            'generated_rrule' => $rrule
+        ]);
+        
         if (!empty($rrule)) {
             // Add RRULE property
             $ical .= $rrule . "\r\n";
@@ -1492,6 +1612,12 @@ function generateICalEvent($event) {
     
     $ical .= "END:VEVENT\r\n";
     $ical .= "END:VCALENDAR\r\n";
+    
+    simpleLog('DEBUG', 'Generated complete iCalendar content', [
+        'event_uid' => $uid,
+        'ical_length' => strlen($ical),
+        'ical_preview' => substr($ical, 0, 300) . '...'
+    ]);
     
     return $ical;
 }
@@ -1780,15 +1906,42 @@ function updateEvent($id) {
             
             // Handle recurring event edit scope
             $editScope = $input['editScope'] ?? 'all';
-            error_log("Edit scope: " . $editScope);
-            error_log("Event recurrence frequency: " . ($eventToUpdate['recurrence']['frequency'] ?? 'none'));
+            simpleLog('DEBUG', 'Recurring event edit scope analysis', [
+                'edit_scope' => $editScope,
+                'event_uid' => $eventToUpdate['uid'] ?? 'unknown',
+                'event_title' => $eventToUpdate['title'] ?? 'unknown',
+                'recurrence_frequency' => $eventToUpdate['recurrence']['frequency'] ?? 'none',
+                'has_recurrence' => !empty($eventToUpdate['recurrence']),
+                'recurrence_data' => $eventToUpdate['recurrence'] ?? null,
+                'input_data' => [
+                    'title' => $input['title'] ?? 'not_provided',
+                    'description' => $input['description'] ?? 'not_provided',
+                    'location' => $input['location'] ?? 'not_provided',
+                    'start_time' => $input['start_time'] ?? 'not_provided',
+                    'end_time' => $input['end_time'] ?? 'not_provided',
+                    'calendar_id' => $input['calendar_id'] ?? 'not_provided',
+                    'calendar_url' => $input['calendar_url'] ?? 'not_provided'
+                ]
+            ]);
             
             // For single occurrence edits, don't update the original recurring event
             // Only create the new single occurrence event
             if ($editScope === 'this' && !empty($eventToUpdate['recurrence']) && $eventToUpdate['recurrence']['frequency'] !== 'never') {
+                simpleLog('INFO', 'Single occurrence edit detected', [
+                    'event_uid' => $eventToUpdate['uid'] ?? 'unknown',
+                    'event_title' => $eventToUpdate['title'] ?? 'unknown',
+                    'edit_scope' => $editScope,
+                    'recurrence_frequency' => $eventToUpdate['recurrence']['frequency']
+                ]);
                 error_log("🔄 Single occurrence edit - preserving original recurring event unchanged");
                 // Don't update the original event properties - just add EXDATE
             } else {
+                simpleLog('INFO', 'All occurrences edit or non-recurring event edit', [
+                    'event_uid' => $eventToUpdate['uid'] ?? 'unknown',
+                    'event_title' => $eventToUpdate['title'] ?? 'unknown',
+                    'edit_scope' => $editScope,
+                    'is_recurring' => !empty($eventToUpdate['recurrence']) && $eventToUpdate['recurrence']['frequency'] !== 'never'
+                ]);
                 // Update event properties for regular edits or non-recurring events
                 $eventToUpdate['title'] = $input['title'];
                 $eventToUpdate['description'] = $input['description'] ?? $eventToUpdate['description'];
@@ -1797,34 +1950,118 @@ function updateEvent($id) {
                 // Only update times if they were explicitly changed (not just passed from the occurrence)
                 // For "edit all occurrences", we need to be careful about time updates
                 if ($editScope === 'all' && !empty($eventToUpdate['recurrence']) && $eventToUpdate['recurrence']['frequency'] !== 'never') {
-                    // For "edit all occurrences" of recurring events, preserve the original times
-                    // The frontend sends occurrence times, but we should ignore them unless explicitly changed
-                    $originalStartTime = $eventToUpdate['start_time'];
-                    $originalEndTime = $eventToUpdate['end_time'];
+                    // 🔧 FIX: For "edit all occurrences", we need to get the ORIGINAL recurring event times
+                    // The current $eventToUpdate contains occurrence times, not the original recurring event times
+                    // We need to fetch the original recurring event from CalDAV to get the true original times
                     
-                    error_log("🔍 Time change debugging for edit all occurrences of recurring event:");
-                    error_log("🔍 Original recurring event start time: " . $originalStartTime);
-                    error_log("🔍 Input start time (from occurrence): " . $input['start_time']);
-                    error_log("🔍 Original recurring event end time: " . $originalEndTime);
-                    error_log("🔍 Input end time (from occurrence): " . $input['end_time']);
+                    simpleLog('DEBUG', 'Fetching original recurring event times for comparison', [
+                        'event_uid' => $eventToUpdate['uid'] ?? 'unknown',
+                        'current_start_time' => $eventToUpdate['start_time'],
+                        'current_end_time' => $eventToUpdate['end_time'],
+                        'input_start_time' => $input['start_time'],
+                        'input_end_time' => $input['end_time']
+                    ]);
                     
-                    // 🔧 FIX: For "edit all occurrences", always preserve the original recurring event times
-                    // Only update times if the user explicitly changed them in the form
-                    // Since the frontend sends occurrence times, we need to detect if times were actually changed
-                    // by checking if the input times match the original recurring event times
-                    if ($input['start_time'] === $originalStartTime && $input['end_time'] === $originalEndTime) {
-                        // Times match the original - user didn't change times, keep original
-                        error_log("🕐 Times match original recurring event - preserving original times");
-                    } else {
-                        // Times are different - user explicitly changed them, update all occurrences
+                    // Fetch the original recurring event from CalDAV to get the true original times
+                    $originalRecurringEvent = null;
+                    try {
+                        $caldavClient = getCalDAVClient();
+                        if (!$caldavClient) {
+                            throw new Exception('CalDAV client not available');
+                        }
+                        
+                        $calendarUrl = $eventToUpdate['calendar_url'] ?? $calendars[0]['href'];
+                        // Construct the event URL from calendar URL and UID
+                        $eventUrl = rtrim($calendarUrl, '/') . '/' . $eventToUpdate['uid'] . '.ics';
+                        $originalICal = $caldavClient->getEventRaw($eventUrl);
+                        
+                        if ($originalICal) {
+                            // Parse the original iCalendar to get the original times
+                            $originalTimes = parseOriginalRecurringEventTimes($originalICal);
+                            if ($originalTimes) {
+                                $originalStartTime = $originalTimes['start_time'];
+                                $originalEndTime = $originalTimes['end_time'];
+                                
+                                simpleLog('DEBUG', 'Retrieved original recurring event times', [
+                                    'event_uid' => $eventToUpdate['uid'] ?? 'unknown',
+                                    'original_start_time' => $originalStartTime,
+                                    'original_end_time' => $originalEndTime,
+                                    'input_start_time' => $input['start_time'],
+                                    'input_end_time' => $input['end_time']
+                                ]);
+                                
+                                // Convert both to timestamps for accurate comparison
+                                $inputStartTimestamp = strtotime($input['start_time']);
+                                $inputEndTimestamp = strtotime($input['end_time']);
+                                $originalStartTimestamp = strtotime($originalStartTime);
+                                $originalEndTimestamp = strtotime($originalEndTime);
+                                
+                                simpleLog('DEBUG', 'Timestamp comparison', [
+                                    'event_uid' => $eventToUpdate['uid'] ?? 'unknown',
+                                    'input_start_timestamp' => $inputStartTimestamp,
+                                    'original_start_timestamp' => $originalStartTimestamp,
+                                    'input_end_timestamp' => $inputEndTimestamp,
+                                    'original_end_timestamp' => $originalEndTimestamp,
+                                    'start_times_match' => ($inputStartTimestamp === $originalStartTimestamp),
+                                    'end_times_match' => ($inputEndTimestamp === $originalEndTimestamp)
+                                ]);
+                                
+                                // Compare input times with the TRUE original recurring event times
+                                if ($inputStartTimestamp === $originalStartTimestamp && $inputEndTimestamp === $originalEndTimestamp) {
+                                    simpleLog('INFO', 'Times match original recurring event - preserving original times', [
+                                        'event_uid' => $eventToUpdate['uid'] ?? 'unknown',
+                                        'preserved_start_time' => $originalStartTime,
+                                        'preserved_end_time' => $originalEndTime
+                                    ]);
+                                    error_log("🕐 Times match original recurring event - preserving original times");
+                                    // Don't update times - preserve original recurring event times
+                                } else {
+                                    simpleLog('INFO', 'Times changed by user - updating all occurrences', [
+                                        'event_uid' => $eventToUpdate['uid'] ?? 'unknown',
+                                        'original_start_time' => $originalStartTime,
+                                        'new_start_time' => $input['start_time'],
+                                        'original_end_time' => $originalEndTime,
+                                        'new_end_time' => $input['end_time']
+                                    ]);
+                                    error_log("🕐 Times changed by user - updating all occurrences");
+                                    // Update times for all occurrences
+                                    $eventToUpdate['start_time'] = $input['start_time'];
+                                    $eventToUpdate['end_time'] = $input['end_time'];
+                                }
+                            } else {
+                                simpleLog('WARN', 'Could not parse original recurring event times, using input times', [
+                                    'event_uid' => $eventToUpdate['uid'] ?? 'unknown'
+                                ]);
+                                // Fallback: use input times
+                                $eventToUpdate['start_time'] = $input['start_time'];
+                                $eventToUpdate['end_time'] = $input['end_time'];
+                            }
+                        } else {
+                            simpleLog('WARN', 'Could not fetch original recurring event, using input times', [
+                                'event_uid' => $eventToUpdate['uid'] ?? 'unknown'
+                            ]);
+                            // Fallback: use input times
+                            $eventToUpdate['start_time'] = $input['start_time'];
+                            $eventToUpdate['end_time'] = $input['end_time'];
+                        }
+                    } catch (Exception $e) {
+                        simpleLog('ERROR', 'Error fetching original recurring event times', [
+                            'event_uid' => $eventToUpdate['uid'] ?? 'unknown',
+                            'error' => $e->getMessage()
+                        ]);
+                        // Fallback: use input times
                         $eventToUpdate['start_time'] = $input['start_time'];
                         $eventToUpdate['end_time'] = $input['end_time'];
-                        error_log("🕐 Times changed by user - updating all occurrences: " . $input['start_time'] . " to " . $input['end_time']);
                     }
                 } else {
                     // For regular edits (non-recurring events) or single occurrence edits, always update times
                     $eventToUpdate['start_time'] = $input['start_time'];
                     $eventToUpdate['end_time'] = $input['end_time'];
+                    simpleLog('INFO', 'Updated start/end times for regular edit', [
+                        'event_uid' => $eventToUpdate['uid'] ?? 'unknown',
+                        'new_start_time' => $input['start_time'],
+                        'new_end_time' => $input['end_time']
+                    ]);
                     error_log("🕐 Updated start/end times for regular edit: " . $input['start_time'] . " to " . $input['end_time']);
                 }
                 
@@ -2062,17 +2299,44 @@ function updateEvent($id) {
                         error_log("Using event calendar URL for update: " . $eventCalendarUrl);
                         
                         // For all edits (both single occurrence and all occurrences), update the recurring event
+                        simpleLog('INFO', 'CalDAV: Updating recurring event', [
+                            'event_uid' => $eventToUpdate['uid'] ?? 'unknown',
+                            'event_title' => $eventToUpdate['title'] ?? 'unknown',
+                            'calendar_url' => $eventCalendarUrl,
+                            'edit_scope' => $editScope
+                        ]);
                         error_log("🔄 CalDAV: Updating recurring event");
                         
                         $updatedICal = generateICalEvent($eventToUpdate);
+                        simpleLog('DEBUG', 'Generated updated iCalendar content for recurring event', [
+                            'event_uid' => $eventToUpdate['uid'] ?? 'unknown',
+                            'ical_length' => strlen($updatedICal),
+                            'ical_preview' => substr($updatedICal, 0, 200) . '...'
+                        ]);
                         error_log("Generated updated iCalendar content for recurring event");
                         
                         $response = $caldavClient->updateEvent($eventCalendarUrl, $eventToUpdate['uid'], $updatedICal);
+                        simpleLog('INFO', 'CalDAV recurring event update response', [
+                            'event_uid' => $eventToUpdate['uid'] ?? 'unknown',
+                            'response_success' => $response['success'] ?? false,
+                            'response_status' => $response['status'] ?? 'unknown',
+                            'response_body_preview' => substr($response['body'] ?? '', 0, 200)
+                        ]);
                         error_log("CalDAV recurring event update response: " . json_encode($response));
                         
                         if ($response['success']) {
+                            simpleLog('INFO', 'Recurring event updated successfully on CalDAV server', [
+                                'event_uid' => $eventToUpdate['uid'] ?? 'unknown',
+                                'event_title' => $eventToUpdate['title'] ?? 'unknown'
+                            ]);
                             error_log("✅ Recurring event updated on CalDAV server");
                         } else {
+                            simpleLog('ERROR', 'CalDAV recurring event update failed', [
+                                'event_uid' => $eventToUpdate['uid'] ?? 'unknown',
+                                'event_title' => $eventToUpdate['title'] ?? 'unknown',
+                                'response_status' => $response['status'] ?? 'unknown',
+                                'response_body' => $response['body'] ?? 'unknown'
+                            ]);
                             error_log("❌ CalDAV recurring event update failed: " . $response['body']);
                         }
                     }
@@ -2232,18 +2496,18 @@ function deleteCalendar($id) {
                 'search_type' => 'index_match'
             ]);
             $calendarIndex = intval($decodedId) - 1;
-            
-            if ($calendarIndex < 0 || $calendarIndex >= count($calendars)) {
+        
+        if ($calendarIndex < 0 || $calendarIndex >= count($calendars)) {
                 simpleLog('ERROR', 'Calendar index out of range', [
                     'calendar_id' => $decodedId,
                     'calendar_index' => $calendarIndex,
                     'valid_range' => '0-' . (count($calendars)-1)
                 ]);
-                throw new Exception('Calendar not found');
-            }
-            
-            $calendarToDelete = $calendars[$calendarIndex];
-            $calendarUrl = $calendarToDelete['href'] ?? '';
+            throw new Exception('Calendar not found');
+        }
+        
+        $calendarToDelete = $calendars[$calendarIndex];
+        $calendarUrl = $calendarToDelete['href'] ?? '';
             simpleLog('INFO', 'Calendar found by index', [
                 'calendar_id' => $decodedId,
                 'calendar_index' => $calendarIndex,

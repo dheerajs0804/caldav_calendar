@@ -1975,6 +1975,25 @@ export class CalendarComponent implements OnInit, OnDestroy {
             calendar_url: newCalendar.url,  // ✅ Use the new calendar URL
             editScope: (event as any).editScope || 'all'  // ✅ Include edit scope for recurring events
       };
+
+      this.logger.logRequestProcessing('Recurring event edit request', {
+        eventData: {
+          uid: event.uid,
+          title: event.title,
+          isRecurring: !!(event.recurrence && event.recurrence.frequency !== 'never'),
+          recurrence: event.recurrence,
+          editScope: (event as any).editScope || 'all',
+          occurrenceIndex: event.occurrenceIndex || 0
+        },
+        editData: editData,
+        targetCalendar: {
+          id: newCalendarId,
+          name: newCalendar.name,
+          url: newCalendar.url
+        },
+        requestMethod: 'PUT',
+        requestUrl: `${environment.apiUrl}/events/${eventIdentifier}?occurrence_index=${event.occurrenceIndex || 0}`
+      });
       
       console.log('✏️ Edit data being sent to backend:', editData);
       console.log('📅 New calendar ID in edit data:', editData.calendar_id);
@@ -1989,6 +2008,18 @@ export class CalendarComponent implements OnInit, OnDestroy {
       const response = await this.http.put<any>(editUrl, editData, {
         withCredentials: true
       }).toPromise();
+      
+      this.logger.logRequestProcessing('Recurring event edit response', {
+        eventData: {
+          uid: event.uid,
+          title: event.title,
+          editScope: (event as any).editScope || 'all'
+        },
+        response: response,
+        success: response.success || false,
+        requestMethod: 'PUT',
+        requestUrl: editUrl
+      });
       
       console.log('📥 Backend edit response:', response);
       

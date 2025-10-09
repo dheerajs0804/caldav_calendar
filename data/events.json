@@ -3379,18 +3379,18 @@
     {
         "id": "event_68c93d003fa7d",
         "title": "june1event1",
-        "description": "",
+        "description": "jhakdakj",
         "location": "",
-        "start_time": "2025-06-01T16:03:00",
-        "end_time": "2025-06-01T17:03:00",
+        "start_time": "2025-06-01T16:03:00+05:30",
+        "end_time": "2025-06-01T17:03:00+05:30",
         "all_day": false,
-        "calendar_id": 1,
+        "calendar_id": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
         "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/57A83AA3-3ACD-6291-09F8-820931CFF6CB\/",
         "color": "#4285f4",
         "uid": "uid_68c93d003fa85",
         "etag": "etag_68c93d003fa86",
         "created_at": "2025-09-16T12:33:36+02:00",
-        "updated_at": "2025-09-16T12:33:36+02:00",
+        "updated_at": "2025-10-08T14:29:55+02:00",
         "attendees": [],
         "reminder": {
             "enabled": false,
@@ -3399,7 +3399,15 @@
             "unit": "minutes",
             "relativeTo": "start"
         },
-        "valarm": null
+        "valarm": null,
+        "availability": "busy",
+        "status": "confirmed",
+        "recurrence": {
+            "frequency": "never",
+            "interval": 1
+        },
+        "calendar_name": "calendar2",
+        "calendar_color": "#4285f4"
     },
     {
         "id": "event_68c94d9c0b8b4",
@@ -10195,5 +10203,94 @@
             "relativeTo": "start"
         },
         "valarm": null
+    },
+    {
+        "id": "event_68e758c3c299a",
+        "title": "edit all occurences fix attempt ",
+        "description": "",
+        "location": "",
+        "start_time": "2025-10-09T09:00:00",
+        "end_time": "2025-10-09T10:00:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/A7595227-BB7A-90A6-F0B1-AB941E2CA801\/",
+        "color": "#4285f4",
+        "uid": "uid_68e758c3c29a4",
+        "etag": "etag_68e758c3c29a5",
+        "created_at": "2025-10-09T08:40:03+02:00",
+        "updated_at": "2025-10-09T08:40:03+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "never",
+            "interval": 1
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
+    },
+    {
+        "id": "event_68e75957ef32e",
+        "title": "alloccur",
+        "description": "final test",
+        "location": "ytfuayfjdkml;",
+        "start_time": "2025-10-08T11:00:00.000Z",
+        "end_time": "2025-10-08T12:00:00.000Z",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/3EF21428-B7B0-90D9-6DB4-6A1A91FD3E54\/",
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/3EF21428-B7B0-90D9-6DB4-6A1A91FD3E54\/",
+        "color": "#4285f4",
+        "uid": "uid_68e75957ef335",
+        "etag": "etag_68e75957ef336",
+        "created_at": "2025-10-09T08:42:31+02:00",
+        "updated_at": "2025-10-09T09:40:54+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "daily",
+            "interval": 1,
+            "count": 3
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null,
+        "calendar_name": "calcchangetest",
+        "calendar_color": "#4285f4",
+        "individualOccurrences": {
+            "20251008T183000Z": {
+                "date": "20251008T183000Z",
+                "title": "alloccur",
+                "description": "tsrdytvjhbknl",
+                "location": "",
+                "start_time": "2025-10-08T16:30:00.000Z",
+                "end_time": "2025-10-08T17:30:00.000Z",
+                "all_day": false,
+                "availability": "busy",
+                "status": "confirmed",
+                "calendar_id": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/A7595227-BB7A-90A6-F0B1-AB941E2CA801\/",
+                "attendees": [],
+                "reminder": {
+                    "enabled": false,
+                    "type": "message",
+                    "time": 15,
+                    "unit": "minutes",
+                    "relativeTo": "start"
+                },
+                "modified_at": "2025-10-09T09:35:21+02:00"
+            }
+        },
+        "hasIndividualModifications": true
     }
 ]
