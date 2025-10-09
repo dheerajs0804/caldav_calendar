@@ -10292,5 +10292,36 @@
             }
         },
         "hasIndividualModifications": true
+    },
+    {
+        "id": "event_68e768db0100b",
+        "title": "add event info log",
+        "description": "desc",
+        "location": "loc",
+        "start_time": "2025-10-09T09:00:00",
+        "end_time": "2025-10-09T10:00:00",
+        "all_day": false,
+        "availability": "busy",
+        "status": "confirmed",
+        "calendar_id": 1,
+        "calendar_url": "http:\/\/rc.mithi.com:18008\/calendars\/__uids__\/80b5d808-0553-1040-8d6f-0f1266787052\/3EF21428-B7B0-90D9-6DB4-6A1A91FD3E54\/",
+        "color": "#4285f4",
+        "uid": "uid_68e768db01013",
+        "etag": "etag_68e768db01014",
+        "created_at": "2025-10-09T09:48:43+02:00",
+        "updated_at": "2025-10-09T09:48:43+02:00",
+        "attendees": [],
+        "recurrence": {
+            "frequency": "never",
+            "interval": 1
+        },
+        "reminder": {
+            "enabled": false,
+            "type": "message",
+            "time": 15,
+            "unit": "minutes",
+            "relativeTo": "start"
+        },
+        "valarm": null
     }
 ]

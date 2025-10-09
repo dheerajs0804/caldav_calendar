@@ -1047,8 +1047,20 @@ function getCalendarEvents($id) {
 
 function createCalendar() {
     try {
+        // Log request details
+        error_log("=== CREATE CALENDAR REQUEST START ===");
+        error_log("Request method: " . $_SERVER['REQUEST_METHOD']);
+        error_log("Request URI: " . $_SERVER['REQUEST_URI']);
+        error_log("Request headers: " . json_encode(getallheaders()));
+        error_log("Cookies: " . json_encode($_COOKIE));
+        error_log("Session ID: " . session_id());
+        
         // Get the request body
-        $input = json_decode(file_get_contents('php://input'), true);
+        $rawInput = file_get_contents('php://input');
+        error_log("Raw input received: " . $rawInput);
+        
+        $input = json_decode($rawInput, true);
+        error_log("Parsed input: " . json_encode($input));
         
         if (!$input) {
             throw new Exception('Invalid JSON input');
@@ -1125,8 +1137,20 @@ function createCalendar() {
 
 function createEvent() {
     try {
+        // Log request details
+        error_log("=== CREATE EVENT REQUEST START ===");
+        error_log("Request method: " . $_SERVER['REQUEST_METHOD']);
+        error_log("Request URI: " . $_SERVER['REQUEST_URI']);
+        error_log("Request headers: " . json_encode(getallheaders()));
+        error_log("Cookies: " . json_encode($_COOKIE));
+        error_log("Session ID: " . session_id());
+        
         // Get the request body
-        $input = json_decode(file_get_contents('php://input'), true);
+        $rawInput = file_get_contents('php://input');
+        error_log("Raw input received: " . $rawInput);
+        
+        $input = json_decode($rawInput, true);
+        error_log("Parsed input: " . json_encode($input));
         
         if (!$input) {
             throw new Exception('Invalid JSON input');
@@ -1312,6 +1336,7 @@ function createEvent() {
                             ];
                             error_log("Sending success response with invitations: " . json_encode($successResponse));
                             error_log("🔍 About to send success response to frontend");
+                            error_log("=== CREATE EVENT REQUEST END (SUCCESS WITH INVITATIONS) ===");
                             header('Content-Type: application/json');
                             echo json_encode($successResponse);
                             exit; // Stop execution to prevent any additional output
@@ -1323,6 +1348,7 @@ function createEvent() {
                             ];
                             error_log("Sending partial success response: " . json_encode($partialResponse));
                             error_log("🔍 About to send partial success response to frontend");
+                            error_log("=== CREATE EVENT REQUEST END (PARTIAL SUCCESS) ===");
                             header('Content-Type: application/json');
                             echo json_encode($partialResponse);
                             exit; // Stop execution to prevent any additional output
@@ -1335,6 +1361,7 @@ function createEvent() {
                         ];
                         error_log("Sending success response without invitations: " . json_encode($successResponse));
                         error_log("🔍 About to send success response (no invitations) to frontend");
+                        error_log("=== CREATE EVENT REQUEST END (SUCCESS) ===");
                         header('Content-Type: application/json');
                         echo json_encode($successResponse);
                         exit; // Stop execution to prevent any additional output
@@ -1359,6 +1386,7 @@ function createEvent() {
                 ];
                 error_log("Sending no calendar response: " . json_encode($noCalendarResponse));
                 error_log("🔍 About to send no calendar response to frontend");
+                error_log("=== CREATE EVENT REQUEST END (NO CALENDAR) ===");
                 header('Content-Type: application/json');
                 echo json_encode($noCalendarResponse);
                 exit; // Stop execution to prevent any additional output
@@ -1372,6 +1400,7 @@ function createEvent() {
             ];
             error_log("Sending response: " . json_encode($response));
             error_log("🔍 About to send CalDAV error response to frontend");
+            error_log("=== CREATE EVENT REQUEST END (CALDAV ERROR) ===");
             header('Content-Type: application/json');
             echo json_encode($response);
             exit; // Stop execution to prevent any additional output
@@ -1386,6 +1415,7 @@ function createEvent() {
         ];
         error_log("Sending error response: " . json_encode($errorResponse));
         error_log("🔍 About to send error response to frontend");
+        error_log("=== CREATE EVENT REQUEST END (ERROR) ===");
         header('Content-Type: application/json');
         echo json_encode($errorResponse);
         exit; // Stop execution to prevent any additional output
