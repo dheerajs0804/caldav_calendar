@@ -24,7 +24,7 @@ export class EventDetailModalComponent {
 
   isEditMode: boolean = false;
   editedEvent: CalendarEvent | null = null;
-  editScope: 'this' | 'all' = 'this'; // Default to editing only this occurrence
+  editScope: 'this' | 'all' = 'all'; // Default to editing all occurrences
   
   // Recurrence UI state properties
   endType: 'never' | 'count' | 'until' = 'never';
@@ -54,7 +54,7 @@ export class EventDetailModalComponent {
     // 1. Occurrences of recurring events (isRecurringInstance = true)
     // 2. Events that already have recurrence (when editing "all occurrences")
     return !this.editedEvent?.isRecurringInstance && 
-           !(this.isRecurringEvent() && this.editScope === 'all');
+           !this.isRecurringEvent();
   }
 
   // Check if we should show the recurrence info message
@@ -184,28 +184,26 @@ export class EventDetailModalComponent {
       console.log('🔄 Edit scope:', this.editScope);
       console.log('📤 Emitting editEvent with data:', this.editedEvent);
       
-      // For "edit all occurrences", we need to be careful about what data we send
+      // Always edit all occurrences for recurring events
       let eventDataToSend = { ...this.editedEvent };
       
-      if (this.editScope === 'all' && this.editedEvent.isRecurringInstance) {
+      if (this.editedEvent.isRecurringInstance) {
         console.log('🔄 Edit all occurrences - adjusting data for recurring event');
         console.log('🔄 Original event ID:', this.editedEvent.originalEventId);
         
-        // For "edit all occurrences", we need to get the original recurring event data
+        // For recurring events, we need to get the original recurring event data
         // and only apply the user's changes to the base event, not the occurrence times
         eventDataToSend = {
           ...this.editedEvent,
           // Keep the original recurring event's ID and UID
           id: this.editedEvent.originalEventId || this.editedEvent.id,
           uid: this.editedEvent.uid?.replace(/_\d+$/, '') || this.editedEvent.uid,
-          // 🔧 FIX: Don't send occurrence times for "edit all occurrences"
-          // The backend should preserve the original recurring event times
-          // Only send times if the user explicitly changed them in the form
-          start_time: this.editedEvent.start_time, // This will be the occurrence time, backend will handle comparison
-          end_time: this.editedEvent.end_time,     // This will be the occurrence time, backend will handle comparison
+          // Send occurrence times (backend will compare with original)
+          start_time: this.editedEvent.start_time,
+          end_time: this.editedEvent.end_time,
           // Keep the calendar info as-is (user might want to change calendar for all occurrences)
           calendar_id: this.editedEvent.calendar_id,
-          editScope: this.editScope
+          editScope: 'all'  // Always edit all occurrences
         };
         
         console.log('🔄 Adjusted event data for edit all occurrences:', eventDataToSend);
@@ -214,10 +212,10 @@ export class EventDetailModalComponent {
           end_time: this.editedEvent.end_time
         });
       } else {
-        // For single occurrence edits or non-recurring events, send as-is
+        // For non-recurring events, send as-is
         eventDataToSend = {
           ...this.editedEvent,
-          editScope: this.editScope
+          editScope: 'all'  // Always edit all occurrences
         };
       }
       

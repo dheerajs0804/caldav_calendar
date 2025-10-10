@@ -2028,14 +2028,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
             console.log('✅ Updated event data:', response.data);
             this.closeEventDetailModal();
             
-            // For single occurrence edits, refresh events to get updated data
-            if (editData.editScope === 'this') {
-              console.log('🔄 Single occurrence edit - refreshing events...');
-              await this.fetchEvents();
-            } else {
-              console.log('🔄 All occurrences edit - refreshing events...');
-              await this.fetchEvents();
-            }
+            // Always refresh events after edit
+            console.log('🔄 Event edit completed - refreshing events...');
+            await this.fetchEvents();
             
             console.log('✅ fetchEvents completed');
             alert('Event updated successfully!');
