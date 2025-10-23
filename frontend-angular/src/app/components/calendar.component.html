@@ -248,6 +248,17 @@
       </div>
       
       <div class="form-group">
+        <label for="url">Meeting Link / URL</label>
+        <input 
+          type="url" 
+          id="url" 
+          [(ngModel)]="newEvent.url" 
+          placeholder="https://meet.google.com/abc-defg-hij or https://zoom.us/j/123456789"
+        />
+        <p class="form-help-text">Enter meeting links (Zoom, Google Meet, Teams, etc.) or any relevant URL. Stored as ATTACH property for CalDAV compatibility.</p>
+      </div>
+      
+      <div class="form-group">
         <label for="description">Description</label>
         <textarea 
           id="description" 

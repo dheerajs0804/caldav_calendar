@@ -881,13 +881,23 @@ function getEvents() {
         }
         
         if ($events && is_array($events)) {
+            // Ensure all events have the URL field (for backward compatibility)
+            $eventsWithUrl = array_map(function($event) {
+                // Ensure URL field exists, even if empty
+                if (!isset($event['url'])) {
+                    $event['url'] = '';
+                }
+                return $event;
+            }, $events);
+            
             // Send all events to frontend - let frontend handle filtering
             // Debug: Log event data before sending response
             error_log("=== Events being sent to frontend ===");
-            foreach ($events as $index => $event) {
+            foreach ($eventsWithUrl as $index => $event) {
                 $eventData = [
                     'title' => $event['title'] ?? 'N/A',
                     'uid' => $event['uid'] ?? 'N/A',
+                    'url' => $event['url'] ?? 'N/A',
                     'recurrence' => $event['recurrence'] ?? null,
                     'hasRecurrence' => !empty($event['recurrence']),
                     'exdate' => $event['exdate'] ?? null,
@@ -908,7 +918,7 @@ function getEvents() {
             
             sendJsonResponse([
                 'success' => true,
-                'data' => $events,
+                'data' => $eventsWithUrl,
                 'message' => 'Events retrieved successfully',
                 'calendar_url' => $selectedCalendarUrl
             ]);
@@ -1195,6 +1205,7 @@ function createEvent() {
             'title' => $input['title'],
             'description' => $input['description'] ?? '',
             'location' => $input['location'] ?? '',
+            'url' => $input['url'] ?? '', // Meeting link or URL for the event
             'start_time' => $input['start_time'],
             'end_time' => $input['end_time'],
             'all_day' => $input['all_day'] ?? false,
@@ -1526,6 +1537,11 @@ function generateICalEvent($event) {
     
     if (!empty($event['location'])) {
         $ical .= "LOCATION:" . str_replace(["\r\n", "\n", "\r"], "\\n", $event['location']) . "\r\n";
+    }
+    
+    // Add URL field as ATTACH property (CalDAV standard)
+    if (!empty($event['url'])) {
+        $ical .= "ATTACH:" . str_replace(["\r\n", "\n", "\r"], "\\n", $event['url']) . "\r\n";
     }
     
     // Add status
@@ -1976,6 +1992,7 @@ function updateEvent($id) {
                 $eventToUpdate['title'] = $input['title'];
                 $eventToUpdate['description'] = $input['description'] ?? $eventToUpdate['description'];
                 $eventToUpdate['location'] = $input['location'] ?? $eventToUpdate['location'];
+                $eventToUpdate['url'] = $input['url'] ?? $eventToUpdate['url']; // Meeting link or URL for the event
                 
                 // Only update times if they were explicitly changed (not just passed from the occurrence)
                 // For "edit all occurrences", we need to be careful about time updates
@@ -3345,6 +3362,11 @@ function generateICalInvitation($eventDetails, $attendees) {
         
         if (!empty($eventDetails['location'])) {
             $ical .= "LOCATION:" . str_replace(["\r\n", "\n", "\r"], "\\n", $eventDetails['location']) . "\r\n";
+        }
+        
+        // Add URL field as ATTACH property (CalDAV standard) if available
+        if (!empty($eventDetails['url'])) {
+            $ical .= "ATTACH:" . str_replace(["\r\n", "\n", "\r"], "\\n", $eventDetails['url']) . "\r\n";
         }
         
         // Add organizer with proper format
