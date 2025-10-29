@@ -15,7 +15,7 @@ RUN npm install
 COPY . .
 
 # Build the Angular app for Docker containers
-RUN npm run build --configuration=docker --base-href=/cal/
+RUN npm run build --configuration=docker -- --base-href=/cal/
 
 # Stage 2: Serve the app with nginx
 FROM nginx:alpine
