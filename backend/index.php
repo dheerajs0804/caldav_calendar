@@ -1970,24 +1970,13 @@ function updateEvent($id) {
                 ]
             ]);
             
-            // For single occurrence edits, don't update the original recurring event
-            // Only create the new single occurrence event
-            if ($editScope === 'this' && !empty($eventToUpdate['recurrence']) && $eventToUpdate['recurrence']['frequency'] !== 'never') {
-                simpleLog('INFO', 'Single occurrence edit detected', [
-                    'event_uid' => $eventToUpdate['uid'] ?? 'unknown',
-                    'event_title' => $eventToUpdate['title'] ?? 'unknown',
-                    'edit_scope' => $editScope,
-                    'recurrence_frequency' => $eventToUpdate['recurrence']['frequency']
-                ]);
-                error_log("🔄 Single occurrence edit - preserving original recurring event unchanged");
-                // Don't update the original event properties - just add EXDATE
-            } else {
-                simpleLog('INFO', 'All occurrences edit or non-recurring event edit', [
-                    'event_uid' => $eventToUpdate['uid'] ?? 'unknown',
-                    'event_title' => $eventToUpdate['title'] ?? 'unknown',
-                    'edit_scope' => $editScope,
-                    'is_recurring' => !empty($eventToUpdate['recurrence']) && $eventToUpdate['recurrence']['frequency'] !== 'never'
-                ]);
+            // Always edit all occurrences for recurring events
+            simpleLog('INFO', 'All occurrences edit or non-recurring event edit', [
+                'event_uid' => $eventToUpdate['uid'] ?? 'unknown',
+                'event_title' => $eventToUpdate['title'] ?? 'unknown',
+                'edit_scope' => $editScope,
+                'is_recurring' => !empty($eventToUpdate['recurrence']) && $eventToUpdate['recurrence']['frequency'] !== 'never'
+            ]);
                 // Update event properties for regular edits or non-recurring events
                 $eventToUpdate['title'] = $input['title'];
                 $eventToUpdate['description'] = $input['description'] ?? $eventToUpdate['description'];
@@ -2206,62 +2195,8 @@ function updateEvent($id) {
             error_log("Edit scope: " . $editScope);
             error_log("Event recurrence frequency: " . ($eventToUpdate['recurrence']['frequency'] ?? 'none'));
             
-            // Handle single occurrence edits using individual modifications approach
-            if ($editScope === 'this' && !empty($eventToUpdate['recurrence']) && $eventToUpdate['recurrence']['frequency'] !== 'never') {
-                error_log("🔄 Editing single occurrence using individual modifications approach");
-                
-                // Get occurrence index from the request
-                $occurrenceIndex = $_GET['occurrence_index'] ?? '0';
-                error_log("🔍 Occurrence index from request: " . $occurrenceIndex);
-                
-                // Initialize individualOccurrences array if it doesn't exist
-                if (!isset($eventToUpdate['individualOccurrences'])) {
-                    $eventToUpdate['individualOccurrences'] = [];
-                }
-                
-                // Calculate the specific occurrence date for the modification
-                $occurrenceStartTime = $input['start_time'];
-                $occurrenceKey = date('Ymd\THis\Z', strtotime($occurrenceStartTime));
-                
-                error_log("🔍 Creating individual occurrence modification:");
-                error_log("🔍 Occurrence start time: " . $occurrenceStartTime);
-                error_log("🔍 Occurrence key: " . $occurrenceKey);
-                error_log("🔍 Input title: " . $input['title']);
-                error_log("🔍 Input description: " . ($input['description'] ?? 'null'));
-                
-                // Store individual modification for this occurrence
-                $individualModification = [
-                    'date' => $occurrenceKey,
-                    'title' => $input['title'],
-                    'description' => $input['description'] ?? '',
-                    'location' => $input['location'] ?? '',
-                    'start_time' => $input['start_time'],
-                    'end_time' => $input['end_time'],
-                    'all_day' => $input['all_day'] ?? false,
-                    'availability' => $input['availability'] ?? 'busy',
-                    'status' => $input['status'] ?? 'confirmed',
-                    'calendar_id' => $input['calendar_id'] ?? $eventToUpdate['calendar_id'] ?? 1,
-                    'attendees' => $input['attendees'] ?? [],
-                    'reminder' => $input['reminder'] ?? null,
-                    'modified_at' => date('c')
-                ];
-                
-                // Store the individual modification
-                $eventToUpdate['individualOccurrences'][$occurrenceKey] = $individualModification;
-                
-                error_log("✅ Stored individual modification for occurrence: " . $occurrenceKey);
-                error_log("✅ Individual modification data: " . json_encode($individualModification));
-                error_log("✅ Total individual modifications: " . count($eventToUpdate['individualOccurrences']));
-                
-                // Don't update the main event properties for single occurrence edits
-                error_log("🔄 Single occurrence edit - preserving original recurring event properties");
-                
-                // Mark that this event has individual modifications
-                $eventToUpdate['hasIndividualModifications'] = true;
-                
-                // Skip the regular property updates for single occurrence edits
-                goto skipRegularUpdates;
-            }
+            // Single occurrence edits are no longer supported
+            // All edits will affect all occurrences of recurring events
             
             skipRegularUpdates:
             // Update updated_at timestamp
@@ -2396,13 +2331,7 @@ function updateEvent($id) {
             }
             
             // Update the stored events array with the updated event
-            // For single occurrence edits, we need to find the original recurring event by its original UID
             $searchId = $id;
-            if ($editScope === 'this' && !empty($eventToUpdate['recurrence']) && $eventToUpdate['recurrence']['frequency'] !== 'never') {
-                // For single occurrence edits, find the original recurring event
-                $searchId = $originalEvent['uid'] ?? $originalEvent['id'];
-                error_log("🔍 Single occurrence edit - searching for original event with ID/UID: " . $searchId);
-            }
             
             foreach ($storedEvents as $key => $event) {
                 if (($event['id'] ?? null) == $searchId || ($event['uid'] ?? null) == $searchId) {
