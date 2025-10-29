@@ -24,7 +24,7 @@ export class EventDetailModalComponent {
 
   isEditMode: boolean = false;
   editedEvent: CalendarEvent | null = null;
-  editScope: 'this' | 'all' = 'this'; // Default to editing only this occurrence
+  editScope: 'this' | 'all' = 'all'; // Default to editing all occurrences
   
   // Recurrence UI state properties
   endType: 'never' | 'count' | 'until' = 'never';
@@ -54,7 +54,7 @@ export class EventDetailModalComponent {
     // 1. Occurrences of recurring events (isRecurringInstance = true)
     // 2. Events that already have recurrence (when editing "all occurrences")
     return !this.editedEvent?.isRecurringInstance && 
-           !(this.isRecurringEvent() && this.editScope === 'all');
+           !this.isRecurringEvent();
   }
 
   // Check if we should show the recurrence info message
@@ -65,6 +65,12 @@ export class EventDetailModalComponent {
 
   ngOnChanges(): void {
     if (this.event) {
+      // Debug: Log the event data received by the modal
+      console.log('🔄 Event detail modal received event:', this.event.title);
+      console.log('🔄 Event URL field:', this.event.url);
+      console.log('🔄 Event URL field type:', typeof this.event.url);
+      console.log('🔄 Event URL field value:', JSON.stringify(this.event.url));
+      
       // Always use the event data as-is for editing
       // The event already contains the correct occurrence data (either original or individually modified)
       console.log('🔄 Event detail modal initialized with event:', this.event);
@@ -76,6 +82,7 @@ export class EventDetailModalComponent {
       // Create a copy of the event for editing with default values for new fields
       this.editedEvent = { 
         ...this.event,
+        url: this.event.url || '', // Ensure URL field exists, even if empty
         availability: this.event.availability || 'busy',
         status: this.event.status || 'confirmed',
         attendees: this.event.attendees || [],
@@ -184,28 +191,26 @@ export class EventDetailModalComponent {
       console.log('🔄 Edit scope:', this.editScope);
       console.log('📤 Emitting editEvent with data:', this.editedEvent);
       
-      // For "edit all occurrences", we need to be careful about what data we send
+      // Always edit all occurrences for recurring events
       let eventDataToSend = { ...this.editedEvent };
       
-      if (this.editScope === 'all' && this.editedEvent.isRecurringInstance) {
+      if (this.editedEvent.isRecurringInstance) {
         console.log('🔄 Edit all occurrences - adjusting data for recurring event');
         console.log('🔄 Original event ID:', this.editedEvent.originalEventId);
         
-        // For "edit all occurrences", we need to get the original recurring event data
+        // For recurring events, we need to get the original recurring event data
         // and only apply the user's changes to the base event, not the occurrence times
         eventDataToSend = {
           ...this.editedEvent,
           // Keep the original recurring event's ID and UID
           id: this.editedEvent.originalEventId || this.editedEvent.id,
           uid: this.editedEvent.uid?.replace(/_\d+$/, '') || this.editedEvent.uid,
-          // 🔧 FIX: Don't send occurrence times for "edit all occurrences"
-          // The backend should preserve the original recurring event times
-          // Only send times if the user explicitly changed them in the form
-          start_time: this.editedEvent.start_time, // This will be the occurrence time, backend will handle comparison
-          end_time: this.editedEvent.end_time,     // This will be the occurrence time, backend will handle comparison
+          // Send occurrence times (backend will compare with original)
+          start_time: this.editedEvent.start_time,
+          end_time: this.editedEvent.end_time,
           // Keep the calendar info as-is (user might want to change calendar for all occurrences)
           calendar_id: this.editedEvent.calendar_id,
-          editScope: this.editScope
+          editScope: 'all'  // Always edit all occurrences
         };
         
         console.log('🔄 Adjusted event data for edit all occurrences:', eventDataToSend);
@@ -214,10 +219,10 @@ export class EventDetailModalComponent {
           end_time: this.editedEvent.end_time
         });
       } else {
-        // For single occurrence edits or non-recurring events, send as-is
+        // For non-recurring events, send as-is
         eventDataToSend = {
           ...this.editedEvent,
-          editScope: this.editScope
+          editScope: 'all'  // Always edit all occurrences
         };
       }
       
@@ -234,6 +239,7 @@ export class EventDetailModalComponent {
     if (this.event) {
       this.editedEvent = { 
         ...this.event,
+        url: this.event.url || '', // Ensure URL field exists, even if empty
         attendees: this.event.attendees || []
       };
       // Reinitialize recurrence properties
@@ -658,5 +664,61 @@ export class EventDetailModalComponent {
     if (this.editedEvent?.recurrence?.specificDates) {
       this.editedEvent.recurrence.specificDates[index] = value;
     }
+  }
+
+  /**
+   * Copy URL to clipboard
+   */
+  copyToClipboard(url: string): void {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(url).then(() => {
+        // Show a brief success message
+        const button = event?.target as HTMLButtonElement;
+        if (button) {
+          const originalText = button.textContent;
+          button.textContent = '✅ Copied!';
+          setTimeout(() => {
+            button.textContent = originalText;
+          }, 2000);
+        }
+      }).catch(err => {
+        console.error('Failed to copy URL to clipboard:', err);
+        this.fallbackCopyToClipboard(url);
+      });
+    } else {
+      this.fallbackCopyToClipboard(url);
+    }
+  }
+
+  /**
+   * Fallback method for copying to clipboard when navigator.clipboard is not available
+   */
+  private fallbackCopyToClipboard(text: string): void {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+      document.execCommand('copy');
+      // Show success message
+      const button = event?.target as HTMLButtonElement;
+      if (button) {
+        const originalText = button.textContent;
+        button.textContent = '✅ Copied!';
+        setTimeout(() => {
+          button.textContent = originalText;
+        }, 2000);
+      }
+    } catch (err) {
+      console.error('Fallback copy failed:', err);
+      alert('Failed to copy URL. Please copy manually: ' + text);
+    }
+    
+    document.body.removeChild(textArea);
   }
 }

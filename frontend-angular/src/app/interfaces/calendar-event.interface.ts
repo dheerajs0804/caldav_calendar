@@ -16,6 +16,7 @@ export interface CalendarEvent {
   title: string;
   description?: string;
   location?: string;
+  url?: string; // Meeting link or URL for the event
   start_time: string;
   end_time: string;
   all_day: boolean;
@@ -62,6 +63,7 @@ export interface CalendarEvent {
       title: string;
       description: string;
       location: string;
+      url?: string; // Meeting link or URL for the event
       start_time: string;
       end_time: string;
       all_day: boolean;

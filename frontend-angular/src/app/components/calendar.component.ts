@@ -38,6 +38,7 @@ interface NewEvent {
   summary: string;
   location: string;
   description: string;
+  url: string; // Meeting link or URL for the event
   start_date: string;
   start_time: string;
   end_date: string;
@@ -111,6 +112,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     summary: '',
     location: '',
     description: '',
+    url: '', // Meeting link or URL for the event
     start_date: '',
     start_time: '',
     end_date: '',
@@ -1236,6 +1238,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
       summary: '',
       description: '',
       location: '',
+      url: '', // Meeting link or URL for the event
       start_date: today.format('YYYY-MM-DD'),
       start_time: '09:00',
       end_date: tomorrow.format('YYYY-MM-DD'),
@@ -1297,9 +1300,15 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.selectedEvent = event;
     this.showEventDetailModal = true;
     
+    // Debug: Log the event data being passed to the modal
+    console.log('📅 Event detail modal opened for event:', event.title);
+    console.log('📅 Event URL field:', event.url);
+    console.log('📅 Event URL field type:', typeof event.url);
+    console.log('📅 Event URL field value:', JSON.stringify(event.url));
+    console.log('📅 Full event object:', JSON.stringify(event, null, 2));
+    
     // 🔧 FIX: Initialize newEvent with the current event's calendar for editing
     this.newEvent.calendar_id = event.calendar_id;
-    console.log('📅 Event detail modal opened for event:', event.title);
     console.log('📅 Set newEvent.calendar_id to:', this.newEvent.calendar_id);
   }
 
@@ -1599,6 +1608,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
         title: this.newEvent.summary, // Map summary to title for backend
         description: this.newEvent.description,
         location: this.newEvent.location,
+        url: this.newEvent.url, // Meeting link or URL for the event
         start_time: this.newEvent.all_day 
           ? dayjs(this.newEvent.start_date).format('YYYY-MM-DD') + 'T00:00:00'
           : dayjs(`${this.newEvent.start_date}T${this.newEvent.start_time}`).format('YYYY-MM-DDTHH:mm:ss'),
@@ -1718,6 +1728,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
       summary: '',
       location: '',
       description: '',
+      url: '', // Meeting link or URL for the event
       start_date: '',
       start_time: '',
       end_date: '',
@@ -2028,14 +2039,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
             console.log('✅ Updated event data:', response.data);
             this.closeEventDetailModal();
             
-            // For single occurrence edits, refresh events to get updated data
-            if (editData.editScope === 'this') {
-              console.log('🔄 Single occurrence edit - refreshing events...');
-              await this.fetchEvents();
-            } else {
-              console.log('🔄 All occurrences edit - refreshing events...');
-              await this.fetchEvents();
-            }
+            // Always refresh events after edit
+            console.log('🔄 Event edit completed - refreshing events...');
+            await this.fetchEvents();
             
             console.log('✅ fetchEvents completed');
             alert('Event updated successfully!');
