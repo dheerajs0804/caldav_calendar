@@ -1,0 +1,38 @@
+{
+  "name": "calendar-selenium-tests",
+  "version": "1.0.0",
+  "description": "Automated functional tests for Calendar UI using Selenium",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha **/*.test.js --timeout 30000",
+    "test:login": "mocha login.test.js --timeout 30000",
+    "test:calendar": "mocha calendar.test.js --timeout 30000",
+    "test:events": "mocha events.test.js --timeout 30000",
+    "test:recurring": "mocha recurring-events.test.js --timeout 30000",
+    "test:headless": "mocha **/*.test.js --timeout 30000 --headless",
+    "test:chrome": "mocha **/*.test.js --timeout 30000 --browser=chrome",
+    "test:firefox": "mocha **/*.test.js --timeout 30000 --browser=firefox"
+  },
+  "dependencies": {
+    "selenium-webdriver": "^4.15.0",
+    "chai": "^4.3.10",
+    "mocha": "^10.2.0",
+    "chromedriver": "^119.0.0",
+    "geckodriver": "^4.1.0",
+    "dotenv": "^16.3.1",
+    "webdriver-manager": "^12.1.7"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.1",
+    "@types/chai": "^4.3.5"
+  },
+  "keywords": [
+    "selenium",
+    "testing",
+    "calendar",
+    "automation",
+    "functional-tests"
+  ],
+  "author": "Calendar Test Suite",
+  "license": "MIT"
+}

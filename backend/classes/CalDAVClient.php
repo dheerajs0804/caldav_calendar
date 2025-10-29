@@ -887,6 +887,7 @@ class CalDAVClient {
           <C:prop name="STATUS"/>
           <C:prop name="TRANSP"/>
           <C:prop name="ATTENDEE"/>
+          <C:prop name="ATTACH"/>
         </C:comp>
       </C:comp>
     </C:calendar-data>
@@ -923,6 +924,7 @@ class CalDAVClient {
           <C:prop name="STATUS"/>
           <C:prop name="TRANSP"/>
           <C:prop name="ATTENDEE"/>
+          <C:prop name="ATTACH"/>
         </C:comp>
       </C:comp>
     </C:calendar-data>
@@ -1015,6 +1017,19 @@ class CalDAVClient {
                     error_log("❌ NO RRULE found in fetched iCalendar content");
                 }
                 
+                // Check specifically for ATTACH in the content
+                if (strpos($icalContent, 'ATTACH') !== false) {
+                    error_log("🔗 ATTACH FOUND in fetched iCalendar content!");
+                    preg_match_all('/ATTACH[^\r\n]+/', $icalContent, $attachMatches);
+                    if (!empty($attachMatches[0])) {
+                        foreach ($attachMatches[0] as $attachLine) {
+                            error_log("🔗 ATTACH line: " . $attachLine);
+                        }
+                    }
+                } else {
+                    error_log("🔗 NO ATTACH found in fetched iCalendar content");
+                }
+                
                 // Parse the iCalendar content
                 $event = $this->parseICalendarData($icalContent);
                 if ($event) {
@@ -1055,6 +1070,7 @@ class CalDAVClient {
                 'end_time' => date('c', time() + 3600),
                 'all_day' => false,
                 'location' => '',
+                'url' => '', // Meeting link or URL for the event
                 'calendar_id' => 1,
                 'uid' => '',
                 'etag' => '',
@@ -1102,7 +1118,27 @@ class CalDAVClient {
                     error_log("Found event title: " . $event['title']);
                 } elseif (strpos($line, 'DESCRIPTION:') === 0) {
                     $event['description'] = substr($line, 12);
-                } elseif (strpos($line, 'DTSTART') === 0) {
+        } elseif (strpos($line, 'LOCATION:') === 0) {
+            $event['location'] = substr($line, 9);
+        } elseif (strpos($line, 'ATTACH') === 0) {
+            // Handle ATTACH property (can have parameters like FMTTYPE)
+            // Format: ATTACH:value or ATTACH;parameter:value
+            error_log("🔗 Processing ATTACH line: " . $line);
+            if (strpos($line, 'ATTACH:') === 0) {
+                $event['url'] = substr($line, 7); // Meeting link or URL for the event (ATTACH property)
+                error_log("🔗 Simple ATTACH format - URL: " . $event['url']);
+            } else {
+                // Handle ATTACH with parameters: ATTACH;FMTTYPE=text/uri-list:value
+                $parts = explode(':', $line, 2);
+                if (count($parts) === 2) {
+                    $event['url'] = $parts[1]; // Get the value after the last colon
+                    error_log("🔗 ATTACH with parameters - URL: " . $event['url']);
+                } else {
+                    error_log("🔗 ATTACH line format not recognized: " . $line);
+                }
+            }
+            error_log("🔗 Final ATTACH property: " . ($event['url'] ?? 'null'));
+        } elseif (strpos($line, 'DTSTART') === 0) {
                     // Handle both DTSTART: and DTSTART;TZID=timezone: formats
                     if (strpos($line, 'DTSTART:') === 0) {
                         $startDate = substr($line, 8);
@@ -1931,6 +1967,9 @@ class CalDAVClient {
                             break;
                         case 'LOCATION':
                             $eventData['location'] = $value;
+                            break;
+                        case 'ATTACH':
+                            $eventData['url'] = $value; // Meeting link or URL for the event (ATTACH property)
                             break;
                         case 'DTSTART':
                             $eventData['start_time'] = $this->parseICalDate($value);

@@ -65,6 +65,12 @@ export class EventDetailModalComponent {
 
   ngOnChanges(): void {
     if (this.event) {
+      // Debug: Log the event data received by the modal
+      console.log('🔄 Event detail modal received event:', this.event.title);
+      console.log('🔄 Event URL field:', this.event.url);
+      console.log('🔄 Event URL field type:', typeof this.event.url);
+      console.log('🔄 Event URL field value:', JSON.stringify(this.event.url));
+      
       // Always use the event data as-is for editing
       // The event already contains the correct occurrence data (either original or individually modified)
       console.log('🔄 Event detail modal initialized with event:', this.event);
@@ -76,6 +82,7 @@ export class EventDetailModalComponent {
       // Create a copy of the event for editing with default values for new fields
       this.editedEvent = { 
         ...this.event,
+        url: this.event.url || '', // Ensure URL field exists, even if empty
         availability: this.event.availability || 'busy',
         status: this.event.status || 'confirmed',
         attendees: this.event.attendees || [],
@@ -232,6 +239,7 @@ export class EventDetailModalComponent {
     if (this.event) {
       this.editedEvent = { 
         ...this.event,
+        url: this.event.url || '', // Ensure URL field exists, even if empty
         attendees: this.event.attendees || []
       };
       // Reinitialize recurrence properties
@@ -656,5 +664,61 @@ export class EventDetailModalComponent {
     if (this.editedEvent?.recurrence?.specificDates) {
       this.editedEvent.recurrence.specificDates[index] = value;
     }
+  }
+
+  /**
+   * Copy URL to clipboard
+   */
+  copyToClipboard(url: string): void {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(url).then(() => {
+        // Show a brief success message
+        const button = event?.target as HTMLButtonElement;
+        if (button) {
+          const originalText = button.textContent;
+          button.textContent = '✅ Copied!';
+          setTimeout(() => {
+            button.textContent = originalText;
+          }, 2000);
+        }
+      }).catch(err => {
+        console.error('Failed to copy URL to clipboard:', err);
+        this.fallbackCopyToClipboard(url);
+      });
+    } else {
+      this.fallbackCopyToClipboard(url);
+    }
+  }
+
+  /**
+   * Fallback method for copying to clipboard when navigator.clipboard is not available
+   */
+  private fallbackCopyToClipboard(text: string): void {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+      document.execCommand('copy');
+      // Show success message
+      const button = event?.target as HTMLButtonElement;
+      if (button) {
+        const originalText = button.textContent;
+        button.textContent = '✅ Copied!';
+        setTimeout(() => {
+          button.textContent = originalText;
+        }, 2000);
+      }
+    } catch (err) {
+      console.error('Fallback copy failed:', err);
+      alert('Failed to copy URL. Please copy manually: ' + text);
+    }
+    
+    document.body.removeChild(textArea);
   }
 }
