@@ -2454,30 +2454,52 @@ function deleteCalendar($id) {
         $caldavClient = getCalDAVClient();
         if (!$caldavClient) {
             simpleLog('ERROR', 'CalDAV client not available for calendar deletion', [
-                'calendar_id' => $decodedId
+                'calendar_id' => $decodedId,
+                'session_has_credentials' => isset($_SESSION['caldav_credentials']),
+                'session_id' => session_id()
             ]);
             throw new Exception('CalDAV client not available');
         }
         
+        // Log authentication source for debugging
+        $authSource = isset($_SESSION['caldav_credentials']) ? 'session' : 'environment';
         simpleLog('DEBUG', 'CalDAV client obtained successfully', [
-            'calendar_id' => $decodedId
+            'calendar_id' => $decodedId,
+            'auth_source' => $authSource,
+            'session_id' => session_id(),
+            'caldav_server' => $caldavClient->getServerUrl() ?? 'unknown'
         ]);
         
         // First, get the calendar details to find the URL
         simpleLog('DEBUG', 'Discovering calendars for deletion', [
-            'calendar_id' => $decodedId
+            'calendar_id' => $decodedId,
+            'auth_source' => $authSource
         ]);
-        $calendars = $caldavClient->discoverCalendars();
+        
+        try {
+            $calendars = $caldavClient->discoverCalendars();
+        } catch (Exception $e) {
+            simpleLog('ERROR', 'Failed to discover calendars', [
+                'calendar_id' => $decodedId,
+                'error' => $e->getMessage(),
+                'auth_source' => $authSource
+            ]);
+            throw new Exception('Failed to discover calendars: ' . $e->getMessage());
+        }
+        
         simpleLog('DEBUG', 'Calendars discovered', [
             'calendar_id' => $decodedId,
-            'calendars_count' => count($calendars)
+            'calendars_count' => count($calendars),
+            'auth_source' => $authSource
         ]);
         
         if (!$calendars || empty($calendars)) {
             simpleLog('ERROR', 'No calendars found for deletion', [
-                'calendar_id' => $decodedId
+                'calendar_id' => $decodedId,
+                'auth_source' => $authSource,
+                'session_has_credentials' => isset($_SESSION['caldav_credentials'])
             ]);
-            throw new Exception('No calendars found');
+            throw new Exception('No calendars found. Check authentication credentials.');
         }
         
         // Log all available calendars for debugging
@@ -2501,20 +2523,36 @@ function deleteCalendar($id) {
                 'calendar_id' => $decodedId,
                 'search_type' => 'url_match'
             ]);
+            
+            // Normalize the target URL for comparison (remove trailing slash, decode)
+            $normalizedTarget = rtrim(urldecode($decodedId), '/');
+            
             foreach ($calendars as $calendar) {
+                $calendarHref = $calendar['href'] ?? '';
+                
+                // Normalize calendar URL for comparison
+                $normalizedCalendarUrl = rtrim(urldecode($calendarHref), '/');
+                
                 simpleLog('DEBUG', 'Comparing calendar URLs', [
                     'calendar_id' => $decodedId,
-                    'target_url' => $decodedId,
-                    'calendar_url' => $calendar['href'] ?? 'unknown',
-                    'calendar_name' => $calendar['name'] ?? 'unknown'
+                    'target_url' => $normalizedTarget,
+                    'calendar_url' => $normalizedCalendarUrl,
+                    'calendar_name' => $calendar['name'] ?? 'unknown',
+                    'original_href' => $calendarHref
                 ]);
-                if ($calendar['href'] === $decodedId) {
+                
+                // Try exact match first, then normalized match, then URL contains match
+                if ($calendarHref === $decodedId || 
+                    $normalizedCalendarUrl === $normalizedTarget ||
+                    strpos($normalizedCalendarUrl, $normalizedTarget) !== false ||
+                    strpos($normalizedTarget, $normalizedCalendarUrl) !== false) {
                     $calendarToDelete = $calendar;
-                    $calendarUrl = $decodedId;
+                    $calendarUrl = $calendarHref; // Use the original href from discovery
                     simpleLog('INFO', 'Calendar found by URL match', [
                         'calendar_id' => $decodedId,
                         'calendar_name' => $calendar['name'] ?? 'unknown',
-                        'calendar_url' => $calendar['href'] ?? 'unknown'
+                        'calendar_url' => $calendarUrl,
+                        'match_type' => $calendarHref === $decodedId ? 'exact' : 'normalized'
                     ]);
                     break;
                 }

@@ -32,6 +32,19 @@ RUN chown -R www-data:www-data /var/www/html \
 RUN mkdir -p /var/www/html/data \
     && chown -R www-data:www-data /var/www/html/data
 
+# Create sessions directory for PHP session persistence
+RUN mkdir -p /var/www/html/sessions \
+    /var/www/html/logs \
+    && chown -R www-data:www-data /var/www/html/sessions \
+    && chown -R www-data:www-data /var/www/html/logs \
+    && chmod -R 775 /var/www/html/sessions \
+    && chmod -R 775 /var/www/html/logs
+
+# Configure PHP session storage
+RUN echo "session.save_path = \"/var/www/html/sessions\"" >> /usr/local/etc/php/conf.d/sessions.ini \
+    && echo "session.gc_probability = 1" >> /usr/local/etc/php/conf.d/sessions.ini \
+    && echo "session.gc_divisor = 1000" >> /usr/local/etc/php/conf.d/sessions.ini
+
 # Expose port 80
 EXPOSE 80
 
